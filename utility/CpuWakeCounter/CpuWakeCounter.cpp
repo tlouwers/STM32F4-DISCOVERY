@@ -37,6 +37,17 @@
  *          // Declare the object
  *          CpuWakeCounter cpuWakeCounter;
  *
+ *          // Helper method to enable DWT (in case it is not enabled yet)
+ *          void EnableDWT(void)
+ *          {
+ *              CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+ *              DWT->CYCCNT = 0;
+ *              DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+ *          }
+ *
+ *          // In case the DWT block is not yet enabled:
+ *          EnableDWT();
+ *
  *          // In the main process loop
  *          void Application::Process()
  *          {
