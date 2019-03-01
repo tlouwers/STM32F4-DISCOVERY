@@ -22,7 +22,7 @@ CpuWakeCounter cpuWakeCounter;
 void Application::Process()
 {
     // Do useful stuff
-    delay_ms(100);                          // Mimicks handling various items
+    delay_ms(100);                          // Mimics handling various items
 
     // Handle an update (if available)
     if (cpuWakeCounter.IsUpdated())         // Will update once per second

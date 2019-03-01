@@ -30,6 +30,36 @@
  *          Cortex-M3, M4 or M7. This code was developed for an STM32F407G,
  *          but can be adapted for other microcontrollers as well.
  *
+ *          Example:
+ *          // Include the header
+ *          #include "CpuWakeCounter.hpp"
+ *
+ *          // Declare the object
+ *          CpuWakeCounter cpuWakeCounter;
+ *
+ *          // In the main process loop
+ *          void Application::Process()
+ *          {
+ *              // Do useful stuff
+ *              delay_ms(100);                          // Mimics handling various items
+ *
+ *              // Handle an update (if available)
+ *              if (cpuWakeCounter.IsUpdated())         // Will update once per second
+ *              {
+ *                  // Get the updated statistics
+ *                  CpuStats cpuStats = cpuWakeCounter.GetStatistics();
+ *
+ *                  // Handle the statistics, like log or assert if the wake percentage is above 80%
+ *                  if (cpuStats.wakePercentage > 80.0f)
+ *                  {
+ *                      assert(false);
+ *                  }
+ *              }
+ *
+ *              // At the end of the main process loop enter the desired sleep mode, per default the Systick is suspended in this method while sleeping (can be overruled).
+ *              cpuWakeCounter.EnterSleepMode(SleepMode::WaitForInterrupt);
+ *          }
+ *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
  * \date        02-2019
@@ -68,11 +98,11 @@ void CpuWakeCounter::EnterSleepMode(SleepMode mode, bool suspend_systick /* = tr
     // Increase the wake cycle count - take wrapping into account
     if (CycleCountBeforeSleep >= CycleCountAfterSleep)
     {
-    WakeCycleCount += (CycleCountBeforeSleep - CycleCountAfterSleep);
+        WakeCycleCount += (CycleCountBeforeSleep - CycleCountAfterSleep);
     }
     else
     {
-    WakeCycleCount += (UINT32_MAX - (CycleCountAfterSleep - CycleCountBeforeSleep - 1));
+        WakeCycleCount += (UINT32_MAX - (CycleCountAfterSleep - CycleCountBeforeSleep - 1));
     }
 
     // If requested, suspend Systick to prevent it from waking the CPU
