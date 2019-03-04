@@ -25,6 +25,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include <cstdint>
+#include <functional>
 #include "stm32f4xx_hal.h"
 
 
@@ -35,6 +36,12 @@ struct PinIdPort
 {
     uint16_t      id;       ///< The pin id bitmask from 'GPIO_pins_define'.
     GPIO_TypeDef* port;     ///< Pointer to base 'GPIO_TypeDef' struct, like: 'GPIOA'.
+};
+
+struct PinInterrupt
+{
+    std::function<void()> callback = nullptr;   ///< Callback to call when interrupt for pin triggers.
+    bool                  enabled  = false;     ///< Flag, indicating interrupt for pin is enabled or not.
 };
 
 
@@ -63,11 +70,11 @@ enum class PullUpDown : uint8_t
 	PULL_UP_DOWN
 };
 
-enum class Trigger : uint8_t
+enum class Edge : uint8_t
 {
-	RISING_EDGE,
-	FALLING_EDGE,
-	BOTH_EDGES
+	RISING,
+	FALLING,
+	BOTH
 };
 
 /**
@@ -103,15 +110,15 @@ public:
     Pin(Pin&& other);
 
 	explicit Pin(PinIdPort idAndPort);
-	Pin(PinIdPort idAndPort, Level level = Level::LOW);
-	Pin(PinIdPort idAndPort, PullUpDown pullUpDown = PullUpDown::HIGHZ);
-	Pin(PinIdPort idAndPort, Alternate alternate = Alternate::AF0);
+	Pin(PinIdPort idAndPort, Level level);
+	Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
+	Pin(PinIdPort idAndPort, Alternate alternate);
 
 	void Configure(Level level);
 	void Configure(PullUpDown pullUpDown);
 	void Configure(Alternate alternate);
 
-	bool Interrupt(Trigger trigger, bool enabledAfterConfigure = true);
+	bool Interrupt(Edge edge, const std::function<void()>& callback, bool enabledAfterConfigure = true);
 	bool InterruptEnable();
 	bool InterruptDisable();
 	bool InterruptRemove();
@@ -128,13 +135,24 @@ private:
 	Direction     mDirection = Direction::UNDEFINED;
 
 	void CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port);
-	void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port);
 
     // Explicit disabled constructors/operators
     Pin() = delete;
     Pin(const Pin&) = delete;
     Pin& operator= (const Pin& other) = delete;
 };
+
+
+extern "C"
+{
+    void EXTI0_IRQHandler(void);
+    void EXTI1_IRQHandler(void);
+    void EXTI2_IRQHandler(void);
+    void EXTI3_IRQHandler(void);
+    void EXTI4_IRQHandler(void);
+    void EXTI9_5_IRQHandler(void);
+    void EXTI15_10_IRQHandler(void);
+}
 
 
 #endif	// PIN_HPP_
