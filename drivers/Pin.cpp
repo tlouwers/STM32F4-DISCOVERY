@@ -30,33 +30,55 @@
 /************************************************************************/
 /**
  * \brief   Number indicating an invalid entry.
+ * \note    Assumed is that no pin is using this as id.
  */
 static constexpr uint16_t INVALID_ENTRY = UINT16_MAX;
 
+/**
+ * \brief   Default interrupt priority of all pins.
+ */
 static constexpr uint8_t INTERRUPT_PRIORITY = 5;
 
 
+/************************************************************************/
+/* Static variables                                                     */
+/************************************************************************/
+/**
+ * \brief   Internal administration to keep track for which pin a callback
+ *          is subscribed and if it is enabled or not.
+ */
 static PinInterrupt pinInterruptList[16] = {};
 
 
 /************************************************************************/
 /* Static functions                                                     */
 /************************************************************************/
+/**
+ * \brief   Check if only a single bit is set in the id GPIO bitmask.
+ */
 static bool IsOnlyASingleBitSetInIdMask(uint16_t id)
 {
-    // Check if only a single bit is set in the id GPIO bitmask
     return ((id > 0) && ((id & (id - 1)) == 0));
 }
 
+/**
+ * \brief   Get an array index based upon the pin id.
+ * \details Counting trailing zeroes results an array index.
+ *          Works as id is represented as uint16_t bitmask: 'GPIO_pins_define'.
+ * \note    https://www.go4expert.com/articles/builtin-gcc-functions-builtinclz-t29238/
+ */
 static int GetIndexById(uint16_t id)
 {
-    // https://www.go4expert.com/articles/builtin-gcc-functions-builtinclz-t29238/
-
-    // Counting trailing zeroes results in our index to use here.
-    // Works as id is represented as uint16_t bitmask: 'GPIO_pins_define'.
     return __builtin_ctz(id);
 }
 
+/**
+ * \brief   Check to see if the IRQ is shared with another pin which is
+ *          configured or not.
+ * \param   id      Id of the pin for which the check is done.
+ * \returns True if another pin is configured as interrupt on a shared
+ *          EXT interrupt line, else false.
+ */
 static bool IsIRQSharedWithOtherPin(uint16_t id)
 {
     if (id < GPIO_PIN_5 )
@@ -112,7 +134,10 @@ static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
     }
 }
 
-// Static methods
+/**
+ * \brief   Get the IRQ belonging to the pin.
+ * \returns The EXT interrupt line IRQ to which the pin belongs.
+ */
 static IRQn_Type GetIRQn(uint16_t id)
 {
     assert(IsOnlyASingleBitSetInIdMask(id) == true);
