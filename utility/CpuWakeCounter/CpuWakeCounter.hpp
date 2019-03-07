@@ -8,8 +8,6 @@
  *          a beer in return.
  *                                                                Terry Louwers
  *
- * \class CpuWakeCounter
- *
  * \brief   Helper class intended to put the CPU into a 'light' sleep mode and
  *          measure the wake percentage in one go.
  *
@@ -31,9 +29,6 @@
  *          but can be adapted for other microcontrollers as well.
  *
  *          Example:
- *          // Include the header
- *          #include "CpuWakeCounter.hpp"
- *
  *          // Declare the object
  *          CpuWakeCounter cpuWakeCounter;
  *
@@ -125,6 +120,9 @@ enum class SleepMode : bool
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
+/**
+ * \brief   Helper class to measure CPU wake percentage.
+ */
 class CpuWakeCounter
 {
 public:
