@@ -32,12 +32,19 @@
 /************************************************************************/
 /* Structures                                                           */
 /************************************************************************/
+/**
+ * \brief   Structure to group the pin id and port.
+ */
 struct PinIdPort
 {
     uint16_t      id;       ///< The pin id bitmask from 'GPIO_pins_define'.
     GPIO_TypeDef* port;     ///< Pointer to base 'GPIO_TypeDef' struct, like: 'GPIOA'.
 };
 
+/**
+ * \brief   Structure to group the interrupt callback (if any) and flag if the
+ *          callback should be called when the interrupt is triggered.
+ */
 struct PinInterrupt
 {
     std::function<void()> callback = nullptr;   ///< Callback to call when interrupt for pin triggers.
@@ -48,20 +55,44 @@ struct PinInterrupt
 /************************************************************************/
 /* Enums                                                                */
 /************************************************************************/
+/**
+ * \enum    Level
+ * \brief   Pin level.
+ */
 enum class Level : bool
 {
 	LOW,
 	HIGH
 };
 
+/**
+ * \enum    Direction
+ * \brief   Pin direction.
+ */
 enum class Direction : uint8_t
 {
 	UNDEFINED,
 	INPUT,
-	OUTPUT,
-	ALTERNATE
+	OUTPUT
 };
 
+/**
+ * \enum    Drive
+ * \brief   Output drive mode of a pin.
+ */
+enum class Drive : uint8_t
+{
+    PUSH_PULL,
+    OPEN_DRAIN,
+    OPEN_DRAIN_PULL_UP,
+    OPEN_DRAIN_PULL_DOWN,
+    OPEN_DRAIN_PULL_UP_DOWN
+};
+
+/**
+ * \enum    PullUpDown
+ * \brief   Input pull up or pull down mode of a pin.
+ */
 enum class PullUpDown : uint8_t
 {
 	HIGHZ,
@@ -70,55 +101,37 @@ enum class PullUpDown : uint8_t
 	PULL_UP_DOWN
 };
 
-enum class Edge : uint8_t
+/**
+ * \enum    Trigger
+ * \brief   Interrupt trigger condition for a pin.
+ */
+enum class Trigger : uint8_t
 {
 	RISING,
 	FALLING,
 	BOTH
 };
 
-/**
- * \details Check: stm32f4xx_hal_gpio_ex.h for details.
- */
-enum class Alternate : uint8_t
-{
-    AF0  = 0x00,
-    AF1  = 0x01,
-    AF2  = 0x02,
-    AF3  = 0x03,
-    AF4  = 0x04,
-    AF5  = 0x05,
-    AF6  = 0x06,
-    AF7  = 0x07,
-    AF8  = 0x08,
-    AF9  = 0x09,
-    AF10 = 0x0A,
-    AF11 = 0x0B,
-    AF12 = 0x0C,
-    AF13 = 0x0D,
-    AF14 = 0x0E,
-    AF15 = 0x0F
-};
-
 
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
+/**
+ * \brief   GPIO pin convenience class.
+ */
 class Pin
 {
 public:
     Pin(Pin&& other);
 
 	explicit Pin(PinIdPort idAndPort);
-	Pin(PinIdPort idAndPort, Level level);
+	Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
 	Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
-	Pin(PinIdPort idAndPort, Alternate alternate);
 
-	void Configure(Level level);
+	void Configure(Level level, Drive drive = Drive::PUSH_PULL);
 	void Configure(PullUpDown pullUpDown);
-	void Configure(Alternate alternate);
 
-	bool Interrupt(Edge edge, const std::function<void()>& callback, bool enabledAfterConfigure = true);
+	bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true);
 	bool InterruptEnable();
 	bool InterruptDisable();
 	bool InterruptRemove();

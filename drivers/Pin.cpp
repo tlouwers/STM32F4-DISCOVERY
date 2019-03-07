@@ -95,7 +95,7 @@ static bool IsIRQSharedWithOtherPin(uint16_t id)
  */
 static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
 {
-    assert((port != nullptr) && "Invalid variable for port passed, cannot be nullptr");
+    assert(port != nullptr);        // Invalid variable for port passed, cannot be nullptr"
 
          if (port == GPIOA) { if (!__HAL_RCC_GPIOA_IS_CLK_ENABLED()) { __HAL_RCC_GPIOA_CLK_ENABLE(); } }
     else if (port == GPIOB) { if (!__HAL_RCC_GPIOB_IS_CLK_ENABLED()) { __HAL_RCC_GPIOB_CLK_ENABLE(); } }
@@ -108,7 +108,7 @@ static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
     else if (port == GPIOI) { if (!__HAL_RCC_GPIOI_IS_CLK_ENABLED()) { __HAL_RCC_GPIOI_CLK_ENABLE(); } }
     else
     {
-        assert(false && "Port not known for given pin id");
+        assert(false);              // Port not known for given pin id
     }
 }
 
@@ -132,8 +132,8 @@ static IRQn_Type GetIRQn(uint16_t id)
 /* Public Methods                                                       */
 /************************************************************************/
 /**
- * \brief   Copy constructor for pin.
- * \param   other   The object to copy from.
+ * \brief   Move constructor for pin.
+ * \param   other   The object to move.
  */
 Pin::Pin(Pin&& other)
 {
@@ -146,20 +146,37 @@ Pin::Pin(Pin&& other)
     other.mDirection = Direction::UNDEFINED;
 }
 
+/**
+ * \brief   Constructor for pin.
+ * \details Default constructor for a pin. This does not configure the pin,
+ *          be sure to do this before using it.
+ * \param   idAndPort   Pin id and port to which the pin belongs.
+ */
 Pin::Pin(PinIdPort idAndPort)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 }
 
-Pin::Pin(PinIdPort idAndPort, Level level)
+/**
+ * \brief   Constructor for pin as output.
+ * \param   idAndPort   Pin id and port to which the pin belongs.
+ * \param   level       Initial output level of the pin.
+ * \param   drive       Drive mode configuration, default push pull.
+ */
+Pin::Pin(PinIdPort idAndPort, Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
 	mDirection = Direction::OUTPUT;
 
-	Configure(level);
+	Configure(level, drive);
 }
 
+/**
+ * \brief   Constructor for pin as input.
+ * \param   idAndPort   Pin id and port to which the pin belongs.
+ * \param   pullUpDown  Pull up or pull down mode configuration.
+ */
 Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
@@ -169,26 +186,30 @@ Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
 	Configure(pullUpDown);
 }
 
-Pin::Pin(PinIdPort idAndPort, Alternate alternate)
+/**
+ * \brief   Configuration method for pin as output.
+ * \param   level   Initial output level of the pin.
+ * \param   drive   Drive mode configuration, default push pull.
+ */
+void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
-    CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
-
-    mDirection = Direction::ALTERNATE;
-
-    Configure(alternate);
-}
-
-void Pin::Configure(Level level)
-{
-	assert((mDirection != Direction::UNDEFINED) && "Pin direction is undefined");
+	assert(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
 	CheckAndEnableAHB1PeripheralClock(mPort);
 
-	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure = {0};
 
-	GPIO_InitStructure.Pin   = mId;
-	GPIO_InitStructure.Mode  = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull  = GPIO_NOPULL;
+	GPIO_InitStructure.Pin  = mId;
+	GPIO_InitStructure.Mode = (drive == Drive::PUSH_PULL) ? GPIO_MODE_OUTPUT_PP : GPIO_MODE_OUTPUT_OD;
+	switch (drive)
+	{
+	    case Drive::PUSH_PULL:               // Fall through
+	    case Drive::OPEN_DRAIN:              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+	    case Drive::OPEN_DRAIN_PULL_UP: 	 GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+	    case Drive::OPEN_DRAIN_PULL_DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
+	    case Drive::OPEN_DRAIN_PULL_UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+	    default: assert(false);              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;    // Invalid drive
+	}
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
 	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
@@ -196,13 +217,17 @@ void Pin::Configure(Level level)
 	Set(level);
 }
 
+/**
+ * \brief   Configuration method for pin as input.
+ * \param   pullUpDown  Pull up or pull down mode configuration.
+ */
 void Pin::Configure(PullUpDown pullUpDown)
 {
-	assert((mDirection != Direction::UNDEFINED) && "Pin direction is undefined");
+	assert(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
 	CheckAndEnableAHB1PeripheralClock(mPort);
 
-	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure = {0};
 
 	GPIO_InitStructure.Pin  = mId;
 	GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
@@ -211,36 +236,26 @@ void Pin::Configure(PullUpDown pullUpDown)
 		case PullUpDown::PULL_UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
 		case PullUpDown::PULL_DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
 		case PullUpDown::PULL_UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
-
-		default:
-		case PullUpDown::HIGHZ:        GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+		case PullUpDown::HIGHZ:        // Fall through
+		default:                       GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
 	}
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
 	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 }
 
-// Untested, unfinished
-void Pin::Configure(Alternate alternate)
+/**
+ * \brief   Configures an interrupt for a pin.
+ * \param   trigger                 The trigger condition for the interrupt.
+ * \param   callback                The callback to call when the interrupt occurs.
+ * \param   enableAfterConfigure    Flag indicating the interrupt should be enabled
+ *                                  after the method is done, default is enabled.
+ * \returns True if the interrupt could be configured, else false.
+ */
+bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool enableAfterConfigure /* = true */)
 {
-    assert((mDirection != Direction::UNDEFINED) && "Pin direction is undefined");
-
-    CheckAndEnableAHB1PeripheralClock(mPort);
-
-    GPIO_InitTypeDef GPIO_InitStructure;
-
-    GPIO_InitStructure.Pin       = mId;
-    GPIO_InitStructure.Mode      = GPIO_MODE_AF_PP;
-    GPIO_InitStructure.Speed     = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStructure.Alternate = static_cast<uint32_t>(alternate);
-
-    HAL_GPIO_Init(mPort, &GPIO_InitStructure);
-}
-
-bool Pin::Interrupt(Edge edge, const std::function<void()>& callback, bool enabledAfterConfigure /** = true */)
-{
-	assert((mDirection != Direction::INPUT) && "Cannot configure interrupt if pin is not configured as input");
-	assert(callback && "Cannot configure interrupt without callback");
+	assert(mDirection == Direction::INPUT);     // Cannot configure interrupt if pin is not configured as input
+	assert(callback);                           // Cannot configure interrupt without callback
 
 	// First disable a possible configured interrupt
 	const IRQn_Type irq = GetIRQn(mId);
@@ -263,34 +278,37 @@ bool Pin::Interrupt(Edge edge, const std::function<void()>& callback, bool enabl
     else
     {
         pinInterruptList[index].callback = callback;
-        pinInterruptList[index].enabled  = enabledAfterConfigure;
+        pinInterruptList[index].enabled  = enableAfterConfigure;
     }
 
-	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure = {0};
 
-	switch (edge)
+	switch (trigger)
 	{
-		case Edge::RISING:  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;         break;
-		case Edge::FALLING: GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;        break;
-		case Edge::BOTH:    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING_FALLING; break;
-		default: assert(false && "Unknown edge configuration");
+		case Trigger::RISING:  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;         break;
+		case Trigger::FALLING: GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;        break;
+		case Trigger::BOTH:    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING_FALLING; break;
+		default: assert(false);                                                       break;    // Unknown trigger configuration
 	}
-	GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
-	GPIO_InitStructure.Pin  = mId;
+	GPIO_InitStructure.Pin = mId;
 
 	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
 	// Configure NVIC to generate interrupt
 	HAL_NVIC_ClearPendingIRQ(irq);
-	HAL_NVIC_SetPriority(irq, INTERRUPT_PRIORITY, 0);
+	HAL_NVIC_SetPriority(irq, 0, INTERRUPT_PRIORITY);
 	HAL_NVIC_EnableIRQ(irq);
 
 	return true;
 }
 
+/**
+ * \brief   Enable a previously configured interrupt for a pin.
+ * \returns True if the interrupt could be enabled, else false.
+ */
 bool Pin::InterruptEnable()
 {
-    assert((mDirection == Direction::INPUT) && "Cannot enable interrupt if pin is not configured as input");
+    assert(mDirection == Direction::INPUT);     // Cannot enable interrupt if pin is not configured as input
 
     const auto index = GetIndexById(mId);
 
@@ -298,8 +316,7 @@ bool Pin::InterruptEnable()
     if (pinInterruptList[index].callback != nullptr)
     {
         // Enable NVIC for pin
-        const IRQn_Type irq = GetIRQn(mId);
-        HAL_NVIC_EnableIRQ(irq);
+        HAL_NVIC_EnableIRQ( GetIRQn(mId) );
 
         pinInterruptList[index].enabled = true;
 
@@ -308,9 +325,13 @@ bool Pin::InterruptEnable()
     return false;
 }
 
+/**
+ * \brief   Disable a previously configured interrupt for a pin.
+ * \returns True if the interrupt could be disabled, else false.
+ */
 bool Pin::InterruptDisable()
 {
-    assert((mDirection == Direction::INPUT) && "Cannot disable interrupt if pin is not configured as input");
+    assert(mDirection == Direction::INPUT);     // Cannot disable interrupt if pin is not configured as input
 
     const auto index = GetIndexById(mId);
 
@@ -332,9 +353,13 @@ bool Pin::InterruptDisable()
     return false;
 }
 
+/**
+ * \brief   Removes a previously configured interrupt for a pin.
+ * \returns True if the interrupt could be removed, else false.
+ */
 bool Pin::InterruptRemove()
 {
-    assert((mDirection == Direction::INPUT) && "Cannot remove interrupt if pin is not configured as input");
+    assert(mDirection == Direction::INPUT);     // Cannot remove interrupt if pin is not configured as input
 
     const auto index = GetIndexById(mId);
 
@@ -362,7 +387,7 @@ bool Pin::InterruptRemove()
  */
 void Pin::Toggle() const
 {
-    assert((mDirection == Direction::OUTPUT) && "Cannot toggle level if pin is not configured as output");
+    assert(mDirection == Direction::OUTPUT);    // Cannot toggle level if pin is not configured as output
 
     (HAL_GPIO_ReadPin(mPort, mId) == GPIO_PIN_SET) ? HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_RESET) :
                                                      HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_SET);
@@ -374,7 +399,7 @@ void Pin::Toggle() const
  */
 void Pin::Set(Level level)
 {
-	assert((mDirection == Direction::OUTPUT) && "Cannot set level if pin is not configured as output");
+	assert(mDirection == Direction::OUTPUT);    // Cannot set level if pin is not configured as output
 
 	(level == Level::HIGH) ? HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_SET) :
 							 HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_RESET);
@@ -392,11 +417,9 @@ Level Pin::Get() const
 	    case Direction::INPUT:
 	        return (HAL_GPIO_ReadPin(mPort, mId) == GPIO_PIN_SET) ? Level::HIGH : Level::LOW;
 	        break;
-
-	    case Direction::ALTERNATE:
-	    case Direction::UNDEFINED:
+	    case Direction::UNDEFINED:      // Fall through
 	    default:
-	        assert(false && "Cannot get pin level if pin not defined as input or output");
+	        assert(false);              // Cannot get pin level if pin not defined as input or output
 	        while (true) { __NOP(); }   // User must resolve this incorrect use of Get()
 	        break;
 	}
@@ -434,7 +457,7 @@ Pin& Pin::operator= (Pin&& other)
  */
 void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
 {
-    assert((port != nullptr) && "Invalid variable for port passed, cannot be nullptr");
+    assert(port != nullptr);        // Invalid variable for port passed, cannot be nullptr
 
     if (IsOnlyASingleBitSetInIdMask(id))
     {
@@ -443,7 +466,7 @@ void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
     }
     else
     {
-        assert(false && "Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided");
+        assert(false);              // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
     }
 }
 
@@ -451,6 +474,11 @@ void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
 /************************************************************************/
 /* Interrupts                                                           */
 /************************************************************************/
+/**
+ * \brief   ISR: handler to dispatch line interrupt into configured pin
+ *          callback. If interrupt for pin is not enabled the interrupt is
+ *          absorbed here.
+ */
 void HAL_GPIO_EXTI_Callback(uint16_t id)
 {
     // No nested vector priority issue as all interrupt priorities for pins are the same.
@@ -463,7 +491,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t id)
 }
 
 /**
- * @brief This function handles EXTI line0 interrupt.
+ * \brief   ISR: route EXT line[0] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
 void EXTI0_IRQHandler(void)
 {
@@ -471,7 +499,7 @@ void EXTI0_IRQHandler(void)
 }
 
 /**
- * @brief This function handles EXTI line1 interrupt.
+ * \brief   ISR: route EXT line[1] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
 void EXTI1_IRQHandler(void)
 {
@@ -479,7 +507,7 @@ void EXTI1_IRQHandler(void)
 }
 
 /**
- * @brief This function handles EXTI line2 interrupt.
+ * \brief   ISR: route EXT line[2] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
 void EXTI2_IRQHandler(void)
 {
@@ -487,7 +515,7 @@ void EXTI2_IRQHandler(void)
 }
 
 /**
- * @brief This function handles EXTI line3 interrupt.
+ * \brief   ISR: route EXT line[3] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
 void EXTI3_IRQHandler(void)
 {
@@ -495,7 +523,7 @@ void EXTI3_IRQHandler(void)
 }
 
 /**
- * @brief This function handles EXTI line4 interrupt.
+ * \brief   ISR: route EXT line[4] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
 void EXTI4_IRQHandler(void)
 {
@@ -503,7 +531,8 @@ void EXTI4_IRQHandler(void)
 }
 
 /**
- * @brief This function handles EXTI line[9:5] interrupts.
+ * \brief   ISR: route EXT line[9:5] interrupts to 'HAL_GPIO_EXTI_IRQHandler'.
+ * \note    Cannot make distinction between the pin ids listed below.
  */
 void EXTI9_5_IRQHandler(void)
 {
@@ -515,7 +544,8 @@ void EXTI9_5_IRQHandler(void)
 }
 
 /**
- * @brief This function handles EXTI line[15:10] interrupts.
+ * \brief   ISR: route EXT line[15..10] interrupts to 'HAL_GPIO_EXTI_IRQHandler'.
+ * \note    Cannot make distinction between the pin ids listed below.
  */
 void EXTI15_10_IRQHandler(void)
 {
