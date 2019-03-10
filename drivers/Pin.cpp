@@ -11,11 +11,44 @@
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  * 			State is preserved (partly) within the hardware.
  *
- * \details <todo>
+ * \details Intended use is to have a method at board startup which sets each
+ *          pin to a defined state. This is done by constructing a Pin object,
+ *          and let it go out of scope.
+ *          Later in the application, for the few pins where needed, pass along
+ *          the PinIdPort struct to the class where a pin object is needed.
+ *          Then during the Initialisation of that class (not construction)
+ *          create and fill the Pin object with desired values. At this point
+ *          the interrupts can be configured as well.
+ *
+ *          // Examples:
+ *          Pin a1(id, Level::LOW);                     // Construction - output
+ *          Pin a2(id, PullUpDown::DOWN);               // Construction - input, pull-down
+ *
+ *          // As output
+ *          a1.Set(Level::HIGH);                        // Set output high
+ *          a1.Toggle();                                // High to low, low to high
+ *          Level lvl1 = a1.Get();                      // Get the actual pin level
+ *          a1.Configure(PullUpDown::HIGHZ);            // Make pin input, floating
+ *
+ *          // As Input:
+ *          Level lvl2 = a2.Get();                      // Get the actual pin level
+ *          a2.Interrupt(Trigger::RISING, callback);    // Configure interrupt, attach callback, default active
+ *          a2.InterruptDisable();                      // Disable the callback (ignores the interrupt)
+ *          a2.InterruptEnable();                       // Enables the callback
+ *          a2.InterruptRemove();                       // Removed the interrupt, detaches the callback
+ *
+ *          // Allowed (moves):
+ *          Pin a4 = std::move(a1);                     // Move assignment
+ *          Pin a5(std::move(a2));                      // Move constructor
+ *
+ *          // Not allowed (copies):
+ *          Pin a7 = a1;                                // Copy assignment
+ *          Pin a8(a2);                                 // Copy constructor
+ *          Pin();                                      // No empty constructor
  *
  * \author      T. Louwers <t.louwers@gmail.com>
  * \version     1.0
- * \date        02-2019
+ * \date        03-2019
  */
 
 /************************************************************************/
@@ -81,31 +114,31 @@ static int GetIndexById(uint16_t id)
  */
 static bool IsIRQSharedWithOtherPin(uint16_t id)
 {
+    bool result = true;
+
     if (id < GPIO_PIN_5 )
     {
         return false;
     }
     else if (id < GPIO_PIN_10)
     {
-        bool result = true;
-        if (id != 5) { result &= (pinInterruptList[5].callback == nullptr); }
-        if (id != 6) { result &= (pinInterruptList[6].callback == nullptr); }
-        if (id != 7) { result &= (pinInterruptList[7].callback == nullptr); }
-        if (id != 8) { result &= (pinInterruptList[8].callback == nullptr); }
-        if (id != 9) { result &= (pinInterruptList[9].callback == nullptr); }
-        return !result;
+        if (id !=  5) { result &= (pinInterruptList[5].callback  == nullptr); }
+        if (id !=  6) { result &= (pinInterruptList[6].callback  == nullptr); }
+        if (id !=  7) { result &= (pinInterruptList[7].callback  == nullptr); }
+        if (id !=  8) { result &= (pinInterruptList[8].callback  == nullptr); }
+        if (id !=  9) { result &= (pinInterruptList[9].callback  == nullptr); }
     }
     else
     {
-        bool result = true;
         if (id != 10) { result &= (pinInterruptList[10].callback == nullptr); }
         if (id != 11) { result &= (pinInterruptList[11].callback == nullptr); }
         if (id != 12) { result &= (pinInterruptList[12].callback == nullptr); }
         if (id != 13) { result &= (pinInterruptList[13].callback == nullptr); }
         if (id != 14) { result &= (pinInterruptList[14].callback == nullptr); }
         if (id != 15) { result &= (pinInterruptList[15].callback == nullptr); }
-        return !result;
     }
+
+    return !result;
 }
 
 /**
@@ -258,11 +291,11 @@ void Pin::Configure(PullUpDown pullUpDown)
 	GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
 	switch (pullUpDown)
 	{
-		case PullUpDown::PULL_UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
-		case PullUpDown::PULL_DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-		case PullUpDown::PULL_UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
-		case PullUpDown::HIGHZ:        // Fall through
-		default:                       GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+		case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+		case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
+		case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+		case PullUpDown::HIGHZ:   // Fall through
+		default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
 	}
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
@@ -275,6 +308,7 @@ void Pin::Configure(PullUpDown pullUpDown)
  * \param   callback                The callback to call when the interrupt occurs.
  * \param   enableAfterConfigure    Flag indicating the interrupt should be enabled
  *                                  after the method is done, default is enabled.
+ * \note    This method assumes the HAL has set NVIC_PRIORITYGROUP_4.
  * \returns True if the interrupt could be configured, else false.
  */
 bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool enableAfterConfigure /* = true */)
@@ -321,7 +355,7 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
 
 	// Configure NVIC to generate interrupt
 	HAL_NVIC_ClearPendingIRQ(irq);
-	HAL_NVIC_SetPriority(irq, 0, INTERRUPT_PRIORITY);
+	HAL_NVIC_SetPriority(irq, INTERRUPT_PRIORITY, 0);
 	HAL_NVIC_EnableIRQ(irq);
 
 	return true;

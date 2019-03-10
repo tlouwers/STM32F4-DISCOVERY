@@ -11,11 +11,44 @@
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  * 			State is preserved (partly) within the hardware.
  *
- * \details <todo>
+ * \details Intended use is to have a method at board startup which sets each
+ *          pin to a defined state. This is done by constructing a Pin object,
+ *          and let it go out of scope.
+ *          Later in the application, for the few pins where needed, pass along
+ *          the PinIdPort struct to the class where a pin object is needed.
+ *          Then during the Initialisation of that class (not construction)
+ *          create and fill the Pin object with desired values. At this point
+ *          the interrupts can be configured as well.
+ *
+ *          // Examples:
+ *          Pin a1(id, Level::LOW);                     // Construction - output
+ *          Pin a2(id, PullUpDown::DOWN);               // Construction - input, pull-down
+ *
+ *          // As output
+ *          a1.Set(Level::HIGH);                        // Set output high
+ *          a1.Toggle();                                // High to low, low to high
+ *          Level lvl1 = a1.Get();                      // Get the actual pin level
+ *          a1.Configure(PullUpDown::HIGHZ);            // Make pin input, floating
+ *
+ *          // As Input:
+ *          Level lvl2 = a2.Get();                      // Get the actual pin level
+ *          a2.Interrupt(Trigger::RISING, callback);    // Configure interrupt, attach callback, default active
+ *          a2.InterruptDisable();                      // Disable the callback (ignores the interrupt)
+ *          a2.InterruptEnable();                       // Enables the callback
+ *          a2.InterruptRemove();                       // Removed the interrupt, detaches the callback
+ *
+ *          // Allowed (moves):
+ *          Pin a4 = std::move(a1);                     // Move assignment
+ *          Pin a5(std::move(a2));                      // Move constructor
+ *
+ *          // Not allowed (copies):
+ *          Pin a7 = a1;                                // Copy assignment
+ *          Pin a8(a2);                                 // Copy constructor
+ *          Pin();                                      // No empty constructor
  *
  * \author      T. Louwers <t.louwers@gmail.com>
  * \version     1.0
- * \date        02-2019
+ * \date        03-2019
  */
 
 #ifndef PIN_HPP_
@@ -96,9 +129,9 @@ enum class Drive : uint8_t
 enum class PullUpDown : uint8_t
 {
 	HIGHZ,
-	PULL_UP,
-	PULL_DOWN,
-	PULL_UP_DOWN
+	UP,
+	DOWN,
+	UP_DOWN
 };
 
 /**
