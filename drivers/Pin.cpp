@@ -152,15 +152,15 @@ static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
 {
     assert(port != nullptr);        // Invalid variable for port passed, cannot be nullptr"
 
-         if (port == GPIOA) { if (!__HAL_RCC_GPIOA_IS_CLK_ENABLED()) { __HAL_RCC_GPIOA_CLK_ENABLE(); } }
-    else if (port == GPIOB) { if (!__HAL_RCC_GPIOB_IS_CLK_ENABLED()) { __HAL_RCC_GPIOB_CLK_ENABLE(); } }
-    else if (port == GPIOC) { if (!__HAL_RCC_GPIOC_IS_CLK_ENABLED()) { __HAL_RCC_GPIOC_CLK_ENABLE(); } }
-    else if (port == GPIOD) { if (!__HAL_RCC_GPIOD_IS_CLK_ENABLED()) { __HAL_RCC_GPIOD_CLK_ENABLE(); } }
-    else if (port == GPIOE) { if (!__HAL_RCC_GPIOE_IS_CLK_ENABLED()) { __HAL_RCC_GPIOE_CLK_ENABLE(); } }
-    else if (port == GPIOF) { if (!__HAL_RCC_GPIOF_IS_CLK_ENABLED()) { __HAL_RCC_GPIOF_CLK_ENABLE(); } }
-    else if (port == GPIOG) { if (!__HAL_RCC_GPIOG_IS_CLK_ENABLED()) { __HAL_RCC_GPIOG_CLK_ENABLE(); } }
-    else if (port == GPIOH) { if (!__HAL_RCC_GPIOH_IS_CLK_ENABLED()) { __HAL_RCC_GPIOH_CLK_ENABLE(); } }
-    else if (port == GPIOI) { if (!__HAL_RCC_GPIOI_IS_CLK_ENABLED()) { __HAL_RCC_GPIOI_CLK_ENABLE(); } }
+         if (port == GPIOA) { if (__HAL_RCC_GPIOA_IS_CLK_DISABLED()) { __HAL_RCC_GPIOA_CLK_ENABLE(); } }
+    else if (port == GPIOB) { if (__HAL_RCC_GPIOB_IS_CLK_DISABLED()) { __HAL_RCC_GPIOB_CLK_ENABLE(); } }
+    else if (port == GPIOC) { if (__HAL_RCC_GPIOC_IS_CLK_DISABLED()) { __HAL_RCC_GPIOC_CLK_ENABLE(); } }
+    else if (port == GPIOD) { if (__HAL_RCC_GPIOD_IS_CLK_DISABLED()) { __HAL_RCC_GPIOD_CLK_ENABLE(); } }
+    else if (port == GPIOE) { if (__HAL_RCC_GPIOE_IS_CLK_DISABLED()) { __HAL_RCC_GPIOE_CLK_ENABLE(); } }
+    else if (port == GPIOF) { if (__HAL_RCC_GPIOF_IS_CLK_DISABLED()) { __HAL_RCC_GPIOF_CLK_ENABLE(); } }
+    else if (port == GPIOG) { if (__HAL_RCC_GPIOG_IS_CLK_DISABLED()) { __HAL_RCC_GPIOG_CLK_ENABLE(); } }
+    else if (port == GPIOH) { if (__HAL_RCC_GPIOH_IS_CLK_DISABLED()) { __HAL_RCC_GPIOH_CLK_ENABLE(); } }
+    else if (port == GPIOI) { if (__HAL_RCC_GPIOI_IS_CLK_DISABLED()) { __HAL_RCC_GPIOI_CLK_ENABLE(); } }
     else
     {
         assert(false);              // Port not known for given pin id
