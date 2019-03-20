@@ -46,7 +46,7 @@ enum class UsartInstance : uint8_t
 /**
  * \brief   USART peripheral driver class.
  */
-class Usart_drv
+class Usart
 {
 public:
     /**
@@ -90,7 +90,7 @@ public:
      * \enum    StopBits
      * \brief   Available USART stop bit modes.
      */
-    enum class StopBits
+    enum class StopBits : bool
     {
         _1_BIT,
         _2_BIT
@@ -148,8 +148,8 @@ public:
     };
 
 
-    Usart_drv(const UsartInstance& instance);
-    virtual ~Usart_drv();
+    Usart(const UsartInstance& instance);
+    virtual ~Usart();
 
     bool Init(const Config& config);
     bool Sleep() const;
@@ -163,6 +163,8 @@ public:
 private:
     UsartInstance mUsartInstance;
     bool          mInitialized;
+
+    void SetUsartInstance(UART_HandleTypeDef& usart_InitStructure);
 };
 
 

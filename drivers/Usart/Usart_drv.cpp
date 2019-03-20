@@ -20,7 +20,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "Usart_drv.hpp"
+#include "drivers/Usart/Usart.hpp"
 #include <cassert>
 
 
@@ -40,26 +40,57 @@ static void CheckAndEnableAHB1PeripheralClock(const UsartInstance& usartInstance
     }
 }
 
+static void CheckAndDisableAHB1PeripheralClock(const UsartInstance& usartInstance)
+{
+    switch (usartInstance)
+    {
+        case UsartInstance::USART_1: if (__HAL_RCC_USART1_IS_CLK_ENABLED()) { __HAL_RCC_USART1_CLK_DISABLE(); } break;
+        case UsartInstance::USART_2: if (__HAL_RCC_USART2_IS_CLK_ENABLED()) { __HAL_RCC_USART2_CLK_DISABLE(); } break;
+        case UsartInstance::USART_3: if (__HAL_RCC_USART3_IS_CLK_ENABLED()) { __HAL_RCC_USART3_CLK_DISABLE(); } break;
+        case UsartInstance::USART_6: if (__HAL_RCC_USART6_IS_CLK_ENABLED()) { __HAL_RCC_USART6_CLK_DISABLE(); } break;
+
+        default: assert(false); break;      // Invalid usart instance
+    }
+}
+
+/**
+ * \brief   Get the IRQ belonging to the USART.
+ * \returns The interrupt line IRQ to which the USART belongs.
+ */
+static IRQn_Type GetIRQn(const UsartInstance& usartInstance)
+{
+         if (usartInstance == UsartInstance::USART_1) { return USART1_IRQn; }
+    else if (usartInstance == UsartInstance::USART_2) { return USART2_IRQn; }
+    else if (usartInstance == UsartInstance::USART_3) { return USART3_IRQn; }
+    else if (usartInstance == UsartInstance::USART_6) { return USART6_IRQn; }
+    else { assert(false); while(1) { __NOP(); } return USART1_IRQn; }   // Invalid instance.
+}
+
 
 /************************************************************************/
 /* Public Methods                                                       */
 /************************************************************************/
-Usart_drv::Usart_drv(const UsartInstance& usartInstance) :
-    mUsartInstance(usartInstance)
+Usart::Usart(const UsartInstance& instance) :
+    mUsartInstance(instance)
 {
 
 }
 
-Usart_drv::~Usart_drv()
+Usart::~Usart()
 {
-    // TODO Auto-generated destructor stub
+    // Disable interrupt
+    const IRQn_Type irq = GetIRQn(mUsartInstance);
+    HAL_NVIC_DisableIRQ(irq);
+
+    CheckAndDisableAHB1PeripheralClock(mUsartInstance);
 }
 
-bool Usart_drv::Init(const Config& config)
+bool Usart::Init(const Config& config)
 {
     UART_HandleTypeDef USART_InitStructure = {0};
 
-    USART_InitStructure.Instance = USART2;
+    CheckAndEnableAHB1PeripheralClock(mUsartInstance);
+    SetUsartInstance(USART_InitStructure);
 
     uint32_t parity = UART_PARITY_NONE;
     switch (config.mParity)
@@ -80,12 +111,19 @@ bool Usart_drv::Init(const Config& config)
 
     if (HAL_UART_Init(&USART_InitStructure) == HAL_OK)
     {
+        // Configure NVIC to generate interrupt
+        const IRQn_Type irq = GetIRQn(mUsartInstance);
+        HAL_NVIC_DisableIRQ(irq);
+        HAL_NVIC_ClearPendingIRQ(irq);
+        HAL_NVIC_SetPriority(irq, config.mInterruptPriority, 0);
+        HAL_NVIC_EnableIRQ(irq);
+
         return true;
     }
     return false;
 }
 
-bool Usart_drv::Sleep() const
+bool Usart::Sleep() const
 {
 
     return false;
@@ -94,13 +132,13 @@ bool Usart_drv::Sleep() const
 //bool Usart_drv::Write(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
 //bool Usart_drv::Read(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
 
-bool Usart_drv::WriteBlocking(const uint8_t* src, size_t length)
+bool Usart::WriteBlocking(const uint8_t* src, size_t length)
 {
 
     return false;
 }
 
-bool Usart_drv::ReadBlocking(uint8_t* dest, size_t length)
+bool Usart::ReadBlocking(uint8_t* dest, size_t length)
 {
 
     return false;
@@ -110,4 +148,14 @@ bool Usart_drv::ReadBlocking(uint8_t* dest, size_t length)
 /************************************************************************/
 /* Private Methods                                                      */
 /************************************************************************/
-
+void Usart::SetUsartInstance(UART_HandleTypeDef& usart_InitStructure)
+{
+    switch (mUsartInstance)
+    {
+        case UsartInstance::USART_1: usart_InitStructure.Instance = USART1; break;
+        case UsartInstance::USART_2: usart_InitStructure.Instance = USART2; break;
+        case UsartInstance::USART_3: usart_InitStructure.Instance = USART3; break;
+        case UsartInstance::USART_6: usart_InitStructure.Instance = USART6; break;
+        default: assert(false); break;      // Impossible selection
+    }
+}

@@ -245,6 +245,22 @@ Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
 }
 
 /**
+ * \brief   Constructor for pin as alternate function.
+ * \param   idAndPort   Pin id and port to which the pin belongs.
+ * \param   alternate   The alternate function for the pin.
+ * \param   pullUpDown  Pull up or pull down mode configuration.
+ * \note    If pullUpDown is set to HIGHZ it is ignored.
+ */
+Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */)
+{
+    CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
+
+    mDirection = Direction::ALTERNATE;
+
+    Configure(alternate, pullUpDown);
+}
+
+/**
  * \brief   Configuration method for pin as output.
  * \param   level   Initial output level of the pin.
  * \param   drive   Drive mode configuration, default push pull.
@@ -300,6 +316,36 @@ void Pin::Configure(PullUpDown pullUpDown)
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
 	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
+}
+
+/**
+ * \brief   Configuration method for pin as alternate function.
+ * \param   alternate   The alternate function for the pin.
+ * \param   pullUpDown  Pull up or pull down mode configuration.
+ * \note    If pullUpDown is set to HIGHZ it is ignored.
+ */
+void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */)
+{
+    assert(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
+
+    CheckAndEnableAHB1PeripheralClock(mPort);
+
+    GPIO_InitTypeDef GPIO_InitStructure = {0};
+
+    GPIO_InitStructure.Pin  = mId;
+    GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
+    switch (pullUpDown)
+    {
+        case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+        case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
+        case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+        case PullUpDown::HIGHZ:   // Fall through
+        default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+    }
+    GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStructure.Alternate = static_cast<uint8_t>(alternate);
+
+    HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 }
 
 /**
