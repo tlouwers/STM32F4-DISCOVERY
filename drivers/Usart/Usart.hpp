@@ -161,8 +161,9 @@ public:
     bool ReadBlocking(uint8_t* dest, size_t length);
 
 private:
-    UsartInstance mUsartInstance;
-    bool          mInitialized;
+    UsartInstance       mUsartInstance;
+    bool                mInitialized;
+    UART_HandleTypeDef  hUsart = {0};
 
     void SetUsartInstance(UART_HandleTypeDef& usart_InitStructure);
 };

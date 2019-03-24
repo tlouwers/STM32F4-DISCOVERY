@@ -40,19 +40,6 @@ static void CheckAndEnableAHB1PeripheralClock(const UsartInstance& usartInstance
     }
 }
 
-static void CheckAndDisableAHB1PeripheralClock(const UsartInstance& usartInstance)
-{
-    switch (usartInstance)
-    {
-        case UsartInstance::USART_1: if (__HAL_RCC_USART1_IS_CLK_ENABLED()) { __HAL_RCC_USART1_CLK_DISABLE(); } break;
-        case UsartInstance::USART_2: if (__HAL_RCC_USART2_IS_CLK_ENABLED()) { __HAL_RCC_USART2_CLK_DISABLE(); } break;
-        case UsartInstance::USART_3: if (__HAL_RCC_USART3_IS_CLK_ENABLED()) { __HAL_RCC_USART3_CLK_DISABLE(); } break;
-        case UsartInstance::USART_6: if (__HAL_RCC_USART6_IS_CLK_ENABLED()) { __HAL_RCC_USART6_CLK_DISABLE(); } break;
-
-        default: assert(false); break;      // Invalid usart instance
-    }
-}
-
 /**
  * \brief   Get the IRQ belonging to the USART.
  * \returns The interrupt line IRQ to which the USART belongs.
@@ -71,7 +58,8 @@ static IRQn_Type GetIRQn(const UsartInstance& usartInstance)
 /* Public Methods                                                       */
 /************************************************************************/
 Usart::Usart(const UsartInstance& instance) :
-    mUsartInstance(instance)
+    mUsartInstance(instance),
+    mInitialized(false)
 {
 
 }
@@ -81,16 +69,12 @@ Usart::~Usart()
     // Disable interrupt
     const IRQn_Type irq = GetIRQn(mUsartInstance);
     HAL_NVIC_DisableIRQ(irq);
-
-    CheckAndDisableAHB1PeripheralClock(mUsartInstance);
 }
 
 bool Usart::Init(const Config& config)
 {
-    UART_HandleTypeDef USART_InitStructure = {0};
-
     CheckAndEnableAHB1PeripheralClock(mUsartInstance);
-    SetUsartInstance(USART_InitStructure);
+    SetUsartInstance(hUsart);
 
     uint32_t parity = UART_PARITY_NONE;
     switch (config.mParity)
@@ -101,15 +85,15 @@ bool Usart::Init(const Config& config)
         default: assert(false); break;
     }
 
-    USART_InitStructure.Init.BaudRate     = static_cast<uint32_t>(config.mBaudrate);
-    USART_InitStructure.Init.WordLength   = (config.mWordLength == WordLength::_8_BIT) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;
-    USART_InitStructure.Init.Parity       = parity;
-    USART_InitStructure.Init.StopBits     = (config.mStopBits == StopBits::_1_BIT) ? UART_STOPBITS_1 : UART_STOPBITS_2;
-    USART_InitStructure.Init.Mode         = UART_MODE_TX_RX;
-    USART_InitStructure.Init.OverSampling = (config.mOverSampling == OverSampling::_8_TIMES) ? UART_OVERSAMPLING_8 : UART_OVERSAMPLING_16;
-    USART_InitStructure.Init.HwFlowCtl    = (config.mUseHardwareFlowControl) ? UART_HWCONTROL_RTS_CTS : UART_HWCONTROL_NONE;
+    hUsart.Init.BaudRate     = static_cast<uint32_t>(config.mBaudrate);
+    hUsart.Init.WordLength   = (config.mWordLength == WordLength::_8_BIT) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;
+    hUsart.Init.Parity       = parity;
+    hUsart.Init.StopBits     = (config.mStopBits == StopBits::_1_BIT) ? UART_STOPBITS_1 : UART_STOPBITS_2;
+    hUsart.Init.Mode         = UART_MODE_TX_RX;
+    hUsart.Init.OverSampling = (config.mOverSampling == OverSampling::_8_TIMES) ? UART_OVERSAMPLING_8 : UART_OVERSAMPLING_16;
+    hUsart.Init.HwFlowCtl    = (config.mUseHardwareFlowControl) ? UART_HWCONTROL_RTS_CTS : UART_HWCONTROL_NONE;
 
-    if (HAL_UART_Init(&USART_InitStructure) == HAL_OK)
+    if (HAL_UART_Init(&hUsart) == HAL_OK)
     {
         // Configure NVIC to generate interrupt
         const IRQn_Type irq = GetIRQn(mUsartInstance);
@@ -125,7 +109,6 @@ bool Usart::Init(const Config& config)
 
 bool Usart::Sleep() const
 {
-
     return false;
 }
 
@@ -134,13 +117,29 @@ bool Usart::Sleep() const
 
 bool Usart::WriteBlocking(const uint8_t* src, size_t length)
 {
+    assert(src);
+    assert(length > 0 && length <= UINT16_MAX);
 
+    // Note: HAL_UART_Transmit will check for src == nullptr and size == 0 --> returns HAL_ERROR.
+
+    if (HAL_OK == HAL_UART_Transmit(&hUsart, const_cast<uint8_t*>(src), length, HAL_MAX_DELAY))
+    {
+        return true;
+    }
     return false;
 }
 
 bool Usart::ReadBlocking(uint8_t* dest, size_t length)
 {
+    assert(dest);
+    assert(length > 0 && length <= UINT16_MAX);
 
+    // Note: HAL_UART_Receive will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
+
+    if (HAL_OK == HAL_UART_Receive(&hUsart, dest, length, HAL_MAX_DELAY))
+    {
+        return true;
+    }
     return false;
 }
 
