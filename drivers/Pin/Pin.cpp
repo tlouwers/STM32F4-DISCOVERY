@@ -55,7 +55,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "Pin.hpp"
-#include <cassert>
+#include "utility/SlimAssert.h"
 
 
 /************************************************************************/
@@ -150,7 +150,7 @@ static bool IsIRQSharedWithOtherPin(uint16_t id)
  */
 static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
 {
-    assert(port != nullptr);        // Invalid variable for port passed, cannot be nullptr"
+    ASSERT(port != nullptr);        // Invalid variable for port passed, cannot be nullptr"
 
          if (port == GPIOA) { if (!__HAL_RCC_GPIOA_IS_CLK_ENABLED()) { __HAL_RCC_GPIOA_CLK_ENABLE(); } }
     else if (port == GPIOB) { if (!__HAL_RCC_GPIOB_IS_CLK_ENABLED()) { __HAL_RCC_GPIOB_CLK_ENABLE(); } }
@@ -163,7 +163,7 @@ static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
     else if (port == GPIOI) { if (!__HAL_RCC_GPIOI_IS_CLK_ENABLED()) { __HAL_RCC_GPIOI_CLK_ENABLE(); } }
     else
     {
-        assert(false);              // Port not known for given pin id
+        ASSERT(false);              // Port not known for given pin id
     }
 }
 
@@ -173,7 +173,7 @@ static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
  */
 static IRQn_Type GetIRQn(uint16_t id)
 {
-    assert(IsOnlyASingleBitSetInIdMask(id) == true);
+    ASSERT(IsOnlyASingleBitSetInIdMask(id) == true);
 
          if (id & GPIO_PIN_0)  { return EXTI0_IRQn;     }
     else if (id & GPIO_PIN_1)  { return EXTI1_IRQn;     }
@@ -267,7 +267,7 @@ Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = Pu
  */
 void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
-	assert(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
+    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
 	CheckAndEnableAHB1PeripheralClock(mPort);
 
@@ -282,7 +282,7 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
 	    case Drive::OPEN_DRAIN_PULL_UP: 	 GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
 	    case Drive::OPEN_DRAIN_PULL_DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
 	    case Drive::OPEN_DRAIN_PULL_UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
-	    default: assert(false);              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;    // Invalid drive
+	    default: ASSERT(false);              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;    // Invalid drive
 	}
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
@@ -297,7 +297,7 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
  */
 void Pin::Configure(PullUpDown pullUpDown)
 {
-	assert(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
+    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
 	CheckAndEnableAHB1PeripheralClock(mPort);
 
@@ -326,7 +326,7 @@ void Pin::Configure(PullUpDown pullUpDown)
  */
 void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */)
 {
-    assert(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
+    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
     CheckAndEnableAHB1PeripheralClock(mPort);
 
@@ -359,8 +359,8 @@ void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::
  */
 bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool enableAfterConfigure /* = true */)
 {
-	assert(mDirection == Direction::INPUT);     // Cannot configure interrupt if pin is not configured as input
-	assert(callback);                           // Cannot configure interrupt without callback
+    ASSERT(mDirection == Direction::INPUT);     // Cannot configure interrupt if pin is not configured as input
+    ASSERT(callback);                           // Cannot configure interrupt without callback
 
 	// First disable a possible configured interrupt
 	const IRQn_Type irq = GetIRQn(mId);
@@ -393,7 +393,7 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
 		case Trigger::RISING:  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;         break;
 		case Trigger::FALLING: GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;        break;
 		case Trigger::BOTH:    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING_FALLING; break;
-		default: assert(false);                                                       break;    // Unknown trigger configuration
+		default: ASSERT(false);                                                       break;    // Unknown trigger configuration
 	}
 	GPIO_InitStructure.Pin = mId;
 
@@ -413,7 +413,7 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
  */
 bool Pin::InterruptEnable()
 {
-    assert(mDirection == Direction::INPUT);     // Cannot enable interrupt if pin is not configured as input
+    ASSERT(mDirection == Direction::INPUT);     // Cannot enable interrupt if pin is not configured as input
 
     const auto index = GetIndexById(mId);
 
@@ -436,7 +436,7 @@ bool Pin::InterruptEnable()
  */
 bool Pin::InterruptDisable()
 {
-    assert(mDirection == Direction::INPUT);     // Cannot disable interrupt if pin is not configured as input
+    ASSERT(mDirection == Direction::INPUT);     // Cannot disable interrupt if pin is not configured as input
 
     const auto index = GetIndexById(mId);
 
@@ -464,7 +464,7 @@ bool Pin::InterruptDisable()
  */
 bool Pin::InterruptRemove()
 {
-    assert(mDirection == Direction::INPUT);     // Cannot remove interrupt if pin is not configured as input
+    ASSERT(mDirection == Direction::INPUT);     // Cannot remove interrupt if pin is not configured as input
 
     const auto index = GetIndexById(mId);
 
@@ -492,7 +492,7 @@ bool Pin::InterruptRemove()
  */
 void Pin::Toggle() const
 {
-    assert(mDirection == Direction::OUTPUT);    // Cannot toggle level if pin is not configured as output
+    ASSERT(mDirection == Direction::OUTPUT);    // Cannot toggle level if pin is not configured as output
 
     (HAL_GPIO_ReadPin(mPort, mId) == GPIO_PIN_SET) ? HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_RESET) :
                                                      HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_SET);
@@ -504,7 +504,7 @@ void Pin::Toggle() const
  */
 void Pin::Set(Level level)
 {
-	assert(mDirection == Direction::OUTPUT);    // Cannot set level if pin is not configured as output
+    ASSERT(mDirection == Direction::OUTPUT);    // Cannot set level if pin is not configured as output
 
 	(level == Level::HIGH) ? HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_SET) :
 							 HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_RESET);
@@ -524,7 +524,7 @@ Level Pin::Get() const
 	        break;
 	    case Direction::UNDEFINED:      // Fall through
 	    default:
-	        assert(false);              // Cannot get pin level if pin not defined as input or output
+	        ASSERT(false);              // Cannot get pin level if pin not defined as input or output
 	        while (true) { __NOP(); }   // User must resolve this incorrect use of Get()
 	        break;
 	}
@@ -562,7 +562,7 @@ Pin& Pin::operator= (Pin&& other)
  */
 void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
 {
-    assert(port != nullptr);        // Invalid variable for port passed, cannot be nullptr
+    ASSERT(port != nullptr);        // Invalid variable for port passed, cannot be nullptr
 
     if (IsOnlyASingleBitSetInIdMask(id))
     {
@@ -571,7 +571,7 @@ void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
     }
     else
     {
-        assert(false);              // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
+        ASSERT(false);              // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
     }
 }
 

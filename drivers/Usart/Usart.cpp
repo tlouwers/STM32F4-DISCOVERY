@@ -21,7 +21,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/Usart/Usart.hpp"
-#include <cassert>
+#include "utility/SlimAssert.h"
 
 
 /************************************************************************/
@@ -36,7 +36,7 @@ static void CheckAndEnableAHB1PeripheralClock(const UsartInstance& usartInstance
         case UsartInstance::USART_3: if (__HAL_RCC_USART3_IS_CLK_DISABLED()) { __HAL_RCC_USART3_CLK_ENABLE(); } break;
         case UsartInstance::USART_6: if (__HAL_RCC_USART6_IS_CLK_DISABLED()) { __HAL_RCC_USART6_CLK_ENABLE(); } break;
 
-        default: assert(false); break;      // Invalid usart instance
+        default: ASSERT(false); break;      // Invalid usart instance
     }
 }
 
@@ -50,7 +50,7 @@ static IRQn_Type GetIRQn(const UsartInstance& usartInstance)
     else if (usartInstance == UsartInstance::USART_2) { return USART2_IRQn; }
     else if (usartInstance == UsartInstance::USART_3) { return USART3_IRQn; }
     else if (usartInstance == UsartInstance::USART_6) { return USART6_IRQn; }
-    else { assert(false); while(1) { __NOP(); } return USART1_IRQn; }   // Invalid instance.
+    else { ASSERT(false); while(1) { __NOP(); } return USART1_IRQn; }   // Invalid instance.
 }
 
 
@@ -82,7 +82,7 @@ bool Usart::Init(const Config& config)
         case Parity::EVEN: parity = UART_PARITY_EVEN; break;
         case Parity::ODD:  parity = UART_PARITY_ODD;  break;
         case Parity::NO:   parity = UART_PARITY_NONE; break;
-        default: assert(false); break;
+        default: ASSERT(false); break;
     }
 
     hUsart.Init.BaudRate     = static_cast<uint32_t>(config.mBaudrate);
@@ -117,8 +117,8 @@ bool Usart::Sleep() const
 
 bool Usart::WriteBlocking(const uint8_t* src, size_t length)
 {
-    assert(src);
-    assert(length > 0 && length <= UINT16_MAX);
+    ASSERT(src);
+    ASSERT(length > 0 && length <= UINT16_MAX);
 
     // Note: HAL_UART_Transmit will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
@@ -131,8 +131,8 @@ bool Usart::WriteBlocking(const uint8_t* src, size_t length)
 
 bool Usart::ReadBlocking(uint8_t* dest, size_t length)
 {
-    assert(dest);
-    assert(length > 0 && length <= UINT16_MAX);
+    ASSERT(dest);
+    ASSERT(length > 0 && length <= UINT16_MAX);
 
     // Note: HAL_UART_Receive will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
 
@@ -155,6 +155,6 @@ void Usart::SetUsartInstance(UART_HandleTypeDef& usart_InitStructure)
         case UsartInstance::USART_2: usart_InitStructure.Instance = USART2; break;
         case UsartInstance::USART_3: usart_InitStructure.Instance = USART3; break;
         case UsartInstance::USART_6: usart_InitStructure.Instance = USART6; break;
-        default: assert(false); break;      // Impossible selection
+        default: ASSERT(false); break;      // Impossible selection
     }
 }
