@@ -10,15 +10,17 @@
  *
  * \brief   ...
  *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/Usart
+ *
  * \details Intended use is to ...
  *
- * \author      T. Louwers <t.louwers@gmail.com>
+ * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
  * \date        03-2019
  */
 
-#ifndef USART_DRV_HPP_
-#define USART_DRV_HPP_
+#ifndef USART_HPP_
+#define USART_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -154,8 +156,11 @@ public:
     bool Init(const Config& config);
     bool Sleep() const;
 
-    //bool Write(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
-    //bool Read(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
+    //bool WriteDma(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
+    //bool ReadDma(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
+
+    //bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
+    //bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
 
     bool WriteBlocking(const uint8_t* src, size_t length);
     bool ReadBlocking(uint8_t* dest, size_t length);
@@ -169,4 +174,4 @@ private:
 };
 
 
-#endif  // USART_DRV_HPP_
+#endif  // USART_HPP_

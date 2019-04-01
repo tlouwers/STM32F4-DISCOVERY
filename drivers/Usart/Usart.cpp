@@ -10,9 +10,11 @@
  *
  * \brief   ...
  *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/Usart
+ *
  * \details Intended use is to ...
  *
- * \author      T. Louwers <t.louwers@gmail.com>
+ * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
  * \date        03-2019
  */
