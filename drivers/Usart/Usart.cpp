@@ -25,6 +25,12 @@
 
 
 /************************************************************************/
+/* Alias                                                                */
+/************************************************************************/
+constexpr uint16_t MAX_TRANSMISSION_LENGTH = UINT16_MAX;
+
+
+/************************************************************************/
 /* Static functions                                                     */
 /************************************************************************/
 static void CheckAndEnableAHB1PeripheralClock(const UsartInstance& usartInstance)
@@ -118,7 +124,7 @@ bool Usart::Sleep() const
 bool Usart::WriteBlocking(const uint8_t* src, size_t length)
 {
     ASSERT(src);
-    ASSERT(length > 0 && length <= UINT16_MAX);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL_UART_Transmit will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
@@ -132,7 +138,7 @@ bool Usart::WriteBlocking(const uint8_t* src, size_t length)
 bool Usart::ReadBlocking(uint8_t* dest, size_t length)
 {
     ASSERT(dest);
-    ASSERT(length > 0 && length <= UINT16_MAX);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL_UART_Receive will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
 
