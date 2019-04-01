@@ -106,7 +106,8 @@ enum class Direction : uint8_t
 {
 	UNDEFINED,
 	INPUT,
-	OUTPUT
+	OUTPUT,
+	ALTERNATE
 };
 
 /**
@@ -145,6 +146,30 @@ enum class Trigger : uint8_t
 	BOTH
 };
 
+/**
+ * \enum    Alternate
+ * \brief   Alternate function selection for a pin.
+ */
+enum class Alternate : uint8_t
+{
+    AF0,
+    AF1,
+    AF2,
+    AF3,
+    AF4,
+    AF5,
+    AF6,
+    AF7,
+    AF8,
+    AF9,
+    AF10,
+    AF11,
+    AF12,
+    AF13,
+    AF14,
+    AF15,
+};
+
 
 /************************************************************************/
 /* Class declaration                                                    */
@@ -160,9 +185,11 @@ public:
 	explicit Pin(PinIdPort idAndPort);
 	Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
 	Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
+	Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ);
 
 	void Configure(Level level, Drive drive = Drive::PUSH_PULL);
 	void Configure(PullUpDown pullUpDown);
+	void Configure(Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ);
 
 	bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true);
 	bool InterruptEnable();
