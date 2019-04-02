@@ -618,7 +618,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t id)
 /**
  * \brief   ISR: route EXT line[0] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI0_IRQHandler(void)
+extern "C" void EXTI0_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
 }
@@ -626,7 +626,7 @@ void EXTI0_IRQHandler(void)
 /**
  * \brief   ISR: route EXT line[1] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI1_IRQHandler(void)
+extern "C" void EXTI1_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
 }
@@ -634,7 +634,7 @@ void EXTI1_IRQHandler(void)
 /**
  * \brief   ISR: route EXT line[2] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI2_IRQHandler(void)
+extern "C" void EXTI2_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
 }
@@ -642,7 +642,7 @@ void EXTI2_IRQHandler(void)
 /**
  * \brief   ISR: route EXT line[3] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI3_IRQHandler(void)
+extern "C" void EXTI3_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
 }
@@ -650,7 +650,7 @@ void EXTI3_IRQHandler(void)
 /**
  * \brief   ISR: route EXT line[4] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI4_IRQHandler(void)
+extern "C" void EXTI4_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
 }
@@ -659,7 +659,7 @@ void EXTI4_IRQHandler(void)
  * \brief   ISR: route EXT line[9:5] interrupts to 'HAL_GPIO_EXTI_IRQHandler'.
  * \note    Cannot make distinction between the pin ids listed below.
  */
-void EXTI9_5_IRQHandler(void)
+extern "C" void EXTI9_5_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
@@ -672,7 +672,7 @@ void EXTI9_5_IRQHandler(void)
  * \brief   ISR: route EXT line[15..10] interrupts to 'HAL_GPIO_EXTI_IRQHandler'.
  * \note    Cannot make distinction between the pin ids listed below.
  */
-void EXTI15_10_IRQHandler(void)
+extern "C" void EXTI15_10_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_11);

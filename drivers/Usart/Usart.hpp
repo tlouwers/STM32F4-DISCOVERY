@@ -33,6 +33,10 @@
 /************************************************************************/
 /* Enums                                                                */
 /************************************************************************/
+/**
+ * \enum    UsartInstance
+ * \brief   Available USART instances.
+ */
 enum class UsartInstance : uint8_t
 {
     USART_1 = 1,
@@ -154,23 +158,24 @@ public:
     virtual ~Usart();
 
     bool Init(const Config& config);
-    bool Sleep() const;
+    void Sleep() const;
 
     //bool WriteDma(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
     //bool ReadDma(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
 
-    //bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
-    //bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
+    bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
+    bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
 
     bool WriteBlocking(const uint8_t* src, size_t length);
     bool ReadBlocking(uint8_t* dest, size_t length);
 
 private:
-    UsartInstance       mUsartInstance;
-    bool                mInitialized;
-    UART_HandleTypeDef  hUsart = {0};
+    USART_TypeDef*        mInstance;
+    bool                  mInitialized;
+    std::function<void()> mCallbackTx;
+    std::function<void()> mCallbackRx;
 
-    void SetUsartInstance(UART_HandleTypeDef& usart_InitStructure);
+    bool SetInstance(const UsartInstance& instance);
 };
 
 
