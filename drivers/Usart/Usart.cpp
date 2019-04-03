@@ -51,8 +51,10 @@ enum class UsartTransmissionType : bool
 /************************************************************************/
 /**
  * \brief   Internal administration to keep track of the USART handles.
+ * \note    Using the entire structures here, as they are only 64 bytes each.
+ *          This prevents having to allocate them with 'new' on the heap later.
  */
-static UART_HandleTypeDef* handleList[4] = {};
+static UART_HandleTypeDef handleList[4] = {};
 
 /**
  * \brief   Internal administration to keep track of the USART callbacks.
@@ -75,10 +77,10 @@ UART_HandleTypeDef* GetUsartHandle(USART_TypeDef* instance)
 
     if (instance != nullptr)
     {
-             if (instance == USART1) { handle = handleList[0]; }
-        else if (instance == USART2) { handle = handleList[1]; }
-        else if (instance == USART3) { handle = handleList[2]; }
-        else if (instance == USART6) { handle = handleList[3]; }
+             if (instance == USART1) { return &handleList[0]; }
+        else if (instance == USART2) { return &handleList[1]; }
+        else if (instance == USART3) { return &handleList[2]; }
+        else if (instance == USART6) { return &handleList[3]; }
         else { ASSERT(false); }     // Impossible selection
     }
 
@@ -171,13 +173,6 @@ Usart::~Usart()
     // Disable interrupts
     const IRQn_Type irq = GetIRQn(mInstance);
     HAL_NVIC_DisableIRQ(irq);
-
-    // Cleanup the administration - only for the given instance
-    UART_HandleTypeDef* handle = GetUsartHandle(mInstance);
-    for (auto&& i : handleList)
-    {
-        if (i == handle) { delete i; i = nullptr; }
-    }
 }
 
 /**
@@ -343,8 +338,6 @@ bool Usart::ReadBlocking(uint8_t* dest, size_t length)
 /************************************************************************/
 /**
  * \brief   Set the USART instance into internal administration.
- * \details This will create the relevant administration on the heap if
- *          required.
  * \param   instance    The USART instance to use.
  * \returns True if the administration could be created, else false.
  * \note    Asserts if the USART instance is invalid.
@@ -356,37 +349,33 @@ bool Usart::SetInstance(const UsartInstance& instance)
     switch (instance)
     {
         case UsartInstance::USART_1:
-            if (handleList[0] == nullptr) { handleList[0] = new(std::nothrow) UART_HandleTypeDef; }
-            if (handleList[0] != nullptr)
+            if (handleList[0].Instance == nullptr)
             {
-                handleList[0]->Instance = USART1;
+                handleList[0].Instance = USART1;
                 mInstance = USART1;
                 result = true;
             }
             break;
         case UsartInstance::USART_2:
-            if (handleList[1] == nullptr) { handleList[1] = new(std::nothrow) UART_HandleTypeDef; }
-            if (handleList[1] != nullptr)
+            if (handleList[1].Instance == nullptr)
             {
-                handleList[1]->Instance = USART2;
+                handleList[1].Instance = USART2;
                 mInstance = USART2;
                 result = true;
             }
             break;
         case UsartInstance::USART_3:
-            if (handleList[2] == nullptr) { handleList[2] = new(std::nothrow) UART_HandleTypeDef; }
-            if (handleList[2] != nullptr)
+            if (handleList[2].Instance == nullptr)
             {
-                handleList[2]->Instance = USART3;
+                handleList[2].Instance = USART3;
                 mInstance = USART3;
                 result = true;
             }
             break;
         case UsartInstance::USART_6:
-            if (handleList[3] == nullptr) { handleList[3] = new(std::nothrow) UART_HandleTypeDef; }
-            if (handleList[3] != nullptr)
+            if (handleList[3].Instance == nullptr)
             {
-                handleList[3]->Instance = USART6;
+                handleList[3].Instance = USART6;
                 mInstance = USART6;
                 result = true;
             }
