@@ -1,5 +1,5 @@
 /**
- * \file Usart_drv.hpp
+ * \file Usart.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -8,15 +8,46 @@
  *          a beer in return.
  *                                                                Terry Louwers
  *
- * \brief   ...
+ * \brief   USART peripheral driver class.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/Usart
  *
- * \details Intended use is to ...
+ * \details Intended use is to provide an easier means to work with the USART
+ *          peripheral. This class assumes the pins to use for the USART are
+ *          already configured.
+ *
+ *          As example:
+ *
+ *          // Declare the class (in Application.hpp for example):
+ *          Usart mUsart;
+ *
+ *          // Construct the class, indicate the instance to use:
+ *          Application::Application() :
+ *              mUsart(UsartInstance::USART_2)
+ *          {}
+ *
+ *          // To Write (interrupt based):
+ *          uint8_t write_buffer[] = "test\r\n";
+ *          bool result = mUsart.WriteInterrupt(write_buffer, sizeof(write_buffer), [this]() { this->WriteDone(); } );
+ *          assert(result);
+ *
+ *          // To Read (interrupt based):
+ *          uint8_t read_buffer[6] = {0};
+ *          result = mUsart.ReadInterrupt(read_buffer, sizeof(read_buffer), [this](uint16_t bytesReceived) { this->ReadDone(bytesReceived); });
+ *          assert(result);
+ *
+ *          // The ReadDone callback (as example):
+ *          void Application::ReadDone(uint16_t bytesReceived)
+ *          {
+ *              if (bytesReceived > 0)
+ *              {
+ *                  // Do stuff ...
+ *              }
+ *          }
  *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
- * \date        03-2019
+ * \date        04-2019
  */
 
 #ifndef USART_HPP_
@@ -171,14 +202,14 @@ public:
     };
 
 
-    Usart(const UsartInstance& instance);
+    explicit Usart(const UsartInstance& instance);
     virtual ~Usart();
 
     bool Init(const Config& config);
     void Sleep();
 
     bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& handler);
-    bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler);
+    bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
 
     bool WriteBlocking(const uint8_t* src, size_t length);
     bool ReadBlocking(uint8_t* dest, size_t length);

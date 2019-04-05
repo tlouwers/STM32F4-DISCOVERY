@@ -1,5 +1,5 @@
 /**
- * \file Usart_drv.cpp
+ * \file Usart.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -8,15 +8,46 @@
  *          a beer in return.
  *                                                                Terry Louwers
  *
- * \brief   ...
+ * \brief   USART peripheral driver class.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/Usart
  *
- * \details Intended use is to ...
+ * \details Intended use is to provide an easier means to work with the USART
+ *          peripheral. This class assumes the pins to use for the USART are
+ *          already configured.
+ *
+ *          As example:
+ *
+ *          // Declare the class (in Application.hpp for example):
+ *          Usart mUsart;
+ *
+ *          // Construct the class, indicate the instance to use:
+ *          Application::Application() :
+ *              mUsart(UsartInstance::USART_2)
+ *          {}
+ *
+ *          // To Write (interrupt based):
+ *          uint8_t write_buffer[] = "test\r\n";
+ *          bool result = mUsart.WriteInterrupt(write_buffer, sizeof(write_buffer), [this]() { this->WriteDone(); } );
+ *          assert(result);
+ *
+ *          // To Read (interrupt based):
+ *          uint8_t read_buffer[6] = {0};
+ *          result = mUsart.ReadInterrupt(read_buffer, sizeof(read_buffer), [this](uint16_t bytesReceived) { this->ReadDone(bytesReceived); });
+ *          assert(result);
+ *
+ *          // The ReadDone callback (as example):
+ *          void Application::ReadDone(uint16_t bytesReceived)
+ *          {
+ *              if (bytesReceived > 0)
+ *              {
+ *                  // Do stuff ...
+ *              }
+ *          }
  *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
- * \date        03-2019
+ * \date        04-2019
  */
 
 /************************************************************************/
@@ -30,6 +61,10 @@
 /************************************************************************/
 /* Alias                                                                */
 /************************************************************************/
+/**
+ * \brief   Constant representing the maximum transmission length of a
+ *          single transmission packet.
+ */
 constexpr uint16_t MAX_TRANSMISSION_LENGTH = UINT16_MAX;
 
 
@@ -198,13 +233,14 @@ bool Usart::WriteInterrupt(const uint8_t* src, size_t length, const std::functio
 
 /**
  * \brief   Read data using interrupts.
- * \param   dest        Pointer to buffer where to store the read data.
- * \param   length      Length of the data to read in bytes.
- * \param   handler     Callback to call when read completed.
+ * \param   dest                Pointer to buffer where to store the read data.
+ * \param   length              Length of the data to read in bytes.
+ * \param   handler             Callback to call when read completed.
+ * \param   useIdleDetection    Use IDLE line detection or not, default true.
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool Usart::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler)
+bool Usart::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection /* = true */)
 {
     ASSERT(dest);
     ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
@@ -215,7 +251,10 @@ bool Usart::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void
 
     // Note: HAL_UART_Receive will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
 
-    __HAL_USART_ENABLE_IT(&mHandle, USART_FLAG_IDLE);
+    if (useIdleDetection)
+    {
+        __HAL_USART_ENABLE_IT(&mHandle, USART_IT_IDLE);
+    }
 
     if (HAL_OK == HAL_UART_Receive_IT(&mHandle, dest, length))
     {
@@ -389,7 +428,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* handle)
 
     // Disable and clear IDLE line interrupt
     // See reference manual, USART section, IDLE line detected interrupt
-    __HAL_USART_DISABLE_IT(handle, USART_FLAG_IDLE);
+    __HAL_USART_DISABLE_IT(handle, USART_IT_IDLE);
     __HAL_USART_CLEAR_FLAG(handle, USART_FLAG_IDLE);
     uint32_t dummy = handle->Instance->DR;
     (void)(dummy);
