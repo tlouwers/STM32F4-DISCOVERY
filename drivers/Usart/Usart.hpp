@@ -46,6 +46,23 @@ enum class UsartInstance : uint8_t
 };
 
 
+// Forward declaration as the struct UsartCallbacks uses a pointer to Usart.
+class Usart;
+
+/************************************************************************/
+/* Structures                                                           */
+/************************************************************************/
+/**
+ * \struct  UsartCallbacks
+ * \brief   Data structure to contain callbacks for an Usart instance.
+ */
+struct UsartCallbacks {
+    std::function<void()> callbackIRQ = nullptr;          ///< Callback to call when IRQ occurs.
+    std::function<void()> callbackTx  = nullptr;          ///< Callback to call when Tx done.
+    std::function<void(uint16_t)> callbackRx  = nullptr;  ///< Callback to call when Rx done.
+};
+
+
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
@@ -158,24 +175,24 @@ public:
     virtual ~Usart();
 
     bool Init(const Config& config);
-    void Sleep() const;
+    void Sleep();
 
-    //bool WriteDma(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
-    //bool ReadDma(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
-
-    bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
-    bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
+    bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& handler);
+    bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler);
 
     bool WriteBlocking(const uint8_t* src, size_t length);
     bool ReadBlocking(uint8_t* dest, size_t length);
 
 private:
-    USART_TypeDef*        mInstance;
-    bool                  mInitialized;
-    std::function<void()> mCallbackTx;
-    std::function<void()> mCallbackRx;
+    UsartInstance      mInstance;
+    UART_HandleTypeDef mHandle = {};
+    UsartCallbacks&    mUsartCallbacks;
+    bool               mInitialized;
 
-    bool SetInstance(const UsartInstance& instance);
+    void SetInstance(const UsartInstance& instance);
+    void CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance);
+    IRQn_Type GetIRQn(const UsartInstance& instance);
+    void CallbackIRQ();
 };
 
 

@@ -24,6 +24,7 @@
 /************************************************************************/
 #include "drivers/Usart/Usart.hpp"
 #include "utility/SlimAssert.h"
+#include "stm32f4xx_hal_usart.h"
 
 
 /************************************************************************/
@@ -33,116 +34,52 @@ constexpr uint16_t MAX_TRANSMISSION_LENGTH = UINT16_MAX;
 
 
 /************************************************************************/
-/* Enums                                                                */
-/************************************************************************/
-/**
- * \enum    UsartTransmissionType
- * \brief   Usart transmission type.
- */
-enum class UsartTransmissionType : bool
-{
-    Tx,
-    Rx
-};
-
-
-/************************************************************************/
 /* Static variables                                                     */
 /************************************************************************/
-/**
- * \brief   Internal administration to keep track of the USART handles.
- * \note    Using the entire structures here, as they are only 64 bytes each.
- *          This prevents having to allocate them with 'new' on the heap later.
- */
-static UART_HandleTypeDef handleList[4] = {};
-
-/**
- * \brief   Internal administration to keep track of the USART callbacks.
- */
-static std::function<void()> callbackList[9] = {};
+static UsartCallbacks usart1_callbacks {};
+static UsartCallbacks usart2_callbacks {};
+static UsartCallbacks usart3_callbacks {};
+static UsartCallbacks usart6_callbacks {};
 
 
 /************************************************************************/
 /* Static functions                                                     */
 /************************************************************************/
 /**
- * \brief   Get the USART handle based upon the USART instance.
- * \param   instance    The USART instance to get the handle for.
- * \returns The handle for the given USART instance, or nullptr if not found.
- * \note    Asserts if not a valid USART instance provided.
+ * \brief   Call the callbackIRQ, if configured.
+ * \param   usart_variables     Structure containing the callbackIRQ to call.
  */
-UART_HandleTypeDef* GetUsartHandle(USART_TypeDef* instance)
+static void CallbackIRQ(const UsartCallbacks& usart_callbacks)
 {
-    UART_HandleTypeDef* handle = nullptr;
-
-    if (instance != nullptr)
+    if (usart_callbacks.callbackIRQ)
     {
-             if (instance == USART1) { return &handleList[0]; }
-        else if (instance == USART2) { return &handleList[1]; }
-        else if (instance == USART3) { return &handleList[2]; }
-        else if (instance == USART6) { return &handleList[3]; }
-        else { ASSERT(false); }     // Impossible selection
+        usart_callbacks.callbackIRQ();
     }
-
-    return handle;
 }
 
 /**
- * \brief   Get the index to use to find the registered callback.
- * \param   handle  The USART handle to get the callback for.
- * \param   type    The transmission type to get the callback for.
- * \returns An index where the requested callback to call is located,
- *          if invalid an index pointing to the last element of the
- *          callbackList.
+ * \brief   Call the callbackTx, if configured.
+ * \param   usart_variables     Structure containing the callbackTx to call.
  */
-static int GetIndex(UART_HandleTypeDef* handle, UsartTransmissionType type)
+static void CallbackTxDone(const UsartCallbacks& usart_callbacks)
 {
-    // If invalid, return an index to the element of the callbackList, which
-    // is a nullptr to prevent a spurious callback to trigger.
-    int index = sizeof(callbackList) / sizeof(callbackList[0]);
-
-    if (handle != nullptr)
+    if (usart_callbacks.callbackTx)
     {
-             if (handle->Instance == USART1) { (type == UsartTransmissionType::Tx) ? index = 0 : index = 1; }
-        else if (handle->Instance == USART2) { (type == UsartTransmissionType::Tx) ? index = 2 : index = 3; }
-        else if (handle->Instance == USART3) { (type == UsartTransmissionType::Tx) ? index = 4 : index = 5; }
-        else if (handle->Instance == USART6) { (type == UsartTransmissionType::Tx) ? index = 6 : index = 7; }
-        else { ASSERT(false); }     // Invalid instance
+        usart_callbacks.callbackTx();
     }
-
-    return index;
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the USART
- *          instance is enabled, if not enable it.
- * \param   instance    The USART instance to enable the clock for.
- * \note    Asserts if not a valid USART instance provided.
+ * \brief   Call the callbackRx, if configured.
+ * \param   usart_variables     Structure containing the callbackRx to call.
+ * \param   bytesReceived       The actual number of bytes received.
  */
-static void CheckAndEnableAHB1PeripheralClock(USART_TypeDef* instance)
+static void CallbackRxDone(const UsartCallbacks& usart_callbacks, uint16_t bytesReceived)
 {
-         if ((instance == USART1) && __HAL_RCC_USART1_IS_CLK_DISABLED()) { __HAL_RCC_USART1_CLK_ENABLE(); }
-    else if ((instance == USART2) && __HAL_RCC_USART2_IS_CLK_DISABLED()) { __HAL_RCC_USART2_CLK_ENABLE(); }
-    else if ((instance == USART3) && __HAL_RCC_USART3_IS_CLK_DISABLED()) { __HAL_RCC_USART3_CLK_ENABLE(); }
-    else if ((instance == USART6) && __HAL_RCC_USART6_IS_CLK_DISABLED()) { __HAL_RCC_USART6_CLK_ENABLE(); }
-    else { ASSERT(false); }     // Invalid instance
-}
-
-/**
- * \brief   Get the IRQ belonging to the USART.
- * \param   instance    The USART instance to get the IRQ for.
- * \returns The interrupt line IRQ to which the USART belongs. If invalid
- *          instance provided this function will hang has no proper IRQ can be
- *          found.
- * \note    Asserts if not a valid USART instance provided.
- */
-static IRQn_Type GetIRQn(USART_TypeDef* instance)
-{
-         if (instance == USART1) { return USART1_IRQn; }
-    else if (instance == USART2) { return USART2_IRQn; }
-    else if (instance == USART3) { return USART3_IRQn; }
-    else if (instance == USART6) { return USART6_IRQn; }
-    else { ASSERT(false); while(1) { __NOP(); } return USART1_IRQn; }   // Invalid instance
+    if (usart_callbacks.callbackRx)
+    {
+        usart_callbacks.callbackRx(bytesReceived);
+    }
 }
 
 
@@ -152,27 +89,26 @@ static IRQn_Type GetIRQn(USART_TypeDef* instance)
 /**
  * \brief   Constructor, prepares the internal USART instance administration.
  * \param   instance    The USART instance to use.
- * \note    Asserts if no memory for the internal administration could be
- *          allocated on the heap.
  */
 Usart::Usart(const UsartInstance& instance) :
-    mInstance(nullptr),
-    mInitialized(false)
+    mInstance(instance),
+    mUsartCallbacks( (instance == UsartInstance::USART_1) ? (usart1_callbacks) : ( (instance == UsartInstance::USART_2) ? (usart2_callbacks) : ( (instance == UsartInstance::USART_3) ? (usart3_callbacks) : (usart6_callbacks) ) ) )
 {
-    bool result = SetInstance(instance);
-    ASSERT(result);
-    (void)(result);
+    SetInstance(instance);
+
+    mUsartCallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
 }
 
 /**
- * \brief   Destructor, disabled interrupts, cleans the internal USART instance
- *          administration.
+ * \brief   Destructor, disabled interrupts.
  */
 Usart::~Usart()
 {
     // Disable interrupts
     const IRQn_Type irq = GetIRQn(mInstance);
     HAL_NVIC_DisableIRQ(irq);
+
+    mInitialized = false;
 }
 
 /**
@@ -182,10 +118,6 @@ Usart::~Usart()
  */
 bool Usart::Init(const Config& config)
 {
-    UART_HandleTypeDef* handle = GetUsartHandle(mInstance);
-    
-    if (handle == nullptr) { return false; }
-
     CheckAndEnableAHB1PeripheralClock(mInstance);
 
     uint32_t parity = UART_PARITY_NONE;
@@ -197,62 +129,67 @@ bool Usart::Init(const Config& config)
         default: ASSERT(false); break;
     }
 
-    handle->Init.BaudRate     = static_cast<uint32_t>(config.mBaudrate);
-    handle->Init.WordLength   = (config.mWordLength == WordLength::_8_BIT) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;
-    handle->Init.Parity       = parity;
-    handle->Init.StopBits     = (config.mStopBits == StopBits::_1_BIT) ? UART_STOPBITS_1 : UART_STOPBITS_2;
-    handle->Init.Mode         = UART_MODE_TX_RX;
-    handle->Init.OverSampling = (config.mOverSampling == OverSampling::_8_TIMES) ? UART_OVERSAMPLING_8 : UART_OVERSAMPLING_16;
-    handle->Init.HwFlowCtl    = (config.mUseHardwareFlowControl) ? UART_HWCONTROL_RTS_CTS : UART_HWCONTROL_NONE;
+    mHandle.Init.BaudRate     = static_cast<uint32_t>(config.mBaudrate);
+    mHandle.Init.WordLength   = (config.mWordLength == WordLength::_8_BIT) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;
+    mHandle.Init.Parity       = parity;
+    mHandle.Init.StopBits     = (config.mStopBits == StopBits::_1_BIT) ? UART_STOPBITS_1 : UART_STOPBITS_2;
+    mHandle.Init.Mode         = UART_MODE_TX_RX;
+    mHandle.Init.OverSampling = (config.mOverSampling == OverSampling::_8_TIMES) ? UART_OVERSAMPLING_8 : UART_OVERSAMPLING_16;
+    mHandle.Init.HwFlowCtl    = (config.mUseHardwareFlowControl) ? UART_HWCONTROL_RTS_CTS : UART_HWCONTROL_NONE;
 
-    if (HAL_UART_Init(handle) == HAL_OK)
+    if (HAL_UART_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt
         const IRQn_Type irq = GetIRQn(mInstance);
         HAL_NVIC_DisableIRQ(irq);
         HAL_NVIC_ClearPendingIRQ(irq);
         HAL_NVIC_SetPriority(irq, config.mInterruptPriority, 0);
+
+        __HAL_USART_CLEAR_FLAG(&mHandle, USART_FLAG_IDLE);
+
         HAL_NVIC_EnableIRQ(irq);
+
+        mInitialized = true;
 
         return true;
     }
     return false;
 }
 
-// ToDo: comments
-void Usart::Sleep() const
+/**
+ * \brief    Puts the Usart module in sleep mode.
+ */
+void Usart::Sleep()
 {
     // Disable interrupts
     const IRQn_Type irq = GetIRQn(mInstance);
     HAL_NVIC_DisableIRQ(irq);
 
+    mInitialized = false;
+
     // ToDo: low power state, check recovery after sleep
 }
-
-//bool WriteDma(const uint8_t* src, size_t length, const std::function<void()>& refHandler);
-//bool ReadDma(uint8_t* dest, size_t length, const std::function<void()>& refHandler);
 
 /**
  * \brief   Write data using interrupts.
  * \param   src         Pointer to buffer with data to write.
  * \param   length      Length of the data to write in bytes.
- * \param   refHander   Callback to call when write completed.
+ * \param   handler     Callback to call when write completed.
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool Usart::WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& refHandler)
+bool Usart::WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& handler)
 {
     ASSERT(src);
     ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
-    UART_HandleTypeDef* usartHandle = GetUsartHandle(mInstance);
-    const auto index = GetIndex(usartHandle, UsartTransmissionType::Tx);
-    ASSERT(index >= 0);
-    callbackList[index] = refHandler;
+    if (!mInitialized) { return false; }
+
+    mUsartCallbacks.callbackTx = handler;
 
     // Note: HAL_UART_Transmit_IT will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
-    if (HAL_OK == HAL_UART_Transmit_IT(usartHandle, const_cast<uint8_t*>(src), length))
+    if (HAL_OK == HAL_UART_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length))
     {
         return true;
     }
@@ -263,23 +200,24 @@ bool Usart::WriteInterrupt(const uint8_t* src, size_t length, const std::functio
  * \brief   Read data using interrupts.
  * \param   dest        Pointer to buffer where to store the read data.
  * \param   length      Length of the data to read in bytes.
- * \param   refHander   Callback to call when read completed.
+ * \param   handler     Callback to call when read completed.
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool Usart::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void()>& refHandler)
+bool Usart::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler)
 {
     ASSERT(dest);
     ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
-    UART_HandleTypeDef* usartHandle = GetUsartHandle(mInstance);
-    const auto index = GetIndex(usartHandle, UsartTransmissionType::Rx);
-    ASSERT(index >= 0);
-    callbackList[index] = refHandler;
+    if (!mInitialized) { return false; }
+
+    mUsartCallbacks.callbackRx = handler;
 
     // Note: HAL_UART_Receive will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
 
-    if (HAL_OK == HAL_UART_Receive_IT(usartHandle, dest, length))
+    __HAL_USART_ENABLE_IT(&mHandle, USART_FLAG_IDLE);
+
+    if (HAL_OK == HAL_UART_Receive_IT(&mHandle, dest, length))
     {
         return true;
     }
@@ -298,11 +236,11 @@ bool Usart::WriteBlocking(const uint8_t* src, size_t length)
     ASSERT(src);
     ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
-    UART_HandleTypeDef* handle = GetUsartHandle(mInstance);
+    if (!mInitialized) { return false; }
 
     // Note: HAL_UART_Transmit will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
-    if (HAL_OK == HAL_UART_Transmit(handle, const_cast<uint8_t*>(src), length, HAL_MAX_DELAY))
+    if (HAL_OK == HAL_UART_Transmit(&mHandle, const_cast<uint8_t*>(src), length, HAL_MAX_DELAY))
     {
         return true;
     }
@@ -321,11 +259,11 @@ bool Usart::ReadBlocking(uint8_t* dest, size_t length)
     ASSERT(dest);
     ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
-    UART_HandleTypeDef* handle = GetUsartHandle(mInstance);
+    if (!mInitialized) { return false; }
 
     // Note: HAL_UART_Receive will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
 
-    if (HAL_OK == HAL_UART_Receive(handle, dest, length, HAL_MAX_DELAY))
+    if (HAL_OK == HAL_UART_Receive(&mHandle, dest, length, HAL_MAX_DELAY))
     {
         return true;
     }
@@ -339,52 +277,82 @@ bool Usart::ReadBlocking(uint8_t* dest, size_t length)
 /**
  * \brief   Set the USART instance into internal administration.
  * \param   instance    The USART instance to use.
- * \returns True if the administration could be created, else false.
  * \note    Asserts if the USART instance is invalid.
  */
-bool Usart::SetInstance(const UsartInstance& instance)
+void Usart::SetInstance(const UsartInstance& instance)
 {
-    bool result = false;
-
     switch (instance)
     {
         case UsartInstance::USART_1:
-            if (handleList[0].Instance == nullptr)
-            {
-                handleList[0].Instance = USART1;
-                mInstance = USART1;
-                result = true;
-            }
+            mHandle.Instance = USART1;
             break;
         case UsartInstance::USART_2:
-            if (handleList[1].Instance == nullptr)
-            {
-                handleList[1].Instance = USART2;
-                mInstance = USART2;
-                result = true;
-            }
+            mHandle.Instance = USART2;
             break;
         case UsartInstance::USART_3:
-            if (handleList[2].Instance == nullptr)
-            {
-                handleList[2].Instance = USART3;
-                mInstance = USART3;
-                result = true;
-            }
+            mHandle.Instance = USART3;
             break;
         case UsartInstance::USART_6:
-            if (handleList[3].Instance == nullptr)
-            {
-                handleList[3].Instance = USART6;
-                mInstance = USART6;
-                result = true;
-            }
+            mHandle.Instance = USART6;
             break;
-
         default: ASSERT(false); break;      // Impossible selection
     }
+}
 
-    return result;
+/**
+ * \brief   Check if the appropriate AHB1 peripheral clock for the USART
+ *          instance is enabled, if not enable it.
+ * \param   instance    The USART instance to enable the clock for.
+ * \note    Asserts if not a valid USART instance provided.
+ */
+void Usart::CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance)
+{
+    switch (instance)
+    {
+        case UsartInstance::USART_1: if (__HAL_RCC_USART1_IS_CLK_DISABLED()) { __HAL_RCC_USART1_CLK_ENABLE(); } break;
+        case UsartInstance::USART_2: if (__HAL_RCC_USART2_IS_CLK_DISABLED()) { __HAL_RCC_USART2_CLK_ENABLE(); } break;
+        case UsartInstance::USART_3: if (__HAL_RCC_USART3_IS_CLK_DISABLED()) { __HAL_RCC_USART3_CLK_ENABLE(); } break;
+        case UsartInstance::USART_6: if (__HAL_RCC_USART6_IS_CLK_DISABLED()) { __HAL_RCC_USART6_CLK_ENABLE(); } break;
+        default: ASSERT(false); break;      // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the IRQ belonging to the USART.
+ * \param   instance    The USART instance to get the IRQ for.
+ * \returns The interrupt line IRQ to which the USART belongs. If invalid
+ *          instance provided this function will hang has no proper IRQ can be
+ *          found.
+ * \note    Asserts if not a valid USART instance provided.
+ */
+IRQn_Type Usart::GetIRQn(const UsartInstance& instance)
+{
+    switch (instance)
+    {
+        case UsartInstance::USART_1: return USART1_IRQn; break;
+        case UsartInstance::USART_2: return USART2_IRQn; break;
+        case UsartInstance::USART_3: return USART3_IRQn; break;
+        case UsartInstance::USART_6: return USART6_IRQn; break;
+        default: ASSERT(false); while(1) { __NOP(); } return USART1_IRQn; break;      // Impossible selection
+    }
+}
+
+/**
+ * \brief
+ */
+void Usart::CallbackIRQ()
+{
+    // Check if the 'IDLE' flag is set, if so call end of Rx callback, the clear flag.
+    if (__HAL_USART_GET_FLAG(&mHandle, USART_FLAG_IDLE))
+    {
+        HAL_UART_RxCpltCallback(&mHandle);
+
+        // End the transmission, received line IDLE - clears RxState
+        HAL_UART_AbortReceive_IT(&mHandle);
+    }
+
+    // If it was another interrupt, pass it through
+    HAL_UART_IRQHandler(&mHandle);
 }
 
 
@@ -398,13 +366,14 @@ bool Usart::SetInstance(const UsartInstance& instance)
  */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef* handle)
 {
+    ASSERT(handle);
+
     // ToDo: check for error
 
-    const auto index = GetIndex(handle, UsartTransmissionType::Tx);
-    if (callbackList[index])
-    {
-        callbackList[index]();
-    }
+    if (handle->Instance == USART1) { CallbackTxDone(usart1_callbacks); }
+    if (handle->Instance == USART2) { CallbackTxDone(usart2_callbacks); }
+    if (handle->Instance == USART3) { CallbackTxDone(usart3_callbacks); }
+    if (handle->Instance == USART6) { CallbackTxDone(usart6_callbacks); }
 }
 
 /**
@@ -414,47 +383,62 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef* handle)
  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef* handle)
 {
+    ASSERT(handle);
+
     // ToDo: check for error
 
-    const auto index = GetIndex(handle, UsartTransmissionType::Rx);
-    if (callbackList[index])
+    // Disable and clear IDLE line interrupt
+    // See reference manual, USART section, IDLE line detected interrupt
+    __HAL_USART_DISABLE_IT(handle, USART_FLAG_IDLE);
+    __HAL_USART_CLEAR_FLAG(handle, USART_FLAG_IDLE);
+    uint32_t dummy = handle->Instance->DR;
+    (void)(dummy);
+
+    // Check to see if data is actually received: when receiving data normally, the IDLE line
+    // interrupt will always fire after the regular Rx interrupt.  by checking the RxXferSize
+    // and clearing it after calling the user callback we prevent calling the user callback
+    // when no data was received (ignores the IDLE line interrupt afterwards).
+    if (handle->RxXferSize > 0)
     {
-        callbackList[index]();
+        uint16_t bytesReceived = handle->RxXferSize - handle->RxXferCount;
+
+        if (handle->Instance == USART1) { CallbackRxDone(usart1_callbacks, bytesReceived); }
+        if (handle->Instance == USART2) { CallbackRxDone(usart2_callbacks, bytesReceived); }
+        if (handle->Instance == USART3) { CallbackRxDone(usart3_callbacks, bytesReceived); }
+        if (handle->Instance == USART6) { CallbackRxDone(usart6_callbacks, bytesReceived); }
     }
+
+    handle->RxXferSize = 0;
 }
 
 /**
- * \brief   ISR: route USART1 interrupts to either 'HAL_UART_TxCpltCallback' or
- *          'HAL_UART_RxCpltCallback'.
+ * \brief   ISR: route USART1 interrupts to 'CallbackIRQ'.
  */
 extern "C" void USART1_IRQHandler(void)
 {
-    HAL_UART_IRQHandler( GetUsartHandle(USART1) );
+    CallbackIRQ(usart1_callbacks);
 }
 
 /**
- * \brief   ISR: route USART2 interrupts to either 'HAL_UART_TxCpltCallback' or
- *          'HAL_UART_RxCpltCallback'.
+ * \brief   ISR: route USART2 interrupts to 'CallbackIRQ'.
  */
 extern "C" void USART2_IRQHandler(void)
 {
-    HAL_UART_IRQHandler( GetUsartHandle(USART2) );
+    CallbackIRQ(usart2_callbacks);
 }
 
 /**
- * \brief   ISR: route USART3 interrupts to either 'HAL_UART_TxCpltCallback' or
- *          'HAL_UART_RxCpltCallback'.
+ * \brief   ISR: route USART3 interrupts to 'CallbackIRQ'.
  */
 extern "C" void USART3_IRQHandler(void)
 {
-    HAL_UART_IRQHandler( GetUsartHandle(USART3) );
+    CallbackIRQ(usart3_callbacks);
 }
 
 /**
- * \brief   ISR: route USART6 interrupts to either 'HAL_UART_TxCpltCallback' or
- *          'HAL_UART_RxCpltCallback'.
+ * \brief   ISR: route USART6 interrupts to 'CallbackIRQ'.
  */
 extern "C" void USART6_IRQHandler(void)
 {
-    HAL_UART_IRQHandler( GetUsartHandle(USART6) );
+    CallbackIRQ(usart6_callbacks);
 }
