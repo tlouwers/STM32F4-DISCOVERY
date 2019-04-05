@@ -11,31 +11,51 @@
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  * 			State is preserved (partly) within the hardware.
  *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/Pin
+ *
  * \details Intended use is to have a method at board startup which sets each
  *          pin to a defined state. This is done by constructing a Pin object,
  *          and let it go out of scope.
  *          Later in the application, for the few pins where needed, pass along
  *          the PinIdPort struct to the class where a pin object is needed.
- *          Then during the Initialisation of that class (not construction)
+ *          Then during the initialisation of that class (not construction)
  *          create and fill the Pin object with desired values. At this point
  *          the interrupts can be configured as well.
  *
- *          // Examples:
- *          Pin a1(id, Level::LOW);                     // Construction - output
- *          Pin a2(id, PullUpDown::DOWN);               // Construction - input, pull-down
+ *          As example:
  *
- *          // As output
+ *          // Create a PinIdPort structure
+ *          constexpr PinIdPort PIN_BUTTON     = { GPIO_PIN_0,  GPIOA };
+ *          constexpr PinIdPort PIN_LED_GREEN  = { GPIO_PIN_12, GPIOD };
+ *
+ *          // Declaration (in header file, say in Application.hpp):
+ *          Pin a1;                                     // Note: requires construction during construction of owning class
+ *          Pin a2;
+ *
+ *          // Construct during construction of Application.cpp:
+ *          Application::Application() :
+ *              mButton(PIN_BUTTON, Level::LOW),        // Externally pulled down
+ *              mLedGreen(PIN_LED_GREEN, Level::LOW)    // Off
+ *          {
+ *              // Other things ...
+ *          }
+ *
+ *          // As output:
  *          a1.Set(Level::HIGH);                        // Set output high
  *          a1.Toggle();                                // High to low, low to high
  *          Level lvl1 = a1.Get();                      // Get the actual pin level
  *          a1.Configure(PullUpDown::HIGHZ);            // Make pin input, floating
  *
- *          // As Input:
+ *          // As input:
  *          Level lvl2 = a2.Get();                      // Get the actual pin level
  *          a2.Interrupt(Trigger::RISING, callback);    // Configure interrupt, attach callback, default active
  *          a2.InterruptDisable();                      // Disable the callback (ignores the interrupt)
  *          a2.InterruptEnable();                       // Enables the callback
  *          a2.InterruptRemove();                       // Removed the interrupt, detaches the callback
+ *
+ *          // As alternate (check the options of the CPU first!):
+ *          Pin(PIN_USART2_RTS, Alternate::AF7);        // See the HAL 'GPIO_Alternate_function_selection' for options
+ *          Pin(PIN_USART2_TX,  Alternate::AF7, PullUpDown::UP);
  *
  *          // Allowed (moves):
  *          Pin a4 = std::move(a1);                     // Move assignment
@@ -44,9 +64,9 @@
  *          // Not allowed (copies):
  *          Pin a7 = a1;                                // Copy assignment
  *          Pin a8(a2);                                 // Copy constructor
- *          Pin();                                      // No empty constructor
+ *          Pin();                                      // Empty constructor
  *
- * \author      T. Louwers <t.louwers@gmail.com>
+ * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
  * \date        03-2019
  */
@@ -598,7 +618,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t id)
 /**
  * \brief   ISR: route EXT line[0] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI0_IRQHandler(void)
+extern "C" void EXTI0_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
 }
@@ -606,7 +626,7 @@ void EXTI0_IRQHandler(void)
 /**
  * \brief   ISR: route EXT line[1] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI1_IRQHandler(void)
+extern "C" void EXTI1_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
 }
@@ -614,7 +634,7 @@ void EXTI1_IRQHandler(void)
 /**
  * \brief   ISR: route EXT line[2] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI2_IRQHandler(void)
+extern "C" void EXTI2_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
 }
@@ -622,7 +642,7 @@ void EXTI2_IRQHandler(void)
 /**
  * \brief   ISR: route EXT line[3] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI3_IRQHandler(void)
+extern "C" void EXTI3_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
 }
@@ -630,7 +650,7 @@ void EXTI3_IRQHandler(void)
 /**
  * \brief   ISR: route EXT line[4] interrupt to 'HAL_GPIO_EXTI_IRQHandler'.
  */
-void EXTI4_IRQHandler(void)
+extern "C" void EXTI4_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
 }
@@ -639,7 +659,7 @@ void EXTI4_IRQHandler(void)
  * \brief   ISR: route EXT line[9:5] interrupts to 'HAL_GPIO_EXTI_IRQHandler'.
  * \note    Cannot make distinction between the pin ids listed below.
  */
-void EXTI9_5_IRQHandler(void)
+extern "C" void EXTI9_5_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
@@ -652,7 +672,7 @@ void EXTI9_5_IRQHandler(void)
  * \brief   ISR: route EXT line[15..10] interrupts to 'HAL_GPIO_EXTI_IRQHandler'.
  * \note    Cannot make distinction between the pin ids listed below.
  */
-void EXTI15_10_IRQHandler(void)
+extern "C" void EXTI15_10_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_11);

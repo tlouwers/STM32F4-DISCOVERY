@@ -3,6 +3,10 @@
 # Description
 Helper class intended as 'set & forget' for pin  configurations. State is preserved (partly) within the hardware.
 
+Intended use is to have a method at board startup which sets each pin to a defined state. This is done by constructing a Pin object, and let it go out of scope.
+Later in the application, for the few pins where needed, pass along the PinIdPort struct to the class where a pin object is needed.
+Then during the initialisation of that class (not construction) create and fill the Pin object with desired values. At this point the interrupts can be configured as well.
+
 The intent is to have a "BoardConfiguration.hpp" header file, in which all (used) pins of the device are listed, for example:
 ```cpp
 #include "drivers/Pin/Pin.hpp"     // Used for the PinIdPort struct
