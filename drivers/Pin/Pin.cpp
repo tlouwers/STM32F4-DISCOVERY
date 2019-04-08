@@ -142,20 +142,17 @@ static bool IsIRQSharedWithOtherPin(uint16_t id)
     }
     else if (id < GPIO_PIN_10)
     {
-        if (id !=  5) { result &= (pinInterruptList[5].callback  == nullptr); }
-        if (id !=  6) { result &= (pinInterruptList[6].callback  == nullptr); }
-        if (id !=  7) { result &= (pinInterruptList[7].callback  == nullptr); }
-        if (id !=  8) { result &= (pinInterruptList[8].callback  == nullptr); }
-        if (id !=  9) { result &= (pinInterruptList[9].callback  == nullptr); }
+        for (auto i = 5; i < 10; i++)
+        {
+            result &= (pinInterruptList[i].callback == nullptr);
+        }
     }
     else
     {
-        if (id != 10) { result &= (pinInterruptList[10].callback == nullptr); }
-        if (id != 11) { result &= (pinInterruptList[11].callback == nullptr); }
-        if (id != 12) { result &= (pinInterruptList[12].callback == nullptr); }
-        if (id != 13) { result &= (pinInterruptList[13].callback == nullptr); }
-        if (id != 14) { result &= (pinInterruptList[14].callback == nullptr); }
-        if (id != 15) { result &= (pinInterruptList[15].callback == nullptr); }
+        for (auto i = 10; i < 16; i++)
+        {
+            result &= (pinInterruptList[i].callback == nullptr);
+        }
     }
 
     return !result;
@@ -209,6 +206,32 @@ static IRQn_Type GetIRQn(uint16_t id)
 /************************************************************************/
 /* Public Methods                                                       */
 /************************************************************************/
+/**
+ * \brief   Destructor. Removes interrupt for pin if it was set before.
+ */
+Pin::~Pin()
+{
+    if (mDirection == Direction::INPUT)
+    {
+        const auto index = GetIndexById(mId);
+
+        // Check: if callback exists then pin is already configured as interrupt
+        if (pinInterruptList[index].callback != nullptr)
+        {
+            // Disable NVIC for pin
+            if (!IsIRQSharedWithOtherPin(mId))
+            {
+                const IRQn_Type irq = GetIRQn(mId);
+                HAL_NVIC_DisableIRQ(irq);
+                HAL_NVIC_ClearPendingIRQ(irq);
+            }
+
+            pinInterruptList[index].callback = nullptr;
+            pinInterruptList[index].enabled  = false;
+        }
+    }
+}
+
 /**
  * \brief   Move constructor for pin.
  * \param   other   The object to move.
@@ -390,7 +413,7 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
     }
 
     const auto index = GetIndexById(mId);
-    // Check: if callback exits then pin is already configured as interrupt
+    // Check: if callback exists then pin is already configured as interrupt
     if (pinInterruptList[index].callback != nullptr)
     {
         // Restore NVIC for pin
@@ -437,7 +460,7 @@ bool Pin::InterruptEnable()
 
     const auto index = GetIndexById(mId);
 
-    // Check: if callback exits then pin is already configured as interrupt
+    // Check: if callback exists then pin is already configured as interrupt
     if (pinInterruptList[index].callback != nullptr)
     {
         // Enable NVIC for pin
@@ -460,7 +483,7 @@ bool Pin::InterruptDisable()
 
     const auto index = GetIndexById(mId);
 
-    // Check: if callback exits then pin is already configured as interrupt
+    // Check: if callback exists then pin is already configured as interrupt
     if (pinInterruptList[index].callback != nullptr)
     {
         // Disable NVIC for pin
@@ -488,7 +511,7 @@ bool Pin::InterruptRemove()
 
     const auto index = GetIndexById(mId);
 
-    // Check: if callback exits then pin is already configured as interrupt
+    // Check: if callback exists then pin is already configured as interrupt
     if (pinInterruptList[index].callback != nullptr)
     {
         // Disable NVIC for pin

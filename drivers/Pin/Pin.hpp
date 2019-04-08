@@ -198,15 +198,16 @@ enum class Alternate : uint8_t
 /**
  * \brief   GPIO pin convenience class.
  */
-class Pin
+class Pin final
 {
 public:
+    ~Pin();
     Pin(Pin&& other);
 
 	explicit Pin(PinIdPort idAndPort);
-	Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
-	Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
-	Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ);
+	Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);                      // Output
+	Pin(PinIdPort idAndPort, PullUpDown pullUpDown);                                            // Input
+	Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ);   // Alternate
 
 	void Configure(Level level, Drive drive = Drive::PUSH_PULL);
 	void Configure(PullUpDown pullUpDown);
