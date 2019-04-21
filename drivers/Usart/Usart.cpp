@@ -153,7 +153,7 @@ Usart::~Usart()
  */
 bool Usart::Init(const Config& config)
 {
-    CheckAndEnableAHB1PeripheralClock(mInstance);
+    CheckAndEnableAPB1PeripheralClock(mInstance);
 
     uint32_t parity = UART_PARITY_NONE;
     switch (config.mParity)
@@ -339,12 +339,12 @@ void Usart::SetInstance(const UsartInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the USART
+ * \brief   Check if the appropriate APB1 peripheral clock for the USART
  *          instance is enabled, if not enable it.
  * \param   instance    The USART instance to enable the clock for.
  * \note    Asserts if not a valid USART instance provided.
  */
-void Usart::CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance)
+void Usart::CheckAndEnableAPB1PeripheralClock(const UsartInstance& instance)
 {
     switch (instance)
     {

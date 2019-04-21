@@ -221,7 +221,7 @@ private:
     bool               mInitialized;
 
     void SetInstance(const UsartInstance& instance);
-    void CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance);
+    void CheckAndEnableAPB1PeripheralClock(const UsartInstance& instance);
     IRQn_Type GetIRQn(const UsartInstance& instance);
     void CallbackIRQ();
 };
