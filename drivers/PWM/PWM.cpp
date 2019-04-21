@@ -15,38 +15,30 @@
  * \details Intended use is to provide an easier means to work with PWM
  *          channels. For this driver it is hardcoded to timer 2, all 4 channels
  *          can be used.
+ *          Can be ported easily to timer 3, 4 or 5 as well, since most features
+ *          are generic. This is something for a future update.
+ *          Hardcoded items:
+ *          Using timer 2, which is using APB1 timer clock as clock source.
  *
  *          As example:
  *
  *          // Declare the class (in Application.hpp for example):
- *          Usart mUsart;
+ *          PWM   mPwm;
  *
- *          // Construct the class, indicate the instance to use:
- *          Application::Application() :
- *              mUsart(UsartInstance::USART_2)
- *          {}
+ *          // Initialize the class to setup the PWM frequency:
+ *          bool result = mPwm.Init(PWM::Config(500));      // 500 Hz
  *
- *          // To Write (interrupt based):
- *          uint8_t write_buffer[] = "test\r\n";
- *          bool result = mUsart.WriteInterrupt(write_buffer, sizeof(write_buffer), [this]() { this->WriteDone(); } );
- *          assert(result);
+ *          // Configure a channel, here channel 1 using 50% duty cycle:
+ *          bool result = mPwm.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50));
  *
- *          // To Read (interrupt based):
- *          uint8_t read_buffer[6] = {0};
- *          result = mUsart.ReadInterrupt(read_buffer, sizeof(read_buffer), [this](uint16_t bytesReceived) { this->ReadDone(bytesReceived); });
- *          assert(result);
+ *          // To start the channel:
+ *          bool result = mPwm.Start(PWM::Channel::Channel_1);
  *
- *          // The ReadDone callback (as example):
- *          void Application::ReadDone(uint16_t bytesReceived)
- *          {
- *              if (bytesReceived > 0)
- *              {
- *                  // Do stuff ...
- *              }
- *          }
- *      Inspiration and some formulas from:
- *      https://stm32f4-discovery.net/2014/05/stm32f4-stm32f429-discovery-pwm-tutorial/
+ *          // To stop a channel:
+ *          bool result = mPwm.Stop(PWM::Channel::Channel_1);
  *
+ * \note    Inspiration from:
+ *          https://stm32f4-discovery.net/2014/05/stm32f4-stm32f429-discovery-pwm-tutorial/
  *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
@@ -70,6 +62,9 @@ static PWM* ptrToPwmInstance = nullptr;
 /************************************************************************/
 /* Public Methods                                                       */
 /************************************************************************/
+/**
+ * \brief   Constructor, prepares the PWM for use.
+ */
 PWM::PWM() :
     mInitialized(false)
 {
@@ -77,6 +72,9 @@ PWM::PWM() :
     ptrToPwmInstance = this;
 }
 
+/**
+ * \brief   Destructor, stops PWM output.
+ */
 PWM::~PWM()
 {
     Sleep();
@@ -84,23 +82,36 @@ PWM::~PWM()
     ptrToPwmInstance = nullptr;
 }
 
+/**
+ * \brief   Initializes the PWM class using Timer 2 as clock source.
+ *          Sets the PWM frequency.
+ * \param   config  The configuration for the PWM instance to use.
+ * \returns True if the configuration could be applied, else false.
+ */
 bool PWM::Init(const Config& config)
 {
+    ASSERT(config.mFrequency > 0);
+    ASSERT(config.mFrequency <= UINT16_MAX);
+
     if (config.mFrequency == 0) { return false; }
 
-    CheckAndEnableAHB1PeripheralClock();
+    CheckAndEnableAPB1TimerClock();
 
-    // Timer count frequency is set with: timer_tick_frequency = timer_default_frequency / (prescaler + 1)
-    // Use max frequency for timer: set prescaler to 0 and timer will have tick frequency
+    // The timer tick frequency is set with: timer_tick_frequency = timer_default_frequency / (prescaler + 1)
+    // We use the max frequency for the timer: set prescaler to 0 and the timer will have the max tick frequency.
     // timer_tick_frequency = 8000000 / (0 + 1) = 8000000 Hz
 
-    // PWM_frequency = timer_tick_frequency / (timer_period + 1)
+    // Given the desired PWM_frequency, we calculate the timer_period:
     // timer_period = timer_tick_frequency / PWM_frequency - 1
 
     uint32_t timer_period = 8000000 / (config.mFrequency - 1);
 
+    // Check if the timer_period is within valid range: UINT16_MAX. For timer 2 and 5 this can be 32 bit,
+    // but as preperation for future use with timer 3 and 4 we use 16 bit max.
+    // If the value is too large we can use the prescaler.
     if ((timer_period == 0) || (timer_period > UINT16_MAX)) { return false; }
 
+    // Start timer 2 as clock for PWM. No channels are configured yet.
     mHandle.Instance           = TIM2;
     mHandle.Init.Prescaler     = 0;
     mHandle.Init.CounterMode   = TIM_COUNTERMODE_UP;
@@ -115,6 +126,10 @@ bool PWM::Init(const Config& config)
     return false;
 }
 
+/**
+ * \brief    Puts the PWM module in sleep mode.
+ *           Stops PWM output on all channels.
+ */
 bool PWM::Sleep()
 {
     bool result = true;
@@ -130,24 +145,31 @@ bool PWM::Sleep()
     }
     ASSERT(result);
 
-    DisableAHB1PeripheralClock();
+    DisableAPB1TimerClock();
 
     return result;
 }
 
+/**
+ * \brief   Configure PWM output for a channel. The duty cycle and ON polarity
+ *          can be configured. This does NOT start PWM output.
+ * \param   channelConfig   The configuration for a PWM channel.
+ * \result  True if the configuration could be applied, else false.
+ */
 bool PWM::ConfigureChannel(const ChannelConfig& channelConfig)
 {
     if (!mInitialized) { return false; }
 
     ASSERT(channelConfig.mDutyCycle <= 100);
 
-    TIM_OC_InitTypeDef ocInit = {};
-
-    // Remember: if pulse_length is larger than timer_period, you will have output HIGH all the time
-    // Note: DutyCycle is in percent, between 0 and 100%
-    // pulse_length = (((timer_period + 1) * DutyCycle) / 100) - 1
+    // We calculate the pulse_length by using the given duty cycle - which here is in percent [0..100%]
+    // pulse_length = (((timer_period + 1) * duty cycle) / 100) - 1
 
     uint32_t pulse_length = (((mHandle.Init.Period + 1) * channelConfig.mDutyCycle) / 100) - 1;
+
+    // Remember: if pulse_length is larger than timer_period, you will have output HIGH all the time
+
+    TIM_OC_InitTypeDef ocInit = {};
 
     ocInit.OCMode     = TIM_OCMODE_PWM2;    // Clear on compare match
     ocInit.Pulse      = pulse_length;
@@ -161,6 +183,11 @@ bool PWM::ConfigureChannel(const ChannelConfig& channelConfig)
     return false;
 }
 
+/**
+ * \brief   Start PWM output for a channel (if configured first).
+ * \param   channel     The channel to start PWM output for.
+ * \result  True if the PWM output could be started for the given channel, else false.
+ */
 bool PWM::Start(Channel channel)
 {
     if (!mInitialized) { return false; }
@@ -172,6 +199,11 @@ bool PWM::Start(Channel channel)
     return false;
 }
 
+/**
+ * \brief   Stop PWM output for a channel (if configured first).
+ * \param   channel     The channel to stop PWM output for.
+ * \result  True if the PWM output could be stopped for the given channel, else false.
+ */
 bool PWM::Stop(Channel channel)
 {
     if (!mInitialized) { return false; }
@@ -187,19 +219,27 @@ bool PWM::Stop(Channel channel)
 /************************************************************************/
 /* Private Methods                                                      */
 /************************************************************************/
-void PWM::CheckAndEnableAHB1PeripheralClock()
+/**
+ * \brief   Check if the APB1 timer clock for Timer 2 is started, else enable it.
+ */
+void PWM::CheckAndEnableAPB1TimerClock()
 {
-    // TIM2 is connected to APB1 bus, which has on F407 device 42MHz clock.
-    // But, timer has internal PLL, which double this frequency for timer, up to 84MHz.
-
     if (__HAL_RCC_TIM2_IS_CLK_DISABLED()) { __HAL_RCC_TIM2_CLK_ENABLE(); }
 }
 
-void PWM::DisableAHB1PeripheralClock()
+/**
+ * \brief   Stop the APB1 timer clock for Timer 2.
+ */
+void PWM::DisableAPB1TimerClock()
 {
     __HAL_RCC_TIM2_CLK_DISABLE();
 }
 
+/**
+ * \brief   Get the TIM_Channel define using the given channel.
+ * \param   The channel to get the TIM_Channel define for.
+ * \returns The TIM_Channel if successful, else 0.
+ */
 uint32_t PWM::GetChannel(Channel channel)
 {
     uint32_t channelId = 0;
@@ -216,6 +256,10 @@ uint32_t PWM::GetChannel(Channel channel)
     return channelId;
 }
 
+/**
+ * \brief   Stop PWM output for all available channels.
+ * \returns True if PWM output for all channels could be stopped, else false.
+ */
 bool PWM::StopAllChannels()
 {
     bool result = true;

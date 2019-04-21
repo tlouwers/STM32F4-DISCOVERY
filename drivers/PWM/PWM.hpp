@@ -1,8 +1,48 @@
-/*
- * PWM.hpp
+/**
+ * \file PWM.hpp
  *
- *  Created on: 19 apr. 2019
- *      Author: Terry
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ *
+ * \brief   PWM class.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/PWM
+ *
+ * \details Intended use is to provide an easier means to work with PWM
+ *          channels. For this driver it is hardcoded to timer 2, all 4 channels
+ *          can be used.
+ *          Can be ported easily to timer 3, 4 or 5 as well, since most features
+ *          are generic. This is something for a future update.
+ *          Hardcoded items:
+ *          Using timer 2, which is using APB1 timer clock as clock source.
+ *
+ *          As example:
+ *
+ *          // Declare the class (in Application.hpp for example):
+ *          PWM   mPwm;
+ *
+ *          // Initialize the class to setup the PWM frequency:
+ *          bool result = mPwm.Init(PWM::Config(500));      // 500 Hz
+ *
+ *          // Configure a channel, here channel 1 using 50% duty cycle:
+ *          bool result = mPwm.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50));
+ *
+ *          // To start the channel:
+ *          bool result = mPwm.Start(PWM::Channel::Channel_1);
+ *
+ *          // To stop a channel:
+ *          bool result = mPwm.Stop(PWM::Channel::Channel_1);
+ *
+ * \note    Inspiration from:
+ *          https://stm32f4-discovery.net/2014/05/stm32f4-stm32f429-discovery-pwm-tutorial/
+ *
+ * \author      T. Louwers <terry.louwers@fourtress.nl>
+ * \version     1.0
+ * \date        04-2019
  */
 
 #ifndef PWM_HPP_
@@ -58,7 +98,7 @@ public:
         /**
          * \brief   Constructor of the PWM channel configuration struct.
          * \param   channel     The PWM channel to use.
-         * \param   dutyCycle   Percentage, on time [1..100].
+         * \param   dutyCycle   Percentage, on time [0..100].
          * \param   polarity    Polarity of the on time, high (default) or low.
          */
         ChannelConfig(Channel channel, uint8_t dutyCycle, Polarity polarity = Polarity::High) :
@@ -82,7 +122,7 @@ public:
          * \brief   Constructor of the PWM configuration struct.
          * \param   frequency   Clock frequency in Hz [1..65535].
          */
-        Config(uint16_t frequency) :
+        explicit Config(uint16_t frequency) :
             mFrequency(frequency)
         { }
 
@@ -103,8 +143,8 @@ public:
 private:
     TIM_HandleTypeDef mHandle = {};
     bool mInitialized;
-    void CheckAndEnableAHB1PeripheralClock();
-    void DisableAHB1PeripheralClock();
+    void CheckAndEnableAPB1TimerClock();
+    void DisableAPB1TimerClock();
     uint32_t GetChannel(Channel channel);
     bool StopAllChannels();
 };
