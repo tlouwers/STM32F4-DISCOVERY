@@ -1,44 +1,30 @@
 # Description
-USART peripheral driver class.
+PWM class.
 
-Intended use is to provide an easier means to work with the USART peripheral. This class assumes the pins to use for the USART are already configured.
+Intended use is to provide an easier means to work with PWM channels. For this driver it is hardcoded to timer 2, all 4 channels can be used. This class assumes the pins to use for the PWM channels are already configured.
 
 # Requirements
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 * C++11 is assumed
-* Pins already configured for USART
+* Pins already configured for PWM channels
 
 # Notes
-When using the IDLE line feature during an Rx transmission, there will be an Rx and an IDLE line interrupt. Only 1 callback to Rx is called with the correct number of bytes.
-The callbacks are called withing ISR context.
-This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
+The use of Timer 2 is hardcoded, as well as the assumption the APB1 timer clock source is set to 8 MHz. Future updates may lift these restrictions.
  
 # Examples
 ```cpp
 // Declare the class (in Application.hpp for example):
-Usart mUsart;
+PWM   mPwm;
 
-// Construct the class, indicate the instance to use:
-Application::Application() :
-    mUsart(UsartInstance::USART_2)
-{}
+// Initialize the class to setup the PWM frequency:
+bool result = mPwm.Init(PWM::Config(500));      // 500 Hz
 
-// To Write (interrupt based):
-uint8_t write_buffer[] = "test\r\n";
-bool result = mUsart.WriteInterrupt(write_buffer, sizeof(write_buffer), [this]() { this->WriteDone(); } );
-assert(result);
+// Configure a channel, here channel 1 using 50% duty cycle:
+bool result = mPwm.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50));
 
-// To Read (interrupt based):
-uint8_t read_buffer[6] = {0};
-result = mUsart.ReadInterrupt(read_buffer, sizeof(read_buffer), [this](uint16_t bytesReceived) { this->ReadDone(bytesReceived); });
-assert(result);
+// To start the channel:
+bool result = mPwm.Start(PWM::Channel::Channel_1);
 
-// The ReadDone callback (as example):
-void Application::ReadDone(uint16_t bytesReceived)
-{
-    if (bytesReceived > 0)
-    {
-        // Do stuff ...
-    }
-}
+// To stop a channel:
+bool result = mPwm.Stop(PWM::Channel::Channel_1);
 ```
