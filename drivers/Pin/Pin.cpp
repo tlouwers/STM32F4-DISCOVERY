@@ -22,50 +22,6 @@
  *          create and fill the Pin object with desired values. At this point
  *          the interrupts can be configured as well.
  *
- *          As example:
- *
- *          // Create a PinIdPort structure
- *          constexpr PinIdPort PIN_BUTTON     = { GPIO_PIN_0,  GPIOA };
- *          constexpr PinIdPort PIN_LED_GREEN  = { GPIO_PIN_12, GPIOD };
- *
- *          // Declaration (in header file, say in Application.hpp):
- *          Pin a1;                                     // Note: requires construction during construction of owning class
- *          Pin a2;
- *
- *          // Construct during construction of Application.cpp:
- *          Application::Application() :
- *              mButton(PIN_BUTTON, Level::LOW),        // Externally pulled down
- *              mLedGreen(PIN_LED_GREEN, Level::LOW)    // Off
- *          {
- *              // Other things ...
- *          }
- *
- *          // As output:
- *          a1.Set(Level::HIGH);                        // Set output high
- *          a1.Toggle();                                // High to low, low to high
- *          Level lvl1 = a1.Get();                      // Get the actual pin level
- *          a1.Configure(PullUpDown::HIGHZ);            // Make pin input, floating
- *
- *          // As input:
- *          Level lvl2 = a2.Get();                      // Get the actual pin level
- *          a2.Interrupt(Trigger::RISING, callback);    // Configure interrupt, attach callback, default active
- *          a2.InterruptDisable();                      // Disable the callback (ignores the interrupt)
- *          a2.InterruptEnable();                       // Enables the callback
- *          a2.InterruptRemove();                       // Removed the interrupt, detaches the callback
- *
- *          // As alternate (check the options of the CPU first!):
- *          Pin(PIN_USART2_RTS, Alternate::AF7);        // See the HAL 'GPIO_Alternate_function_selection' for options
- *          Pin(PIN_USART2_TX,  Alternate::AF7, PullUpDown::UP);
- *
- *          // Allowed (moves):
- *          Pin a4 = std::move(a1);                     // Move assignment
- *          Pin a5(std::move(a2));                      // Move constructor
- *
- *          // Not allowed (copies):
- *          Pin a7 = a1;                                // Copy assignment
- *          Pin a8(a2);                                 // Copy constructor
- *          Pin();                                      // Empty constructor
- *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
  * \date        03-2019
@@ -162,13 +118,13 @@ static bool IsIRQSharedWithOtherPin(uint16_t id)
 }
 
 /**
- * \brief   Check if the appropriate APB1 peripheral clock for the port on
+ * \brief   Check if the appropriate AHB1 peripheral clock for the port on
  *          which the pin resides is enabled, if not enable it.
  * \param   port    The port on which the pin resides.
  * \note    Might not be supported by the selected microcontroller, check the
  *          documentation.
  */
-static void CheckAndEnableAPB1PeripheralClock(GPIO_TypeDef* port)
+static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
 {
     ASSERT(port != nullptr);        // Invalid variable for port passed, cannot be nullptr"
 
@@ -289,7 +245,7 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
     ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
-	CheckAndEnableAPB1PeripheralClock(mPort);
+	CheckAndEnableAHB1PeripheralClock(mPort);
 
 	GPIO_InitTypeDef GPIO_InitStructure = {0};
 
@@ -319,7 +275,7 @@ void Pin::Configure(PullUpDown pullUpDown)
 {
     ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
-	CheckAndEnableAPB1PeripheralClock(mPort);
+	CheckAndEnableAHB1PeripheralClock(mPort);
 
 	GPIO_InitTypeDef GPIO_InitStructure = {0};
 
@@ -348,7 +304,7 @@ void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::
 {
     ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
-    CheckAndEnableAPB1PeripheralClock(mPort);
+    CheckAndEnableAHB1PeripheralClock(mPort);
 
     GPIO_InitTypeDef GPIO_InitStructure = {0};
 

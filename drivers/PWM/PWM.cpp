@@ -20,23 +20,6 @@
  *          Hardcoded items:
  *          Using timer 2, which is using APB1 timer clock as clock source.
  *
- *          As example:
- *
- *          // Declare the class (in Application.hpp for example):
- *          PWM   mPwm;
- *
- *          // Initialize the class to setup the PWM frequency:
- *          bool result = mPwm.Init(PWM::Config(500));      // 500 Hz
- *
- *          // Configure a channel, here channel 1 using 50% duty cycle:
- *          bool result = mPwm.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50));
- *
- *          // To start the channel:
- *          bool result = mPwm.Start(PWM::Channel::Channel_1);
- *
- *          // To stop a channel:
- *          bool result = mPwm.Stop(PWM::Channel::Channel_1);
- *
  * \note    Inspiration from:
  *          https://stm32f4-discovery.net/2014/05/stm32f4-stm32f429-discovery-pwm-tutorial/
  *
