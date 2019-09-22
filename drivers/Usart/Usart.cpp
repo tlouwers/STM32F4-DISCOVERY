@@ -16,46 +16,17 @@
  *          peripheral. This class assumes the pins to use for the USART are
  *          already configured.
  *
- *          As example:
- *
- *          // Declare the class (in Application.hpp for example):
- *          Usart mUsart;
- *
- *          // Construct the class, indicate the instance to use:
- *          Application::Application() :
- *              mUsart(UsartInstance::USART_2)
- *          {}
- *
- *          // To Write (interrupt based):
- *          uint8_t write_buffer[] = "test\r\n";
- *          bool result = mUsart.WriteInterrupt(write_buffer, sizeof(write_buffer), [this]() { this->WriteDone(); } );
- *          assert(result);
- *
- *          // To Read (interrupt based):
- *          uint8_t read_buffer[6] = {0};
- *          result = mUsart.ReadInterrupt(read_buffer, sizeof(read_buffer), [this](uint16_t bytesReceived) { this->ReadDone(bytesReceived); });
- *          assert(result);
- *
- *          // The ReadDone callback (as example):
- *          void Application::ReadDone(uint16_t bytesReceived)
- *          {
- *              if (bytesReceived > 0)
- *              {
- *                  // Do stuff ...
- *              }
- *          }
- *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        04-2019
+ * \version     1.1
+ * \date        09-2019
  */
 
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "drivers/Usart/Usart.hpp"
+#include "Usart.hpp"
 #include "utility/SlimAssert.h"
-#include "stm32f4xx_hal_usart.h"
+#include "stm32f4xx_hal_uart.h"
 
 
 /************************************************************************/
@@ -127,7 +98,8 @@ static void CallbackRxDone(const UsartCallbacks& usart_callbacks, uint16_t bytes
  */
 Usart::Usart(const UsartInstance& instance) :
     mInstance(instance),
-    mUsartCallbacks( (instance == UsartInstance::USART_1) ? (usart1_callbacks) : ( (instance == UsartInstance::USART_2) ? (usart2_callbacks) : ( (instance == UsartInstance::USART_3) ? (usart3_callbacks) : (usart6_callbacks) ) ) )
+    mUsartCallbacks( (instance == UsartInstance::USART_1) ? (usart1_callbacks) : ( (instance == UsartInstance::USART_2) ? (usart2_callbacks) : ( (instance == UsartInstance::USART_3) ? (usart3_callbacks) : (usart6_callbacks) ) ) ),
+    mInitialized(false)
 {
     SetInstance(instance);
 
@@ -140,20 +112,19 @@ Usart::Usart(const UsartInstance& instance) :
 Usart::~Usart()
 {
     // Disable interrupts
-    const IRQn_Type irq = GetIRQn(mInstance);
-    HAL_NVIC_DisableIRQ(irq);
+    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
 
     mInitialized = false;
 }
 
 /**
- * \brief   Initialises the USART instance with the given configuration.
+ * \brief   Initializes the USART instance with the given configuration.
  * \param   config  The configuration for the USART instance to use.
  * \returns True if the configuration could be applied, else false.
  */
 bool Usart::Init(const Config& config)
 {
-    CheckAndEnableAPB1PeripheralClock(mInstance);
+    CheckAndEnableAHB1PeripheralClock(mInstance);
 
     uint32_t parity = UART_PARITY_NONE;
     switch (config.mParity)
@@ -180,15 +151,23 @@ bool Usart::Init(const Config& config)
         HAL_NVIC_ClearPendingIRQ(irq);
         HAL_NVIC_SetPriority(irq, config.mInterruptPriority, 0);
 
-        __HAL_USART_CLEAR_FLAG(&mHandle, USART_FLAG_IDLE);
+        __HAL_UART_CLEAR_FLAG(&mHandle, UART_FLAG_IDLE);
 
         HAL_NVIC_EnableIRQ(irq);
 
         mInitialized = true;
-
         return true;
     }
     return false;
+}
+
+/**
+ * \brief   Indicate if Usart is initialized.
+ * \returns True if Usart is initialized, else false.
+ */
+bool Usart::IsInit() const
+{
+    return mInitialized;
 }
 
 /**
@@ -197,12 +176,97 @@ bool Usart::Init(const Config& config)
 void Usart::Sleep()
 {
     // Disable interrupts
-    const IRQn_Type irq = GetIRQn(mInstance);
-    HAL_NVIC_DisableIRQ(irq);
+    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
 
     mInitialized = false;
 
     // ToDo: low power state, check recovery after sleep
+}
+
+/**
+ * \brief   Get the handle to the peripheral.
+ * \returns The handle to the peripheral.
+ */
+const UART_HandleTypeDef* Usart::GetPeripheralHandle() const
+{
+    return &mHandle;
+}
+
+/**
+ * \brief   Get the pointer to the Dma Tx handle.
+ * \details This is returned as reference-to-pointer to allow it to be changed
+ *          externally, as it needs to be linked to the DMA class.
+ * \returns The Dma Tx handle as reference-to-pointer.
+ */
+DMA_HandleTypeDef*& Usart::GetDmaTxHandle()
+{
+    return mHandle.hdmatx;
+}
+
+/**
+ * \brief   Get the pointer to the Dma Rx handle.
+ * \details This is returned as reference-to-pointer to allow it to be changed
+ *          externally, as it needs to be linked to the DMA class.
+ * \returns The Dma Rx handle as reference-to-pointer.
+ */
+DMA_HandleTypeDef*& Usart::GetDmaRxHandle()
+{
+    return mHandle.hdmarx;
+}
+
+/**
+ * \brief   Write data using DMA.
+ * \param   src         Pointer to buffer with data to write.
+ * \param   length      Length of the data to write in bytes.
+ * \param   handler     Callback to call when write completed.
+ * \returns True if the transaction could be started, else false. Returns false if no DMA is setup for Tx.
+ * \note    Asserts if src is nullptr or length invalid.
+ */
+bool Usart::WriteDma(const uint8_t* src, size_t length, const std::function<void()>& handler)
+{
+    ASSERT(src);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
+
+    if (!mInitialized) { return false; }
+    if (mHandle.hdmatx == nullptr) { return false; }
+
+    mUsartCallbacks.callbackTx = handler;
+
+    // Note: HAL_UART_Transmit_DMA will check for src == nullptr and size == 0 --> returns HAL_ERROR.
+
+    return (HAL_UART_Transmit_DMA(&mHandle, const_cast<uint8_t*>(src), length) == HAL_OK);
+}
+
+/**
+ * \brief   Read data using DMA.
+ * \param   dest                Pointer to buffer where to store the read data.
+ * \param   length              Length of the data to read in bytes.
+ * \param   handler             Callback to call when read completed.
+ * \param   useIdleDetection    Use IDLE line detection or not, default true.
+ * \returns True if the transaction could be started, else false. Returns false
+ *          if no DMA is setup for Rx.
+ * \note    Asserts if dest is nullptr or length invalid.
+ * \note    If IDLE line detection is not used callback will only be called
+ *          when the expected number of bytes are received.
+ */
+bool Usart::ReadDma(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection /* = true */)
+{
+    ASSERT(dest);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
+
+    if (!mInitialized) { return false; }
+    if (mHandle.hdmarx == nullptr) { return false; }
+
+    mUsartCallbacks.callbackRx = handler;
+
+    // Note: HAL_UART_Receive_DMA will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
+
+    if (useIdleDetection)
+    {
+        __HAL_UART_ENABLE_IT(&mHandle, UART_IT_IDLE);
+    }
+
+    return (HAL_UART_Receive_DMA(&mHandle, dest, length) == HAL_OK);
 }
 
 /**
@@ -224,11 +288,7 @@ bool Usart::WriteInterrupt(const uint8_t* src, size_t length, const std::functio
 
     // Note: HAL_UART_Transmit_IT will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
-    if (HAL_OK == HAL_UART_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length))
-    {
-        return true;
-    }
-    return false;
+    return (HAL_UART_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length) == HAL_OK);
 }
 
 /**
@@ -249,18 +309,14 @@ bool Usart::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void
 
     mUsartCallbacks.callbackRx = handler;
 
-    // Note: HAL_UART_Receive will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
+    // Note: HAL_UART_Receive_IT will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
 
     if (useIdleDetection)
     {
-        __HAL_USART_ENABLE_IT(&mHandle, USART_IT_IDLE);
+        __HAL_UART_ENABLE_IT(&mHandle, UART_IT_IDLE);
     }
 
-    if (HAL_OK == HAL_UART_Receive_IT(&mHandle, dest, length))
-    {
-        return true;
-    }
-    return false;
+    return (HAL_UART_Receive_IT(&mHandle, dest, length) == HAL_OK);
 }
 
 /**
@@ -279,11 +335,7 @@ bool Usart::WriteBlocking(const uint8_t* src, size_t length)
 
     // Note: HAL_UART_Transmit will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
-    if (HAL_OK == HAL_UART_Transmit(&mHandle, const_cast<uint8_t*>(src), length, HAL_MAX_DELAY))
-    {
-        return true;
-    }
-    return false;
+    return (HAL_UART_Transmit(&mHandle, const_cast<uint8_t*>(src), length, HAL_MAX_DELAY) == HAL_OK);
 }
 
 /**
@@ -302,11 +354,7 @@ bool Usart::ReadBlocking(uint8_t* dest, size_t length)
 
     // Note: HAL_UART_Receive will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
 
-    if (HAL_OK == HAL_UART_Receive(&mHandle, dest, length, HAL_MAX_DELAY))
-    {
-        return true;
-    }
-    return false;
+    return (HAL_UART_Receive(&mHandle, dest, length, HAL_MAX_DELAY) == HAL_OK);
 }
 
 
@@ -322,29 +370,21 @@ void Usart::SetInstance(const UsartInstance& instance)
 {
     switch (instance)
     {
-        case UsartInstance::USART_1:
-            mHandle.Instance = USART1;
-            break;
-        case UsartInstance::USART_2:
-            mHandle.Instance = USART2;
-            break;
-        case UsartInstance::USART_3:
-            mHandle.Instance = USART3;
-            break;
-        case UsartInstance::USART_6:
-            mHandle.Instance = USART6;
-            break;
-        default: ASSERT(false); break;      // Impossible selection
+        case UsartInstance::USART_1: mHandle.Instance = USART1; break;
+        case UsartInstance::USART_2: mHandle.Instance = USART2; break;
+        case UsartInstance::USART_3: mHandle.Instance = USART3; break;
+        case UsartInstance::USART_6: mHandle.Instance = USART6; break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
 /**
- * \brief   Check if the appropriate APB1 peripheral clock for the USART
+ * \brief   Check if the appropriate AHB1 peripheral clock for the USART
  *          instance is enabled, if not enable it.
  * \param   instance    The USART instance to enable the clock for.
  * \note    Asserts if not a valid USART instance provided.
  */
-void Usart::CheckAndEnableAPB1PeripheralClock(const UsartInstance& instance)
+void Usart::CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance)
 {
     switch (instance)
     {
@@ -352,7 +392,7 @@ void Usart::CheckAndEnableAPB1PeripheralClock(const UsartInstance& instance)
         case UsartInstance::USART_2: if (__HAL_RCC_USART2_IS_CLK_DISABLED()) { __HAL_RCC_USART2_CLK_ENABLE(); } break;
         case UsartInstance::USART_3: if (__HAL_RCC_USART3_IS_CLK_DISABLED()) { __HAL_RCC_USART3_CLK_ENABLE(); } break;
         case UsartInstance::USART_6: if (__HAL_RCC_USART6_IS_CLK_DISABLED()) { __HAL_RCC_USART6_CLK_ENABLE(); } break;
-        default: ASSERT(false); break;      // Impossible selection
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
@@ -377,12 +417,13 @@ IRQn_Type Usart::GetIRQn(const UsartInstance& instance)
 }
 
 /**
- * \brief
+ * \brief   Generic Usart IRQ callback. Used to end Rx interrupt if 'IDLE' flag
+ *          is set. Will propagate other interrupts.
  */
 void Usart::CallbackIRQ()
 {
     // Check if the 'IDLE' flag is set, if so call end of Rx callback, the clear flag.
-    if (__HAL_USART_GET_FLAG(&mHandle, USART_FLAG_IDLE))
+    if (__HAL_UART_GET_FLAG(&mHandle, UART_FLAG_IDLE))
     {
         HAL_UART_RxCpltCallback(&mHandle);
 
@@ -428,18 +469,21 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* handle)
 
     // Disable and clear IDLE line interrupt
     // See reference manual, USART section, IDLE line detected interrupt
-    __HAL_USART_DISABLE_IT(handle, USART_IT_IDLE);
-    __HAL_USART_CLEAR_FLAG(handle, USART_FLAG_IDLE);
+    __HAL_UART_DISABLE_IT(handle, UART_IT_IDLE);
+    __HAL_UART_CLEAR_FLAG(handle, UART_FLAG_IDLE);
     uint32_t dummy = handle->Instance->DR;
     (void)(dummy);
 
     // Check to see if data is actually received: when receiving data normally, the IDLE line
-    // interrupt will always fire after the regular Rx interrupt.  by checking the RxXferSize
+    // interrupt will always fire after the regular Rx interrupt. By checking the RxXferSize
     // and clearing it after calling the user callback we prevent calling the user callback
     // when no data was received (ignores the IDLE line interrupt afterwards).
     if (handle->RxXferSize > 0)
     {
-        uint16_t bytesReceived = handle->RxXferSize - handle->RxXferCount;
+        // If DMA was not use RxXferCount holds the number of bytes not received yet, if DMA is
+        // used this number is in the NDTR register.
+        // To be able to use both Interrupt and DMA while DMA is configured, both RxXferCount and NTDR are used in received byte calculation.
+        uint16_t bytesReceived = handle->RxXferSize - handle->RxXferCount - ((handle->hdmarx) ? __HAL_DMA_GET_COUNTER(handle->hdmarx) : 0);
 
         if (handle->Instance == USART1) { CallbackRxDone(usart1_callbacks, bytesReceived); }
         if (handle->Instance == USART2) { CallbackRxDone(usart2_callbacks, bytesReceived); }
