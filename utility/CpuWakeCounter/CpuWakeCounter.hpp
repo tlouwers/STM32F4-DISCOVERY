@@ -28,44 +28,6 @@
  *          Cortex-M3, M4 or M7. This code was developed for an STM32F407G,
  *          but can be adapted for other microcontrollers as well.
  *
- *          Example:
- *          // Declare the object
- *          CpuWakeCounter cpuWakeCounter;
- *
- *          // Helper method to enable DWT (in case it is not enabled yet)
- *          void EnableDWT(void)
- *          {
- *              CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
- *              DWT->CYCCNT = 0;
- *              DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
- *          }
- *
- *          // In case the DWT block is not yet enabled:
- *          EnableDWT();
- *
- *          // In the main process loop
- *          void Application::Process()
- *          {
- *              // Do useful stuff
- *              delay_ms(100);                          // Mimics handling various items
- *
- *              // Handle an update (if available)
- *              if (cpuWakeCounter.IsUpdated())         // Will update once per second
- *              {
- *                  // Get the updated statistics
- *                  CpuStats cpuStats = cpuWakeCounter.GetStatistics();
- *
- *                  // Handle the statistics, like log or assert if the wake percentage is above 80%
- *                  if (cpuStats.wakePercentage > 80.0f)
- *                  {
- *                      assert(false);
- *                  }
- *              }
- *
- *              // At the end of the main process loop enter the desired sleep mode, per default the Systick is suspended in this method while sleeping (can be overruled).
- *              cpuWakeCounter.EnterSleepMode(SleepMode::WaitForInterrupt);
- *          }
- *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
  * \date        02-2019
