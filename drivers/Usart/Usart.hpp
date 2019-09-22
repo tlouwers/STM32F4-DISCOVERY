@@ -16,38 +16,9 @@
  *          peripheral. This class assumes the pins to use for the USART are
  *          already configured.
  *
- *          As example:
- *
- *          // Declare the class (in Application.hpp for example):
- *          Usart mUsart;
- *
- *          // Construct the class, indicate the instance to use:
- *          Application::Application() :
- *              mUsart(UsartInstance::USART_2)
- *          {}
- *
- *          // To Write (interrupt based):
- *          uint8_t write_buffer[] = "test\r\n";
- *          bool result = mUsart.WriteInterrupt(write_buffer, sizeof(write_buffer), [this]() { this->WriteDone(); } );
- *          assert(result);
- *
- *          // To Read (interrupt based):
- *          uint8_t read_buffer[6] = {0};
- *          result = mUsart.ReadInterrupt(read_buffer, sizeof(read_buffer), [this](uint16_t bytesReceived) { this->ReadDone(bytesReceived); });
- *          assert(result);
- *
- *          // The ReadDone callback (as example):
- *          void Application::ReadDone(uint16_t bytesReceived)
- *          {
- *              if (bytesReceived > 0)
- *              {
- *                  // Do stuff ...
- *              }
- *          }
- *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        04-2019
+ * \version     1.1
+ * \date        09-2019
  */
 
 #ifndef USART_HPP_
@@ -76,9 +47,6 @@ enum class UsartInstance : uint8_t
     USART_6 = 6
 };
 
-
-// Forward declaration as the struct UsartCallbacks uses a pointer to Usart.
-class Usart;
 
 /************************************************************************/
 /* Structures                                                           */
@@ -206,7 +174,15 @@ public:
     virtual ~Usart();
 
     bool Init(const Config& config);
+    bool IsInit() const;
     void Sleep();
+
+    const UART_HandleTypeDef* GetPeripheralHandle() const;
+    DMA_HandleTypeDef*& GetDmaTxHandle();
+    DMA_HandleTypeDef*& GetDmaRxHandle();
+
+    bool WriteDma(const uint8_t* src, size_t length, const std::function<void()>& handler);
+    bool ReadDma(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
 
     bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& handler);
     bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
@@ -221,7 +197,7 @@ private:
     bool               mInitialized;
 
     void SetInstance(const UsartInstance& instance);
-    void CheckAndEnableAPB1PeripheralClock(const UsartInstance& instance);
+    void CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance);
     IRQn_Type GetIRQn(const UsartInstance& instance);
     void CallbackIRQ();
 };

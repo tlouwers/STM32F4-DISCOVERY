@@ -1,7 +1,8 @@
+
 # Description
 PWM class.
 
-Intended use is to provide an easier means to work with PWM channels. For this driver it is hardcoded to timer 2, all 4 channels can be used. This class assumes the pins to use for the PWM channels are already configured.
+Intended use is to provide an easier means to work with PWM channels. For this driver it is hard-coded to timer 2, all 4 channels can be used. This class assumes the pins to use for the PWM channels are already configured.
 
 # Requirements
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
@@ -9,7 +10,7 @@ Intended use is to provide an easier means to work with PWM channels. For this d
 * Pins already configured for PWM channels
 
 # Notes
-The use of Timer 2 is hardcoded, as well as the assumption the APB1 timer clock source is set to 8 MHz. Future updates may lift these restrictions.
+The use of Timer 2 is hard-coded, as well as the assumption the APB1 timer clock source is set to 8 MHz. Future updates may lift these restrictions.
  
 # Examples
 ```cpp

@@ -1,5 +1,3 @@
-
-
 # Description
 Helper class intended as 'set & forget' for pin  configurations. State is preserved (partly) within the hardware.
 
