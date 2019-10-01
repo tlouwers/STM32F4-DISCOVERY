@@ -37,6 +37,7 @@
 #include <cstdint>
 #include <functional>
 #include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_tim.h"
 
 
 // For Timer 2 (General purpose) on STM32F407G
