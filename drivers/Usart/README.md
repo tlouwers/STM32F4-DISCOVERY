@@ -23,6 +23,17 @@ Application::Application() :
     mUsart(UsartInstance::USART_2)
 {}
 
+// Initialize the class:
+bool Application::Initialize()
+{
+    bool result = mUsart.Init(Usart::Config(10, false, Usart::Baudrate::_9600));
+    assert(result);
+	
+	// Other stuff...
+	
+	return result;
+}
+
 // To Write (interrupt based):
 uint8_t write_buffer[] = "test\r\n";
 bool result = mUsart.WriteInterrupt(write_buffer, sizeof(write_buffer), [this]() { this->WriteDone(); } );
