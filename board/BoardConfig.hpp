@@ -31,19 +31,27 @@
 /* Constants                                                            */
 /************************************************************************/
 // Button
-constexpr PinIdPort PIN_BUTTON     = { GPIO_PIN_0,  GPIOA };
+constexpr PinIdPort PIN_BUTTON      = { GPIO_PIN_0,  GPIOA };
 
 // Leds
-constexpr PinIdPort PIN_LED_GREEN  = { GPIO_PIN_12, GPIOD };
-constexpr PinIdPort PIN_LED_ORANGE = { GPIO_PIN_13, GPIOD };
-constexpr PinIdPort PIN_LED_RED    = { GPIO_PIN_14, GPIOD };
-constexpr PinIdPort PIN_LED_BLUE   = { GPIO_PIN_15, GPIOD };
+constexpr PinIdPort PIN_LED_GREEN   = { GPIO_PIN_12, GPIOD };
+constexpr PinIdPort PIN_LED_ORANGE  = { GPIO_PIN_13, GPIOD };
+constexpr PinIdPort PIN_LED_RED     = { GPIO_PIN_14, GPIOD };
+constexpr PinIdPort PIN_LED_BLUE    = { GPIO_PIN_15, GPIOD };
 
 // Usart 2
-constexpr PinIdPort PIN_USART2_RTS = { GPIO_PIN_1,  GPIOA };
-constexpr PinIdPort PIN_USART2_TX  = { GPIO_PIN_2,  GPIOA };
-constexpr PinIdPort PIN_USART2_RX  = { GPIO_PIN_3,  GPIOA };
-constexpr PinIdPort PIN_USART2_CTS = { GPIO_PIN_3,  GPIOD };
+constexpr PinIdPort PIN_USART2_RTS  = { GPIO_PIN_1,  GPIOA };
+constexpr PinIdPort PIN_USART2_TX   = { GPIO_PIN_2,  GPIOA };
+constexpr PinIdPort PIN_USART2_RX   = { GPIO_PIN_3,  GPIOA };
+constexpr PinIdPort PIN_USART2_CTS  = { GPIO_PIN_3,  GPIOD };
+
+// Motion (LIS3DSH) - SPI1
+constexpr PinIdPort PIN_SPI1_SCK    = { GPIO_PIN_5,  GPIOA };
+constexpr PinIdPort PIN_SPI1_MISO   = { GPIO_PIN_6,  GPIOA };
+constexpr PinIdPort PIN_SPI1_MOSI   = { GPIO_PIN_7,  GPIOA };
+constexpr PinIdPort PIN_SPI1_CS     = { GPIO_PIN_3,  GPIOE };
+constexpr PinIdPort PIN_MOTION_INT1 = { GPIO_PIN_0,  GPIOE };
+constexpr PinIdPort PIN_MOTION_INT2 = { GPIO_PIN_1,  GPIOE };
 
 
 #endif  // BOARDCONFIG_HPP_
