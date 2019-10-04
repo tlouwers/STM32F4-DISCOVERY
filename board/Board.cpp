@@ -41,6 +41,12 @@ void Board::InitPins()
     Pin(PIN_USART2_TX,  Alternate::AF7, PullUpDown::UP);
     Pin(PIN_USART2_RX,  Alternate::AF7, PullUpDown::UP);
     Pin(PIN_USART2_CTS, Alternate::AF7);
+
+    // Motion - SPI1
+    Pin(PIN_SPI1_SCK,  Alternate::AF5);
+    Pin(PIN_SPI1_MISO, Alternate::AF5);
+    Pin(PIN_SPI1_MOSI, Alternate::AF5);
+    // PIN_SPI1_CS     -- ChipSelect, handled in software
 }
 
 /**
