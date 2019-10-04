@@ -57,7 +57,6 @@ public:
         Dma1_Stream5,
         Dma1_Stream6,
         Dma1_Stream7,
-#if defined (DMA_SxCR_CHSEL_3)
         Dma2_Stream0,
         Dma2_Stream1,
         Dma2_Stream2,
@@ -66,7 +65,6 @@ public:
         Dma2_Stream5,
         Dma2_Stream6,
         Dma2_Stream7
-#endif
     };
 
     /**
@@ -75,7 +73,7 @@ public:
      */
     enum class Channel : uint8_t
     {
-        Channel0,   // DMA1
+        Channel0,
         Channel1,
         Channel2,
         Channel3,
@@ -84,7 +82,7 @@ public:
         Channel6,
         Channel7,
 #if defined (DMA_SxCR_CHSEL_3)
-        Channel8,   // DMA2
+        Channel8,
         Channel9,
         Channel10,
         Channel11,
