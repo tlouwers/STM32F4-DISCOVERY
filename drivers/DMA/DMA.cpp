@@ -35,9 +35,7 @@
 /* Static variables                                                     */
 /************************************************************************/
 static std::function<void()> dma1Callbacks[8] {};
-#if defined (DMA_SxCR_CHSEL_3)
 static std::function<void()> dma2Callbacks[8] {};
-#endif
 
 
 /************************************************************************/
@@ -80,9 +78,7 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     mHalfBufferInterrupt = halfBufferInterrupt;
 
     if (__HAL_RCC_DMA1_IS_CLK_DISABLED()) { __HAL_RCC_DMA1_CLK_ENABLE(); }
-#if defined (DMA_SxCR_CHSEL_3)
     if (__HAL_RCC_DMA2_IS_CLK_DISABLED()) { __HAL_RCC_DMA2_CLK_ENABLE(); }
-#endif
 
     mHandle.Init.Channel             = GetChannel(channel);
     mHandle.Init.Direction           = GetDirection(direction);
@@ -146,7 +142,6 @@ DMA_Stream_TypeDef* DMA::GetInstance(Stream stream)
         case Stream::Dma1_Stream5: return DMA1_Stream5; break;
         case Stream::Dma1_Stream6: return DMA1_Stream6; break;
         case Stream::Dma1_Stream7: return DMA1_Stream7; break;
-#if defined (DMA_SxCR_CHSEL_3)
         case Stream::Dma2_Stream0: return DMA2_Stream0; break;
         case Stream::Dma2_Stream1: return DMA2_Stream1; break;
         case Stream::Dma2_Stream2: return DMA2_Stream2; break;
@@ -155,7 +150,6 @@ DMA_Stream_TypeDef* DMA::GetInstance(Stream stream)
         case Stream::Dma2_Stream5: return DMA2_Stream5; break;
         case Stream::Dma2_Stream6: return DMA2_Stream6; break;
         case Stream::Dma2_Stream7: return DMA2_Stream7; break;
-#endif
         default: ASSERT(false); while(1) { __NOP(); } return DMA1_Stream0; break;    // Impossible selection
     }
 }
@@ -240,7 +234,6 @@ void DMA::ConnectInternalCallback(Stream stream)
         case Stream::Dma1_Stream5: dma1Callbacks[5] = [this]() { this->Callback(); }; break;
         case Stream::Dma1_Stream6: dma1Callbacks[6] = [this]() { this->Callback(); }; break;
         case Stream::Dma1_Stream7: dma1Callbacks[7] = [this]() { this->Callback(); }; break;
-#if defined (DMA_SxCR_CHSEL_3)
         case Stream::Dma2_Stream0: dma2Callbacks[0] = [this]() { this->Callback(); }; break;
         case Stream::Dma2_Stream1: dma2Callbacks[1] = [this]() { this->Callback(); }; break;
         case Stream::Dma2_Stream2: dma2Callbacks[2] = [this]() { this->Callback(); }; break;
@@ -249,7 +242,6 @@ void DMA::ConnectInternalCallback(Stream stream)
         case Stream::Dma2_Stream5: dma2Callbacks[5] = [this]() { this->Callback(); }; break;
         case Stream::Dma2_Stream6: dma2Callbacks[6] = [this]() { this->Callback(); }; break;
         case Stream::Dma2_Stream7: dma2Callbacks[7] = [this]() { this->Callback(); }; break;
-#endif
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     };
 }
@@ -272,7 +264,6 @@ void DMA::EnableInterrupt(Stream stream, uint32_t preemptPrio, uint32_t subPrio)
         case Stream::Dma1_Stream5: { SetIRQn(DMA1_Stream5_IRQn, preemptPrio, subPrio); } break;
         case Stream::Dma1_Stream6: { SetIRQn(DMA1_Stream6_IRQn, preemptPrio, subPrio); } break;
         case Stream::Dma1_Stream7: { SetIRQn(DMA1_Stream7_IRQn, preemptPrio, subPrio); } break;
-#if defined (DMA_SxCR_CHSEL_3)
         case Stream::Dma2_Stream0: { SetIRQn(DMA2_Stream0_IRQn, preemptPrio, subPrio); } break;
         case Stream::Dma2_Stream1: { SetIRQn(DMA2_Stream1_IRQn, preemptPrio, subPrio); } break;
         case Stream::Dma2_Stream2: { SetIRQn(DMA2_Stream2_IRQn, preemptPrio, subPrio); } break;
@@ -281,7 +272,6 @@ void DMA::EnableInterrupt(Stream stream, uint32_t preemptPrio, uint32_t subPrio)
         case Stream::Dma2_Stream5: { SetIRQn(DMA2_Stream5_IRQn, preemptPrio, subPrio); } break;
         case Stream::Dma2_Stream6: { SetIRQn(DMA2_Stream6_IRQn, preemptPrio, subPrio); } break;
         case Stream::Dma2_Stream7: { SetIRQn(DMA2_Stream7_IRQn, preemptPrio, subPrio); } break;
-#endif
         default: ASSERT(false); while(1) { __NOP(); } break; // Impossible selection
     }
 }
@@ -302,7 +292,6 @@ void DMA::DisableInterrupt(Stream stream)
         case Stream::Dma1_Stream5: { HAL_NVIC_DisableIRQ(DMA1_Stream5_IRQn); } break;
         case Stream::Dma1_Stream6: { HAL_NVIC_DisableIRQ(DMA1_Stream6_IRQn); } break;
         case Stream::Dma1_Stream7: { HAL_NVIC_DisableIRQ(DMA1_Stream7_IRQn); } break;
-#if defined (DMA_SxCR_CHSEL_3)
         case Stream::Dma2_Stream0: { HAL_NVIC_DisableIRQ(DMA2_Stream0_IRQn); } break;
         case Stream::Dma2_Stream1: { HAL_NVIC_DisableIRQ(DMA2_Stream1_IRQn); } break;
         case Stream::Dma2_Stream2: { HAL_NVIC_DisableIRQ(DMA2_Stream2_IRQn); } break;
@@ -311,7 +300,6 @@ void DMA::DisableInterrupt(Stream stream)
         case Stream::Dma2_Stream5: { HAL_NVIC_DisableIRQ(DMA2_Stream5_IRQn); } break;
         case Stream::Dma2_Stream6: { HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn); } break;
         case Stream::Dma2_Stream7: { HAL_NVIC_DisableIRQ(DMA2_Stream7_IRQn); } break;
-#endif
         default: ASSERT(false); while(1) { __NOP(); } break; // Impossible selection
     }
 }
@@ -406,8 +394,6 @@ extern "C" void DMA1_Stream7_IRQHandler(void)
     if (dma1Callbacks[7]) { dma1Callbacks[7](); }
 }
 
-#if defined (DMA_SxCR_CHSEL_3)
-
 /**
  * \brief   ISR: route DMA2 Stream0 interrupts to 'Callback'.
  */
@@ -471,5 +457,3 @@ extern "C" void DMA2_Stream7_IRQHandler(void)
 {
     if (dma2Callbacks[7]) { dma2Callbacks[7](); }
 }
-
-#endif
