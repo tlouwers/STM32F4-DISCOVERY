@@ -264,6 +264,8 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
 
 	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
+	mDirection = Direction::OUTPUT;
+
 	Set(level);
 }
 
@@ -292,6 +294,8 @@ void Pin::Configure(PullUpDown pullUpDown)
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
 	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
+
+	mDirection = Direction::INPUT;
 }
 
 /**
@@ -322,6 +326,8 @@ void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::
     GPIO_InitStructure.Alternate = static_cast<uint8_t>(alternate);
 
     HAL_GPIO_Init(mPort, &GPIO_InitStructure);
+
+    mDirection = Direction::ALTERNATE;
 }
 
 /**
