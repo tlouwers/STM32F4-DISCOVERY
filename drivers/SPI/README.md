@@ -12,7 +12,7 @@ Intended use is to provide an easier means to work with the SPI peripheral. This
 # Notes
 Master only.
 The ChipSelect is to be toggled manually (outside the class).
-The callbacks are called withing ISR context.
+The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
  
 # Examples
@@ -22,7 +22,7 @@ SPI mSPI;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
-    mSPI(SPIInstance::SPI_1),
+    mSPI(SPIInstance::SPI_1)
 {}
 
 // Initialize the class:
