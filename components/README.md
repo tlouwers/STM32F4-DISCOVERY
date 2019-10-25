@@ -1,94 +1,98 @@
 
+
 # Description
 LIS3DSH accelerometer class.
 
-Used to configure and read X,Y,Z (motion) samples from the LIS3DSH accelerometer. 
+Intended use is to provide an easier means to work with the LIS3DSH accelerometer. This class makes use of the SPI and DMA class and is (per default) configured to readout accelerometer samples (X,Y,Z) at 52 Hz. The hardware FIFO of the LIS3DSH is used, meaning after 25 samples (X,Y,Z) the set threshold (or watermark level) signals to the microcontroller data is available, which is then read via DMA.
+
+To be able to decouple from the ISR as much as possible, data is read to internal buffer in LIS3DSH class first using DMA, after which a callback data is available is triggered. The requesting/consuming class can then (outside ISR context) read the data.
 
 # Requirements
-* ST Microelectronics STM32F407G-DISC1
-* Uses the SPI class
-* Uses the DMA class
+* ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 * C++11 is assumed
-* Pins already configured for INT1/INT2
+* DMA utility class
+* SPI peripheral class
+* Pins already configured for SPI
 
 # Notes
-The intent is to use the internal fifo, configured for 25 samples (X,Y,Z) of int16_t in size. When this watermark level is reached, INT1 is configured to toggle, after which a DMA transaction is started to read the samples from the fifo to temporary buffer (inside the LIS3DSH class). Once DMA is finished, a calback is called to let the calling class know the samples can be retrieved from temporary buffer. This intend here was to decouple the readout from ISR context.
+This is configured to read samples (X,Y,Z) - 16-bit each, at 52 Hz from the LIS3DSH. The hardware FIFO is used, the threshold (or watermark level) is set to 25 samples.
  
 # Examples
 ```cpp
-// Declare the class (in Application.hpp for example):
-#include "components/LIS3DSH.hpp"
-
-// And declare the object and helper variables:
-Pin mChipSelect;
-Pin mMotionInt1;
-Pin mMotionInt2;
-SPI mSPI;
+// Declare the required classes (in Application.hpp for example):
 DMA mDMA_SPI_Tx;
 DMA mDMA_SPI_Rx;
+SPI mSPI;
 LIS3DSH mLIS3DSH;
-std::atomic<bool> mMotionDataAvailable;
-uint8_t mMotionLength;
 
-// And the callback to call when data is available:
-void MotionDataReceived(uint8_t length);
-
-// In the Application.cpp constructor:
+// Construct the classes, fill the right parameters:
 Application::Application() :
-    mChipSelect(PIN_SPI1_CS, Level::HIGH),              // SPI ChipSelect for Motion
-    mMotionInt1(PIN_MOTION_INT1, PullUpDown::HIGHZ),
-    mMotionInt2(PIN_MOTION_INT2, PullUpDown::HIGHZ),
-    mSPI(SPIInstance::SPI_1),
     mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
-    mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-    mMotionDataAvailable(false),
-    mMotionLength(0)
+    mSPI(SPIInstance::SPI_1),
+    mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2)
 {
-    // Configure the callback
-    mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
+	// Configure a callback to call when data is available.
+	mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
 }
 
-// Initialize the components:
-bool Application::Init()
+// Initialize the class:
+bool Application::Initialize()
 {
-    // Configure DMA and SPI - note no checks for result for readability here.
-    mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
-    mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
-    mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+	// Configure DMA for SPI. Note: not checking for returned result for simplicity.
+    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
 
-	// Initialize the LIS3DSH accelerometer
-    mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
+	// Link DMA utility class with SPI
+    result = mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
+    result = mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
+
+	// Initialize SPI
+    result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+
+	// Initialize the LIS3DSH
+    result = mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
+
+	// Helper variables
     mMotionDataAvailable = false;
     mMotionLength = 0;
 
-	// Start acquisition
-    mLIS3DSH.Enable();
+	// Other stuff...
+
+	// Start data acquisition with the LIS3DSH	
+    result = mLIS3DSH.Enable();
+	
+	return result;
 }
 
-// The callback is called after the watermark level in the LIS3DSH fifo is reached, the data is read via SPI (and DMA) and available in temporary buffer in the LIS3DSH class.
+// Callback called for the motion data received callback.
 void Application::MotionDataReceived(uint8_t length)
 {
+	// This only sets a flag, data is already read from LIS3DSH FIFO into
+	// internal buffer. The application is to read this later.
+	// Decouples reading data from ISR as much as possible.
     mMotionDataAvailable = true;
     mMotionLength = length;
 }
 
-// The (main) Process loop can now read the data (decoupled from ISR):
+// Main process loop of the application. This method is to be called
+// often and acts as the main processor of data of the application.
 void Application::Process()
 {
-	// Array to keep the samples
+	// Array to store received motion data. Note: this still needs conversion
+	// to SI units (this is the RAW data)
     static uint8_t motionArray[25 * 3 * 2] = {};
 
     if (mMotionDataAvailable)
     {
         mMotionDataAvailable = false;
 
-		// Read samples from temporary buffer in LIS3DSH class into the 'motionArray'. Note no checks for result for readability here.
-        mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
+		// Read data from internal LIS3DSH buffer. Note: not checking for returned result for simplicity.
+        bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
 
-        // ToDo: deinterleave to X,Y,Z samples, in int16_t format.
+        // Deinterleave to X,Y,Z samples
+        // Convert to SI units
+        // Do something with the data
     }
 }
 ```
