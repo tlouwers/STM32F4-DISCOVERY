@@ -45,6 +45,11 @@ constexpr PinIdPort PIN_USART2_TX   = { GPIO_PIN_2,  GPIOA };
 constexpr PinIdPort PIN_USART2_RX   = { GPIO_PIN_3,  GPIOA };
 constexpr PinIdPort PIN_USART2_CTS  = { GPIO_PIN_3,  GPIOD };
 
+// Audio Amplifier - control (CS43L22) - I2C
+constexpr PinIdPort PIN_I2C1_SCL    = { GPIO_PIN_6,  GPIOB };
+constexpr PinIdPort PIN_I2C1_SDA    = { GPIO_PIN_9,  GPIOB };
+constexpr PinIdPort PIN_AUDIO_nRST  = { GPIO_PIN_4,  GPIOD };
+
 // Motion (LIS3DSH) - SPI1
 constexpr PinIdPort PIN_SPI1_SCK    = { GPIO_PIN_5,  GPIOA };
 constexpr PinIdPort PIN_SPI1_MISO   = { GPIO_PIN_6,  GPIOA };

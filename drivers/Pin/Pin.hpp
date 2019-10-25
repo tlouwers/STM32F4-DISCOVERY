@@ -147,6 +147,16 @@ enum class Alternate : uint8_t
     AF15,
 };
 
+/**
+ * \enum    Mode
+ * \brief   Alternate function drive mode of a pin.
+ */
+enum class Mode : bool
+{
+    PUSH_PULL,
+    OPEN_DRAIN,
+};
+
 
 /************************************************************************/
 /* Class declaration                                                    */
@@ -162,11 +172,11 @@ public:
 	explicit Pin(PinIdPort idAndPort);
 	Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
 	Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
-	Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ);
+	Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
 
 	void Configure(Level level, Drive drive = Drive::PUSH_PULL);
 	void Configure(PullUpDown pullUpDown);
-	void Configure(Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ);
+	void Configure(Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
 
 	bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true);
 	bool InterruptEnable();
