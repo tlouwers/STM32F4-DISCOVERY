@@ -47,8 +47,6 @@ void Board::InitPins()
     Pin(PIN_SPI1_MISO, Alternate::AF5);
     Pin(PIN_SPI1_MOSI, Alternate::AF5);
     // PIN_SPI1_CS     -- ChipSelect, handled in software
-    // PIN_MOTION_INT1 -- Input, handled in LIS3DSH class
-    // PIN_MOTION_INT2 -- Input, handled in LIS3DSH class
 }
 
 /**

@@ -71,10 +71,6 @@ struct SPICallbacks {
 class SPI
 {
 public:
-    /**
-     * \enum    Mode
-     * \brief   Available SPI modes (CPOL/CPHA).
-     */
     enum class Mode : uint8_t
     {
         _0,     ///< CPOL = 0, CPHA = 0
@@ -117,17 +113,17 @@ public:
     DMA_HandleTypeDef*& GetDmaTxHandle();
     DMA_HandleTypeDef*& GetDmaRxHandle();
 
-    bool WriteDMA(const uint8_t* src, uint16_t length, const std::function<void()>& handler);
-    bool WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler);
-    bool ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& handler);
+    bool WriteDMA(const uint8_t* src, size_t length, const std::function<void()>& handler);
+    bool WriteReadDMA(const uint8_t* src, uint8_t* dest, size_t length, const std::function<void()>& handler);
+    bool ReadDMA(uint8_t* dest, size_t length, const std::function<void()>& handler);
 
-    bool WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler);
-    bool WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler);
-    bool ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void()>& handler);
+    bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& handler);
+    bool WriteReadInterrupt(const uint8_t* src, uint8_t* dest, size_t length, const std::function<void()>& handler);
+    bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void()>& handler);
 
-    bool WriteBlocking(const uint8_t* src, uint16_t length);
-    bool WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length);
-    bool ReadBlocking(uint8_t* dest, uint16_t length);
+    bool WriteBlocking(const uint8_t* src, size_t length);
+    bool WriteReadBlocking(const uint8_t* src, uint8_t* dest, size_t length);
+    bool ReadBlocking(uint8_t* dest, size_t length);
 
 private:
     SPIInstance       mInstance;

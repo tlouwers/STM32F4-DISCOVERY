@@ -30,6 +30,15 @@
 #include "utility/SlimAssert.h"
 #include "stm32f4xx_hal_uart.h"
 
+/************************************************************************/
+/* Alias                                                                */
+/************************************************************************/
+/**
+ * \brief   Constant representing the maximum transmission length of a
+ *          single transmission packet.
+ */
+constexpr uint16_t MAX_TRANSMISSION_LENGTH = UINT16_MAX;
+
 
 /************************************************************************/
 /* Static variables                                                     */
@@ -207,15 +216,15 @@ DMA_HandleTypeDef*& SPI::GetDmaRxHandle()
  * \returns True if the transaction could be started, else false. Returns false if no DMA is setup for Tx.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool SPI::WriteDMA(const uint8_t* src, uint16_t length, const std::function<void()>& handler)
+bool SPI::WriteDMA(const uint8_t* src, size_t length, const std::function<void()>& handler)
 {
     ASSERT(src);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
-    if (!mInitialized)  { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+    if (!mInitialized) { return false; }
     if (mHandle.hdmatx == nullptr) { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
@@ -235,17 +244,18 @@ bool SPI::WriteDMA(const uint8_t* src, uint16_t length, const std::function<void
  * \note    Write and Read happen at the same time, hence both buffers are the
  *          same sime.
  */
-bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
+bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, size_t length, const std::function<void()>& handler)
 {
     ASSERT(src);
     ASSERT(dest);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr)  { return false; }
+    if (src == nullptr) { return false; }
     if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
-    if (!mInitialized)   { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+
+    if (!mInitialized) { return false; }
     if (mHandle.hdmatx == nullptr) { return false; }
     if (mHandle.hdmarx == nullptr) { return false; }
 
@@ -263,15 +273,15 @@ bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const
  *          if no DMA is setup for Rx.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool SPI::ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& handler)
+bool SPI::ReadDMA(uint8_t* dest, size_t length, const std::function<void()>& handler)
 {
     ASSERT(dest);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
-    if (!mInitialized)   { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+    if (!mInitialized) { return false; }
     if (mHandle.hdmarx == nullptr) { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
@@ -287,15 +297,15 @@ bool SPI::ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& h
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool SPI::WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler)
+bool SPI::WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& handler)
 {
     ASSERT(src);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
-    if (!mInitialized)  { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+    if (!mInitialized) { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
 
@@ -313,17 +323,17 @@ bool SPI::WriteInterrupt(const uint8_t* src, uint16_t length, const std::functio
  * \note    Write and Read happen at the same time, hence both buffers are the
  *          same sime.
  */
-bool SPI::WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
+bool SPI::WriteReadInterrupt(const uint8_t* src, uint8_t* dest, size_t length, const std::function<void()>& handler)
 {
     ASSERT(src);
     ASSERT(dest);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr)  { return false; }
+    if (src == nullptr) { return false; }
     if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
-    if (!mInitialized)   { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+    if (!mInitialized) { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
 
@@ -338,15 +348,15 @@ bool SPI::WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length,
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool SPI::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void()>& handler)
+bool SPI::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void()>& handler)
 {
     ASSERT(dest);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
-    if (!mInitialized)   { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+    if (!mInitialized) { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
 
@@ -360,15 +370,15 @@ bool SPI::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void
  * \returns True if the write was successful, else false.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool SPI::WriteBlocking(const uint8_t* src, uint16_t length)
+bool SPI::WriteBlocking(const uint8_t* src, size_t length)
 {
     ASSERT(src);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
-    if (!mInitialized)  { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+    if (!mInitialized) { return false; }
 
     return (HAL_SPI_Transmit(&mHandle, const_cast<uint8_t*>(src), length, HAL_MAX_DELAY) == HAL_OK);
 }
@@ -383,17 +393,17 @@ bool SPI::WriteBlocking(const uint8_t* src, uint16_t length)
  * \note    Write and Read happen at the same time, hence both buffers are the
  *          same sime.
  */
-bool SPI::WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length)
+bool SPI::WriteReadBlocking(const uint8_t* src, uint8_t* dest, size_t length)
 {
     ASSERT(src);
     ASSERT(dest);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr)  { return false; }
+    if (src == nullptr) { return false; }
     if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
-    if (!mInitialized)   { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+    if (!mInitialized) { return false; }
 
     return (HAL_SPI_TransmitReceive(&mHandle, const_cast<uint8_t*>(src), dest, length, HAL_MAX_DELAY) == HAL_OK);
 }
@@ -405,15 +415,15 @@ bool SPI::WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length)
  * \returns True if the read was successful, else false.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool SPI::ReadBlocking(uint8_t* dest, uint16_t length)
+bool SPI::ReadBlocking(uint8_t* dest, size_t length)
 {
     ASSERT(dest);
-    ASSERT(length > 0);
+    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
-    if (!mInitialized)   { return false; }
+    if (length == 0 || length > MAX_TRANSMISSION_LENGTH) { return false; }
+    if (!mInitialized) { return false; }
 
     return (HAL_SPI_Receive(&mHandle, dest, length, HAL_MAX_DELAY) == HAL_OK);
 }
