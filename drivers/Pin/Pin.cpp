@@ -225,15 +225,16 @@ Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
  * \param   idAndPort   Pin id and port to which the pin belongs.
  * \param   alternate   The alternate function for the pin.
  * \param   pullUpDown  Pull up or pull down mode configuration.
+ * \param   mode        Alternate function drive mode configuration, default push pull.
  * \note    If pullUpDown is set to HIGHZ it is ignored.
  */
-Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */)
+Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */, Mode mode /* = Mode::PUSH_PULL */)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
     mDirection = Direction::ALTERNATE;
 
-    Configure(alternate, pullUpDown);
+    Configure(alternate, pullUpDown, mode);
 }
 
 /**
@@ -302,9 +303,10 @@ void Pin::Configure(PullUpDown pullUpDown)
  * \brief   Configuration method for pin as alternate function.
  * \param   alternate   The alternate function for the pin.
  * \param   pullUpDown  Pull up or pull down mode configuration.
+ * \param   mode        Alternate function drive mode configuration, default push pull.
  * \note    If pullUpDown is set to HIGHZ it is ignored.
  */
-void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */)
+void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */, Mode mode /* = Mode::PUSH_PULL */)
 {
     ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
@@ -313,7 +315,7 @@ void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::
     GPIO_InitTypeDef GPIO_InitStructure = {0};
 
     GPIO_InitStructure.Pin  = mId;
-    GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStructure.Mode = (mode == Mode::PUSH_PULL) ? GPIO_MODE_AF_PP : GPIO_MODE_AF_OD;
     switch (pullUpDown)
     {
         case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
