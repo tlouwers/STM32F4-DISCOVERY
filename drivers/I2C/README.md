@@ -26,32 +26,32 @@ Application::Application() :
 // Initialize the class:
 bool Application::Initialize()
 {
-	bool result = mI2C.Init(I2C::Config(12, I2C::BusSpeed::NORMAL));
+    bool result = mI2C.Init(I2C::Config(12, I2C::BusSpeed::NORMAL));
     assert(result);
-	
-	// Other stuff...
-	
-	return result;
+
+    // Other stuff...
+
+    return result;
 }
 
 // Example method to read the CHIP_ID from the CS43L22 audio amplifier chip
 void Application::TestReadIdCS43L22()
 {
-	const uint8_t DEVICE_ADDRESS = 0x94;
-	const uint8_t CHIP_ID        = 0x01;
-	
-	uint8_t reg = CHIP_ID;
-	uint8_t dest = 0;
+    const uint8_t DEVICE_ADDRESS = 0x94;
+    const uint8_t CHIP_ID        = 0x01;
 
-	bool result = false;
-	// First write to the slave to indicate which register we want to read from
+    uint8_t reg = CHIP_ID;
+    uint8_t dest = 0;
+
+    bool result = false;
+    // First write to the slave to indicate which register we want to read from
     if (mI2C.WriteBlocking(DEVICE_ADDRESS, &reg, 1))
     {
-	    // Then read 1 byte from the slave (the register indicated before)
+        // Then read 1 byte from the slave (the register indicated before)
         result = mI2C.ReadBlocking(DEVICE_ADDRESS, dest, 1);
-		if (result)
-		{
-			// Do stuff with the received variable
-		}
+        if (result)
+        {
+            // Do stuff with the received variable
+        }
     }
 ```

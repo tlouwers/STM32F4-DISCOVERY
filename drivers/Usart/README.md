@@ -28,10 +28,10 @@ bool Application::Initialize()
 {
     bool result = mUsart.Init(Usart::Config(10, false, Usart::Baudrate::_9600));
     assert(result);
-	
-	// Other stuff...
-	
-	return result;
+
+    // Other stuff...
+
+    return result;
 }
 
 // To Write (interrupt based):

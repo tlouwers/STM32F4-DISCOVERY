@@ -1,5 +1,3 @@
-
-
 # Description
 LIS3DSH accelerometer class.
 
@@ -32,45 +30,45 @@ Application::Application() :
     mSPI(SPIInstance::SPI_1),
     mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2)
 {
-	// Configure a callback to call when data is available.
-	mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
+    // Configure a callback to call when data is available.
+    mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
 }
 
 // Initialize the class:
 bool Application::Initialize()
 {
-	// Configure DMA for SPI. Note: not checking for returned result for simplicity.
-    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    // Configure DMA for SPI. Note: not checking for returned result for simplicity.
+    mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
 
-	// Link DMA utility class with SPI
-    result = mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
-    result = mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
+    // Link DMA utility class with SPI
+    mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
+    mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
 
-	// Initialize SPI
-    result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+    // Initialize SPI
+    mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
 
-	// Initialize the LIS3DSH
-    result = mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
+    // Initialize the LIS3DSH
+    mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
 
-	// Helper variables
+    // Helper variables
     mMotionDataAvailable = false;
     mMotionLength = 0;
 
-	// Other stuff...
+    // Other stuff...
 
-	// Start data acquisition with the LIS3DSH	
+    // Start data acquisition with the LIS3DSH	
     result = mLIS3DSH.Enable();
-	
-	return result;
+
+    return result;
 }
 
 // Callback called for the motion data received callback.
 void Application::MotionDataReceived(uint8_t length)
 {
-	// This only sets a flag, data is already read from LIS3DSH FIFO into
-	// internal buffer. The application is to read this later.
-	// Decouples reading data from ISR as much as possible.
+    // This only sets a flag, data is already read from LIS3DSH FIFO into
+    // internal buffer. The application is to read this later.
+    // Decouples reading data from ISR as much as possible.
     mMotionDataAvailable = true;
     mMotionLength = length;
 }
@@ -79,15 +77,15 @@ void Application::MotionDataReceived(uint8_t length)
 // often and acts as the main processor of data of the application.
 void Application::Process()
 {
-	// Array to store received motion data. Note: this still needs conversion
-	// to SI units (this is the RAW data)
+    // Array to store received motion data. Note: this still needs conversion
+    // to SI units (this is the RAW data)
     static uint8_t motionArray[25 * 3 * 2] = {};
 
     if (mMotionDataAvailable)
     {
         mMotionDataAvailable = false;
 
-		// Read data from internal LIS3DSH buffer. Note: not checking for returned result for simplicity.
+        // Read data from internal LIS3DSH buffer. Note: not checking for returned result for simplicity.
         bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
 
         // Deinterleave to X,Y,Z samples

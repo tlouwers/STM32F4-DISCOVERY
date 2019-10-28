@@ -32,7 +32,7 @@ It is quite easy to bypass this class and set pins outside of it. For convenienc
 # Examples
 ```cpp
 // Declaration (in header file, say in Application.hpp):
-Pin a1;										// Note: requires construction during construction of owning class
+Pin a1;                                    // Note: requires construction during construction of owning class
 Pin a2;
 
 // Construct during construction of Application.cpp:

@@ -1,4 +1,3 @@
-
 # Description
 SPI peripheral driver class.
 
@@ -30,10 +29,10 @@ bool Application::Initialize()
 {
     bool result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
     assert(result);
-	
-	// Other stuff...
-	
-	return result;
+
+    // Other stuff...
+
+    return result;
 }
 
 // To Write (interrupt based):
