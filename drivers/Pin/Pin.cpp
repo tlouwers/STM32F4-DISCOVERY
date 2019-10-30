@@ -9,7 +9,7 @@
  *                                                                Terry Louwers
  *
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
- * 			State is preserved (partly) within the hardware.
+ *          State is preserved (partly) within the hardware.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/Pin
  *
@@ -201,9 +201,9 @@ Pin::Pin(PinIdPort idAndPort, Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
-	mDirection = Direction::OUTPUT;
+    mDirection = Direction::OUTPUT;
 
-	Configure(level, drive);
+    Configure(level, drive);
 }
 
 /**
@@ -215,9 +215,9 @@ Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
-	mDirection = Direction::INPUT;
+    mDirection = Direction::INPUT;
 
-	Configure(pullUpDown);
+    Configure(pullUpDown);
 }
 
 /**
@@ -246,28 +246,28 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
     ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
-	CheckAndEnableAHB1PeripheralClock(mPort);
+    CheckAndEnableAHB1PeripheralClock(mPort);
 
-	GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitTypeDef GPIO_InitStructure = {};
 
-	GPIO_InitStructure.Pin  = mId;
-	GPIO_InitStructure.Mode = (drive == Drive::PUSH_PULL) ? GPIO_MODE_OUTPUT_PP : GPIO_MODE_OUTPUT_OD;
-	switch (drive)
-	{
-	    case Drive::PUSH_PULL:               // Fall through
-	    case Drive::OPEN_DRAIN:              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
-	    case Drive::OPEN_DRAIN_PULL_UP: 	 GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
-	    case Drive::OPEN_DRAIN_PULL_DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-	    case Drive::OPEN_DRAIN_PULL_UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
-	    default: ASSERT(false);              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;    // Invalid drive
-	}
-	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStructure.Pin  = mId;
+    GPIO_InitStructure.Mode = (drive == Drive::PUSH_PULL) ? GPIO_MODE_OUTPUT_PP : GPIO_MODE_OUTPUT_OD;
+    switch (drive)
+    {
+        case Drive::PUSH_PULL:               // Fall through
+        case Drive::OPEN_DRAIN:              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+        case Drive::OPEN_DRAIN_PULL_UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+        case Drive::OPEN_DRAIN_PULL_DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
+        case Drive::OPEN_DRAIN_PULL_UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+        default: ASSERT(false);              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;    // Invalid drive
+    }
+    GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
-	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
+    HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
-	mDirection = Direction::OUTPUT;
+    mDirection = Direction::OUTPUT;
 
-	Set(level);
+    Set(level);
 }
 
 /**
@@ -278,25 +278,25 @@ void Pin::Configure(PullUpDown pullUpDown)
 {
     ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
 
-	CheckAndEnableAHB1PeripheralClock(mPort);
+    CheckAndEnableAHB1PeripheralClock(mPort);
 
-	GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitTypeDef GPIO_InitStructure = {};
 
-	GPIO_InitStructure.Pin  = mId;
-	GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
-	switch (pullUpDown)
-	{
-		case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
-		case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-		case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
-		case PullUpDown::HIGHZ:   // Fall through
-		default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
-	}
-	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStructure.Pin  = mId;
+    GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
+    switch (pullUpDown)
+    {
+        case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+        case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
+        case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+        case PullUpDown::HIGHZ:   // Fall through
+        default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+    }
+    GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
-	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
+    HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
-	mDirection = Direction::INPUT;
+    mDirection = Direction::INPUT;
 }
 
 /**
@@ -312,7 +312,7 @@ void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::
 
     CheckAndEnableAHB1PeripheralClock(mPort);
 
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitTypeDef GPIO_InitStructure = {};
 
     GPIO_InitStructure.Pin  = mId;
     GPIO_InitStructure.Mode = (mode == Mode::PUSH_PULL) ? GPIO_MODE_AF_PP : GPIO_MODE_AF_OD;
@@ -346,8 +346,8 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
     ASSERT(mDirection == Direction::INPUT);     // Cannot configure interrupt if pin is not configured as input
     ASSERT(callback);                           // Cannot configure interrupt without callback
 
-	// First disable a possible configured interrupt
-	const IRQn_Type irq = GetIRQn(mId);
+    // First disable a possible configured interrupt
+    const IRQn_Type irq = GetIRQn(mId);
     if (!IsIRQSharedWithOtherPin(mId))
     {
         HAL_NVIC_DisableIRQ(irq);
@@ -370,25 +370,25 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
         pinInterruptList[index].enabled  = enableAfterConfigure;
     }
 
-	GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitTypeDef GPIO_InitStructure = {};
 
-	switch (trigger)
-	{
-		case Trigger::RISING:  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;         break;
-		case Trigger::FALLING: GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;        break;
-		case Trigger::BOTH:    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING_FALLING; break;
-		default: ASSERT(false);                                                       break;    // Unknown trigger configuration
-	}
-	GPIO_InitStructure.Pin = mId;
+    switch (trigger)
+    {
+        case Trigger::RISING:  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;         break;
+        case Trigger::FALLING: GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;        break;
+        case Trigger::BOTH:    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING_FALLING; break;
+        default: ASSERT(false);                                                       break;    // Unknown trigger configuration
+    }
+    GPIO_InitStructure.Pin = mId;
 
-	HAL_GPIO_Init(mPort, &GPIO_InitStructure);
+    HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
-	// Configure NVIC to generate interrupt
-	HAL_NVIC_ClearPendingIRQ(irq);
-	HAL_NVIC_SetPriority(irq, INTERRUPT_PRIORITY, 0);
-	HAL_NVIC_EnableIRQ(irq);
+    // Configure NVIC to generate interrupt
+    HAL_NVIC_ClearPendingIRQ(irq);
+    HAL_NVIC_SetPriority(irq, INTERRUPT_PRIORITY, 0);
+    HAL_NVIC_EnableIRQ(irq);
 
-	return true;
+    return true;
 }
 
 /**
@@ -490,8 +490,8 @@ void Pin::Set(Level level)
 {
     ASSERT(mDirection == Direction::OUTPUT);    // Cannot set level if pin is not configured as output
 
-	(level == Level::HIGH) ? HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_SET) :
-							 HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_RESET);
+    (level == Level::HIGH) ? HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_SET) :
+                             HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_RESET);
 }
 
 /**
@@ -500,18 +500,18 @@ void Pin::Set(Level level)
  */
 Level Pin::Get() const
 {
-	switch (mDirection)
-	{
-	    case Direction::OUTPUT:
-	    case Direction::INPUT:
-	        return (HAL_GPIO_ReadPin(mPort, mId) == GPIO_PIN_SET) ? Level::HIGH : Level::LOW;
-	        break;
-	    case Direction::UNDEFINED:      // Fall through
-	    default:
-	        ASSERT(false);              // Cannot get pin level if pin not defined as input or output
-	        while (true) { __NOP(); }   // User must resolve this incorrect use of Get()
-	        break;
-	}
+    switch (mDirection)
+    {
+        case Direction::OUTPUT:
+        case Direction::INPUT:
+            return (HAL_GPIO_ReadPin(mPort, mId) == GPIO_PIN_SET) ? Level::HIGH : Level::LOW;
+            break;
+        case Direction::UNDEFINED:      // Fall through
+        default:
+            ASSERT(false);              // Cannot get pin level if pin not defined as input or output
+            while (true) { __NOP(); }   // User must resolve this incorrect use of Get()
+            break;
+    }
 }
 
 /**
