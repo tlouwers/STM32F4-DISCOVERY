@@ -90,7 +90,8 @@ static int GetIndexById(uint16_t id)
  */
 static bool IsIRQSharedWithOtherPin(uint16_t id)
 {
-    bool result = true;
+    uint8_t index = GetIndexById(id);
+    uint8_t count = 0;
 
     if (id < GPIO_PIN_5 )
     {
@@ -98,23 +99,27 @@ static bool IsIRQSharedWithOtherPin(uint16_t id)
     }
     else if (id < GPIO_PIN_10)
     {
-        if (id !=  5) { result &= (pinInterruptList[5].callback  == nullptr); }
-        if (id !=  6) { result &= (pinInterruptList[6].callback  == nullptr); }
-        if (id !=  7) { result &= (pinInterruptList[7].callback  == nullptr); }
-        if (id !=  8) { result &= (pinInterruptList[8].callback  == nullptr); }
-        if (id !=  9) { result &= (pinInterruptList[9].callback  == nullptr); }
+        if (index == 5) { if (pinInterruptList[5].callback != nullptr) { count++; } }
+        if (index == 6) { if (pinInterruptList[6].callback != nullptr) { count++; } }
+        if (index == 7) { if (pinInterruptList[7].callback != nullptr) { count++; } }
+        if (index == 8) { if (pinInterruptList[8].callback != nullptr) { count++; } }
+        if (index == 9) { if (pinInterruptList[9].callback != nullptr) { count++; } }
+
+        if (pinInterruptList[index].callback != nullptr) { count--; }
     }
     else
     {
-        if (id != 10) { result &= (pinInterruptList[10].callback == nullptr); }
-        if (id != 11) { result &= (pinInterruptList[11].callback == nullptr); }
-        if (id != 12) { result &= (pinInterruptList[12].callback == nullptr); }
-        if (id != 13) { result &= (pinInterruptList[13].callback == nullptr); }
-        if (id != 14) { result &= (pinInterruptList[14].callback == nullptr); }
-        if (id != 15) { result &= (pinInterruptList[15].callback == nullptr); }
+        if (index == 10) { if (pinInterruptList[10].callback != nullptr) { count++; } }
+        if (index == 11) { if (pinInterruptList[11].callback != nullptr) { count++; } }
+        if (index == 12) { if (pinInterruptList[12].callback != nullptr) { count++; } }
+        if (index == 13) { if (pinInterruptList[13].callback != nullptr) { count++; } }
+        if (index == 14) { if (pinInterruptList[14].callback != nullptr) { count++; } }
+        if (index == 15) { if (pinInterruptList[15].callback != nullptr) { count++; } }
+
+        if (pinInterruptList[index].callback != nullptr) { count--; }
     }
 
-    return !result;
+    return (count > 0);
 }
 
 /**
