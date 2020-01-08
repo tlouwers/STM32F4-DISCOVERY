@@ -12,7 +12,7 @@
  *
  * \note    The ChipSelect must be toggled outside this driver.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/SPI
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/SPI
  *
  * \details Intended use is to provide an easier means to work with the SPI
  *          peripheral. This class assumes the pins to use for the SPI bus are

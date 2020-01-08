@@ -1,5 +1,3 @@
-
-
 # Description
 Helper class which can be used as replacement for the WaitForInterrupt / WaitForEvent functionality. This adds  added CPU statistics like a percentage the CPU is awake and a (main) loop count. This can be useful for gathering statistics of the load of the CPU.
 

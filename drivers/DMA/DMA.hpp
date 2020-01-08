@@ -10,7 +10,7 @@
  *
  * \brief   DMA utility class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/DMA
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/DMA
  *
  * \details Intended use is to provide a plug-n-play DMA object to 'Link' with a
  *          peripheral. This way a peripheral can be extended with DMA

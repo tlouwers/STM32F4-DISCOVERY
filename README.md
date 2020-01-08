@@ -13,3 +13,4 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | drivers/SPI | SPI peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | drivers/Usart | USART peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | utility/CpuWakeCounter | Helper class intended to put the CPU into a 'light' sleep mode and measure the wake percentage in one go. |
+| utility/StackPainting | Helper class intended to check the stack usage during runtime. |

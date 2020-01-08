@@ -1,8 +1,22 @@
-/*
- * LIS3DSH.cpp
+/**
+ * \file LIS3DSH.cpp
  *
- *  Created on: Oct 2, 2019
- *      Author: terry.louwers
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ *
+ * \brief   LIS3DSH accelerometer class.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/components/LIS3DSH
+ *
+ * \details Used to configure and read X,Y,Z (motion) samples from the LIS3DSH accelerometer. 
+ *
+ * \author      T. Louwers <terry.louwers@fourtress.nl>
+ * \version     1.0
+ * \date        10-2019
  */
 
 /************************************************************************/

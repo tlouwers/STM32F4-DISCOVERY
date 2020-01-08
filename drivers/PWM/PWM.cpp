@@ -10,7 +10,7 @@
  *
  * \brief   PWM class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/PWM
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/PWM
  *
  * \details Intended use is to provide an easier means to work with PWM
  *          channels. For this driver it is hardcoded to timer 2, all 4 channels
