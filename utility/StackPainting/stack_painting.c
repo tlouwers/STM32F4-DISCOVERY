@@ -10,13 +10,14 @@
  *
  * \brief   Stack painting functions for ST Cortex-M4.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/utility/StackPainting
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/StackPainting
  *
  * \details This code is intended to be used to determine the stack usage at
  *          runtime. The code is implemented in 'C', to be usable in both 'C'
  *          and 'C++' projects.
- *
- *          As example:
+ */
+#ifdef DOXYGEN_SHOULD_SKIP_THIS
+/*          Example:
  *          // Include the header file
  *          #include "stack_painting.h"
  *
@@ -44,7 +45,9 @@
  *          {
  *              uint32_t total_stack = get_total_stack();
  *          }
- *
+ */
+#endif
+/*
  * \note    This code is not to be used 'as-is': be sure you know where the
  *          stack and heap are located in your project and modify the code to
  *          match these areas.
@@ -58,7 +61,7 @@
  * \date    11-2019
  */
 
- /************************************************************************/
+/************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
 #include "stack_painting.h"
@@ -69,14 +72,16 @@
 /* Externals                                                            */
 /************************************************************************/
 /**
- * \brief   Use stack size as specified in the linker control script.
- */
-extern uint32_t _Min_Stack_Size;
-
-/**
  * \brief   Use top of stack as specified in the linker control script.
  */
 extern uint32_t _estack;
+
+/**
+ * \brief   Use bottom of the stack: end of the bss section as specified in
+ *          the linker control script. Note that this is the start of the
+ *          heap (which may or may not be used yet).
+ */
+extern uint32_t _ebss;
 
 
 /************************************************************************/
@@ -106,11 +111,12 @@ static uint32_t used_stack_size  = 0;
  */
 void paint_stack(void)
 {
-    // Find the top and bottom of the stack as specified in the linker control script
-    uint32_t* bottom_of_stack = (uint32_t*)((uint32_t)&_estack - (uint32_t)&_Min_Stack_Size);
+    // Top of the stack is the _estack address. The size occupied by the application
+    // is to be subtracted, this we can retrieve by requesting the current stack pointer.
+    const uint32_t application = __get_MSP();
 
-    // Get the space occupied by the application: stack_pointer since start of SRAM
-    uint32_t application = __get_MSP();
+    // Bottom of the stack is the end of the bss section (also: the start of the heap).
+    uint32_t* bottom_of_stack = (uint32_t*)&_ebss;
 
     // Find out what needs to be 'painted' - in sizeof(uint32_t)
     uint32_t area_to_paint = (application - (uint32_t)bottom_of_stack) / 4;
@@ -147,27 +153,30 @@ uint32_t get_used_stack(void)
     uint32_t primask_state = __get_PRIMASK();
     __disable_irq();
 
-    // Find the top and bottom of the stack as specified in the linker control script
-    uint32_t* bottom_of_stack = (uint32_t*)((uint32_t)&_estack - (uint32_t)&_Min_Stack_Size);
-    uint32_t* top_of_stack    = &_estack;
+    // Instead of the top of the stack, use the start from the current stack pointer.
+    uint32_t* application = (uint32_t*)__get_MSP();
+
+    // Bottom of the stack is the end of the bss section (also: the start of the heap).
+    const uint32_t* bottom_of_stack = (uint32_t*)&_ebss;
 
     // Find out what needs to be searched - in sizeof(uint32_t)
-    uint32_t area_to_search = (top_of_stack - bottom_of_stack);
+    uint32_t area_to_search = (application - bottom_of_stack);
 
-    uint32_t i;
-    for (i = 0; i < area_to_search; i++)
+    // Search from top (current stack pointer) to bottom, upto the bss section.
+    for (uint32_t i = 0; i < area_to_search; i++)
     {
-        if (*bottom_of_stack++ != PAINT_VALUE)
+        if (*application == PAINT_VALUE)
         {
             break;
         }
+        application--;
     }
 
     // Restore interrupts
     if (!primask_state) { __enable_irq(); }
 
-    total_stack_size = (area_to_search * 4);            // * 4: uint32_t to byte
-    used_stack_size  = (total_stack_size) - (i * 4);
+    total_stack_size = (area_to_search * 4);                            // * 4: uint32_t to byte
+    used_stack_size  = (uint32_t)&_estack - (uint32_t)application - 4;  // - 4: stopped on still painted value, top of the stack is the _estack address.
 
     return used_stack_size;
 }

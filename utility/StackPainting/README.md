@@ -5,29 +5,30 @@ Low level functions to determine stack usage during run time.
 This code is intended to be used on an ST Cortex-M4, but should be easily portable to other platforms.
 
 ## Requirements
- - GCC compiler (untested on other compilers)
- - STM32F407G-DISC1 board (untested on other microcontrollers)
+- GCC compiler (untested on other compilers)
+- ST Cortex M4 microcontroller (untested on other microcontrollers)
 
 ## Check
-Be sure you know where the stack is located. This is presented in the linker file, in our (tested) case it was in a file called `STM32F407VGTX_FLASH.ld`.
+Be sure you know where the stack is located. This is presented in the linker file, in our (tested) case it was in a file called `STM32F407VGTx_FLASH.ld`.
 
 ## Note
-The code is written in "C", not "C++" - as it performs a few tricks which may not work on every board. Also note that these methods are a rough indication - your mileage may vary.
+The code is written in "C", not C++ - as it performs a few tricks which may not work on every board. Also note that these methods are a rough indication - your mileage may vary.
 
 # Example
 To check the stack usage, a method known as "stack painting" is used: upon startup of the application the entire stack memory is set to a specific value (magic number). When the application has run for a few minutes (hours, whatever it takes to touch all functionality) the stack memory is read and checked: where the magic number is replaced a real method has been executing - thus the stack here is used. Since the assumption is that the stack use will 'grow' when more of the application is used, the maximum stack usage can thus be determined.
 
 ```cpp
-// Include the header file
+// Include the header as 'C' file
 #include "stack_painting.h"
+
 
 // In the main.cpp file, add the 'paint_stack()' function as close to the board startup as possible.
 void main(void)
 {
     paint_stack();		<-- here
 
-    sysclk_init();
-    board_init();
+	Board::Init();
+	Board::InitClock();
 
     // Remainder of the application	
     while(1)

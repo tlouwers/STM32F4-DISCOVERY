@@ -10,13 +10,14 @@
  *
  * \brief   Stack painting functions for ST Cortex-M4.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/utility/StackPainting
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/StackPainting
  *
  * \details This code is intended to be used to determine the stack usage at
  *          runtime. The code is implemented in 'C', to be usable in both 'C'
  *          and 'C++' projects.
- *
- *          As example:
+ */
+#ifdef DOXYGEN_SHOULD_SKIP_THIS
+/*          Example:
  *          // Include the header file
  *          #include "stack_painting.h"
  *
@@ -44,7 +45,9 @@
  *          {
  *              uint32_t total_stack = get_total_stack();
  *          }
- *
+ */
+#endif
+/*
  * \note    This code is not to be used 'as-is': be sure you know where the
  *          stack and heap are located in your project and modify the code to
  *          match these areas.
