@@ -18,7 +18,7 @@
  *          and let it go out of scope.
  *          Later in the application, for the few pins where needed, pass along
  *          the PinIdPort struct to the class where a pin object is needed.
- *          Then during the initialisation of that class (not construction)
+ *          Then during the initialization of that class (not construction)
  *          create and fill the Pin object with desired values. At this point
  *          the interrupts can be configured as well.
  *
@@ -90,34 +90,32 @@ static int GetIndexById(uint16_t id)
  */
 static bool IsIRQSharedWithOtherPin(uint16_t id)
 {
-    uint8_t index = GetIndexById(id);
+    int index = GetIndexById(id);
     uint8_t count = 0;
 
-    if (id < GPIO_PIN_5 )
+    if (id < GPIO_PIN_5)
     {
         return false;
     }
     else if (id < GPIO_PIN_10)
     {
-        if (index == 5) { if (pinInterruptList[5].callback != nullptr) { count++; } }
-        if (index == 6) { if (pinInterruptList[6].callback != nullptr) { count++; } }
-        if (index == 7) { if (pinInterruptList[7].callback != nullptr) { count++; } }
-        if (index == 8) { if (pinInterruptList[8].callback != nullptr) { count++; } }
-        if (index == 9) { if (pinInterruptList[9].callback != nullptr) { count++; } }
-
-        if (pinInterruptList[index].callback != nullptr) { count--; }
+        if (pinInterruptList[5].callback != nullptr) { count++; }
+        if (pinInterruptList[6].callback != nullptr) { count++; }
+        if (pinInterruptList[7].callback != nullptr) { count++; }
+        if (pinInterruptList[8].callback != nullptr) { count++; }
+        if (pinInterruptList[9].callback != nullptr) { count++; }
     }
     else
     {
-        if (index == 10) { if (pinInterruptList[10].callback != nullptr) { count++; } }
-        if (index == 11) { if (pinInterruptList[11].callback != nullptr) { count++; } }
-        if (index == 12) { if (pinInterruptList[12].callback != nullptr) { count++; } }
-        if (index == 13) { if (pinInterruptList[13].callback != nullptr) { count++; } }
-        if (index == 14) { if (pinInterruptList[14].callback != nullptr) { count++; } }
-        if (index == 15) { if (pinInterruptList[15].callback != nullptr) { count++; } }
-
-        if (pinInterruptList[index].callback != nullptr) { count--; }
+        if (pinInterruptList[10].callback != nullptr) { count++; }
+        if (pinInterruptList[11].callback != nullptr) { count++; }
+        if (pinInterruptList[12].callback != nullptr) { count++; }
+        if (pinInterruptList[13].callback != nullptr) { count++; }
+        if (pinInterruptList[14].callback != nullptr) { count++; }
+        if (pinInterruptList[15].callback != nullptr) { count++; }
     }
+
+    if (pinInterruptList[index].callback != nullptr) { count--; }
 
     return (count > 0);
 }
@@ -206,8 +204,6 @@ Pin::Pin(PinIdPort idAndPort, Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
-    mDirection = Direction::OUTPUT;
-
     Configure(level, drive);
 }
 
@@ -219,8 +215,6 @@ Pin::Pin(PinIdPort idAndPort, Level level, Drive drive /* = Drive::PUSH_PULL */)
 Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
-
-    mDirection = Direction::INPUT;
 
     Configure(pullUpDown);
 }
@@ -237,8 +231,6 @@ Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = Pu
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
-    mDirection = Direction::ALTERNATE;
-
     Configure(alternate, pullUpDown, mode);
 }
 
@@ -249,8 +241,6 @@ Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = Pu
  */
 void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
-    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
-
     CheckAndEnableAHB1PeripheralClock(mPort);
 
     GPIO_InitTypeDef GPIO_InitStructure = {};
@@ -281,23 +271,30 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
  */
 void Pin::Configure(PullUpDown pullUpDown)
 {
-    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
-
     CheckAndEnableAHB1PeripheralClock(mPort);
 
     GPIO_InitTypeDef GPIO_InitStructure = {};
 
-    GPIO_InitStructure.Pin  = mId;
-    GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
-    switch (pullUpDown)
-    {
-        case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
-        case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-        case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
-        case PullUpDown::HIGHZ:   // Fall through
-        default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
-    }
+    GPIO_InitStructure.Pin   = mId;
     GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+
+    if (pullUpDown == PullUpDown::ANALOG)
+    {
+        GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
+        GPIO_InitStructure.Pull = GPIO_NOPULL;
+    }
+    else
+    {
+        GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
+        switch (pullUpDown)
+        {
+            case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+            case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
+            case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+            case PullUpDown::HIGHZ:   // Fall through
+            default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+        }
+    }
 
     HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
@@ -313,8 +310,6 @@ void Pin::Configure(PullUpDown pullUpDown)
  */
 void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */, Mode mode /* = Mode::PUSH_PULL */)
 {
-    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
-
     CheckAndEnableAHB1PeripheralClock(mPort);
 
     GPIO_InitTypeDef GPIO_InitStructure = {};
@@ -513,7 +508,7 @@ Level Pin::Get() const
             break;
         case Direction::UNDEFINED:      // Fall through
         default:
-            ASSERT(false);              // Cannot get pin level if pin not defined as input or output
+        	ASSERT(false);              // Cannot get pin level if pin not defined as input or output
             while (true) { __NOP(); }   // User must resolve this incorrect use of Get()
             break;
     }
@@ -560,7 +555,7 @@ void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
     }
     else
     {
-        ASSERT(false);              // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
+    	ASSERT(false);              // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
     }
 }
 
@@ -573,10 +568,10 @@ void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
  *          callback. If interrupt for pin is not enabled the interrupt is
  *          absorbed here.
  */
-void HAL_GPIO_EXTI_Callback(uint16_t id)
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     // No nested vector priority issue as all interrupt priorities for pins are the same.
-    const auto index = GetIndexById(id);
+    const auto index = GetIndexById(GPIO_Pin);
 
     if ((pinInterruptList[index].enabled == true) && (pinInterruptList[index].callback != nullptr))
     {

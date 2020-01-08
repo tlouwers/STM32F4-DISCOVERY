@@ -18,7 +18,7 @@
  *          and let it go out of scope.
  *          Later in the application, for the few pins where needed, pass along
  *          the PinIdPort struct to the class where a pin object is needed.
- *          Then during the initialisation of that class (not construction)
+ *          Then during the initialization of that class (not construction)
  *          create and fill the Pin object with desired values. At this point
  *          the interrupts can be configured as well.
  *
@@ -70,8 +70,8 @@ struct PinInterrupt
  */
 enum class Level : bool
 {
-	LOW,
-	HIGH
+    LOW,
+    HIGH
 };
 
 /**
@@ -80,10 +80,10 @@ enum class Level : bool
  */
 enum class Direction : uint8_t
 {
-	UNDEFINED,
-	INPUT,
-	OUTPUT,
-	ALTERNATE
+    UNDEFINED,
+    INPUT,
+    OUTPUT,
+    ALTERNATE
 };
 
 /**
@@ -102,13 +102,15 @@ enum class Drive : uint8_t
 /**
  * \enum    PullUpDown
  * \brief   Input pull up or pull down mode of a pin.
+ * \note    Analog is when using the pin for ADC input.
  */
 enum class PullUpDown : uint8_t
 {
-	HIGHZ,
-	UP,
-	DOWN,
-	UP_DOWN
+    HIGHZ,
+    UP,
+    DOWN,
+    UP_DOWN,
+    ANALOG
 };
 
 /**
@@ -117,9 +119,9 @@ enum class PullUpDown : uint8_t
  */
 enum class Trigger : uint8_t
 {
-	RISING,
-	FALLING,
-	BOTH
+    RISING,
+    FALLING,
+    BOTH
 };
 
 /**
@@ -169,32 +171,32 @@ class Pin
 public:
     Pin(Pin&& other);
 
-	explicit Pin(PinIdPort idAndPort);
-	Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
-	Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
-	Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
+    explicit Pin(PinIdPort idAndPort);
+    Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
+    Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
+    Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
 
-	void Configure(Level level, Drive drive = Drive::PUSH_PULL);
-	void Configure(PullUpDown pullUpDown);
-	void Configure(Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
+    void Configure(Level level, Drive drive = Drive::PUSH_PULL);
+    void Configure(PullUpDown pullUpDown);
+    void Configure(Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
 
-	bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true);
-	bool InterruptEnable();
-	bool InterruptDisable();
-	bool InterruptRemove();
+    bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true);
+    bool InterruptEnable();
+    bool InterruptDisable();
+    bool InterruptRemove();
 
-	void Toggle() const;
-	void Set(Level level);
-	Level Get() const;
+    void Toggle() const;
+    void Set(Level level);
+    Level Get() const;
 
-	Pin& operator= (Pin&& other);
+    Pin& operator= (Pin&& other);
 
 private:
-	uint16_t      mId        = UINT16_MAX;
-	GPIO_TypeDef* mPort      = nullptr;
-	Direction     mDirection = Direction::UNDEFINED;
+    uint16_t      mId        = UINT16_MAX;
+    GPIO_TypeDef* mPort      = nullptr;
+    Direction     mDirection = Direction::UNDEFINED;
 
-	void CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port);
+    void CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port);
 
     // Explicit disabled constructors/operators
     Pin() = delete;
