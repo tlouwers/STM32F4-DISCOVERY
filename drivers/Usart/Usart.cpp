@@ -30,16 +30,6 @@
 
 
 /************************************************************************/
-/* Alias                                                                */
-/************************************************************************/
-/**
- * \brief   Constant representing the maximum transmission length of a
- *          single transmission packet.
- */
-constexpr uint16_t MAX_TRANSMISSION_LENGTH = UINT16_MAX;
-
-
-/************************************************************************/
 /* Static variables                                                     */
 /************************************************************************/
 static UsartCallbacks usart1_callbacks {};
@@ -222,10 +212,10 @@ DMA_HandleTypeDef*& Usart::GetDmaRxHandle()
  * \returns True if the transaction could be started, else false. Returns false if no DMA is setup for Tx.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool Usart::WriteDma(const uint8_t* src, size_t length, const std::function<void()>& handler)
+bool Usart::WriteDma(const uint8_t* src, uint16_t length, const std::function<void()>& handler)
 {
     ASSERT(src);
-    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
+    ASSERT(length > 0);
 
     if (!mInitialized) { return false; }
     if (mHandle.hdmatx == nullptr) { return false; }
@@ -249,10 +239,10 @@ bool Usart::WriteDma(const uint8_t* src, size_t length, const std::function<void
  * \note    If IDLE line detection is not used callback will only be called
  *          when the expected number of bytes are received.
  */
-bool Usart::ReadDma(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection /* = true */)
+bool Usart::ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection /* = true */)
 {
     ASSERT(dest);
-    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
+    ASSERT(length > 0);
 
     if (!mInitialized) { return false; }
     if (mHandle.hdmarx == nullptr) { return false; }
@@ -277,10 +267,10 @@ bool Usart::ReadDma(uint8_t* dest, size_t length, const std::function<void(uint1
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool Usart::WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& handler)
+bool Usart::WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler)
 {
     ASSERT(src);
-    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
+    ASSERT(length > 0);
 
     if (!mInitialized) { return false; }
 
@@ -300,10 +290,10 @@ bool Usart::WriteInterrupt(const uint8_t* src, size_t length, const std::functio
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool Usart::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection /* = true */)
+bool Usart::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection /* = true */)
 {
     ASSERT(dest);
-    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
+    ASSERT(length > 0);
 
     if (!mInitialized) { return false; }
 
@@ -326,10 +316,10 @@ bool Usart::ReadInterrupt(uint8_t* dest, size_t length, const std::function<void
  * \returns True if the write was successful, else false.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool Usart::WriteBlocking(const uint8_t* src, size_t length)
+bool Usart::WriteBlocking(const uint8_t* src, uint16_t length)
 {
     ASSERT(src);
-    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
+    ASSERT(length > 0);
 
     if (!mInitialized) { return false; }
 
@@ -345,10 +335,10 @@ bool Usart::WriteBlocking(const uint8_t* src, size_t length)
  * \returns True if the read was successful, else false.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool Usart::ReadBlocking(uint8_t* dest, size_t length)
+bool Usart::ReadBlocking(uint8_t* dest, uint16_t length)
 {
     ASSERT(dest);
-    ASSERT(length > 0 && length <= MAX_TRANSMISSION_LENGTH);
+    ASSERT(length > 0);
 
     if (!mInitialized) { return false; }
 
@@ -483,7 +473,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* handle)
         // If DMA was not use RxXferCount holds the number of bytes not received yet, if DMA is
         // used this number is in the NDTR register.
         // To be able to use both Interrupt and DMA while DMA is configured, both RxXferCount and NTDR are used in received byte calculation.
-        uint16_t bytesReceived = handle->RxXferSize - handle->RxXferCount - ((handle->hdmarx) ? __HAL_DMA_GET_COUNTER(handle->hdmarx) : 0);
+        uint16_t bytesReceived = static_cast<uint16_t>(handle->RxXferSize - handle->RxXferCount - ((handle->hdmarx) ? __HAL_DMA_GET_COUNTER(handle->hdmarx) : 0));
 
         if (handle->Instance == USART1) { CallbackRxDone(usart1_callbacks, bytesReceived); }
         if (handle->Instance == USART2) { CallbackRxDone(usart2_callbacks, bytesReceived); }

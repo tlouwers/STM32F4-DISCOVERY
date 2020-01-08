@@ -1,4 +1,3 @@
-
 # Description
 DMA utility class.
 
@@ -34,14 +33,14 @@ bool Application::Initialize()
     result = mDMA_Usart2_Rx.Configure(DMA::Channel::Channel4, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     assert(result);
 
-	// Link the DMA objects with a previously configured peripheral, for example Usart:
+    // Link the DMA objects with a previously configured peripheral, for example Usart:
     result = mDMA_Usart2_Tx.Link(mUsart2.GetPeripheralHandle(), mUsart2.GetDmaTxHandle());
     assert(result);
 
     result = mDMA_Usart2_Rx.Link(mUsart2.GetPeripheralHandle(), mUsart2.GetDmaRxHandle());
     assert(result);
 
-	return result;
+    return result;
 }
 
 // To Write (DMA based):

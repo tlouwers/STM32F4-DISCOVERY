@@ -10,7 +10,7 @@ Intended use is to provide an easier means to work with the USART peripheral. Th
 
 # Notes
 When using the IDLE line feature during an Rx transmission, there will be an Rx and an IDLE line interrupt. Only 1 callback to Rx is called with the correct number of bytes.
-The callbacks are called withing ISR context.
+The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
  
 # Examples
@@ -28,10 +28,10 @@ bool Application::Initialize()
 {
     bool result = mUsart.Init(Usart::Config(10, false, Usart::Baudrate::_9600));
     assert(result);
-	
-	// Other stuff...
-	
-	return result;
+
+    // Other stuff...
+
+    return result;
 }
 
 // To Write (interrupt based):

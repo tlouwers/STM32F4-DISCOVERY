@@ -42,6 +42,10 @@ void Board::InitPins()
     Pin(PIN_USART2_RX,  Alternate::AF7, PullUpDown::UP);
     Pin(PIN_USART2_CTS, Alternate::AF7);
 
+    // Audio Control - I2C
+    Pin(PIN_I2C1_SCL, Alternate::AF4, PullUpDown::HIGHZ, Mode::OPEN_DRAIN);
+    Pin(PIN_I2C1_SDA, Alternate::AF4, PullUpDown::HIGHZ, Mode::OPEN_DRAIN);
+
     // Motion - SPI1
     Pin(PIN_SPI1_SCK,  Alternate::AF5);
     Pin(PIN_SPI1_MISO, Alternate::AF5);

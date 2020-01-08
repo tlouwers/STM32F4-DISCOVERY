@@ -1,4 +1,3 @@
-
 # Description
 SPI peripheral driver class.
 
@@ -12,7 +11,7 @@ Intended use is to provide an easier means to work with the SPI peripheral. This
 # Notes
 Master only.
 The ChipSelect is to be toggled manually (outside the class).
-The callbacks are called withing ISR context.
+The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
  
 # Examples
@@ -22,7 +21,7 @@ SPI mSPI;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
-    mSPI(SPIInstance::SPI_1),
+    mSPI(SPIInstance::SPI_1)
 {}
 
 // Initialize the class:
@@ -30,10 +29,10 @@ bool Application::Initialize()
 {
     bool result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
     assert(result);
-	
-	// Other stuff...
-	
-	return result;
+
+    // Other stuff...
+
+    return result;
 }
 
 // To Write (interrupt based):

@@ -181,14 +181,14 @@ public:
     DMA_HandleTypeDef*& GetDmaTxHandle();
     DMA_HandleTypeDef*& GetDmaRxHandle();
 
-    bool WriteDma(const uint8_t* src, size_t length, const std::function<void()>& handler);
-    bool ReadDma(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
+    bool WriteDma(const uint8_t* src, uint16_t length, const std::function<void()>& handler);
+    bool ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
 
-    bool WriteInterrupt(const uint8_t* src, size_t length, const std::function<void()>& handler);
-    bool ReadInterrupt(uint8_t* dest, size_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
+    bool WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler);
+    bool ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
 
-    bool WriteBlocking(const uint8_t* src, size_t length);
-    bool ReadBlocking(uint8_t* dest, size_t length);
+    bool WriteBlocking(const uint8_t* src, uint16_t length);
+    bool ReadBlocking(uint8_t* dest, uint16_t length);
 
 private:
     UsartInstance      mInstance;
