@@ -18,13 +18,13 @@ This is not an extensive list, more pins and functionality is added when I encou
 
 int main(void)
 {
-	// Initialize the clock first:
-	if (!Board::InitClock()) { assert(false); }
+    // Initialize the clock first:
+    if (!Board::InitClock()) { assert(false); }
 
-	// Initialize the pins:
-	Board::InitPins();
+    // Initialize the pins:
+    Board::InitPins();
 
-	// As example, construct, initialize and run the remainder of the application:
+    // As example, construct, initialize and run the remainder of the application:
     Application mApp;
 
     if (!mApp.Init())
@@ -36,4 +36,5 @@ int main(void)
     {
         mApp.Process();
     }
+}
 ```

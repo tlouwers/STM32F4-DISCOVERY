@@ -1,3 +1,4 @@
+
 # Description
 DMA utility class.
 
@@ -6,7 +7,7 @@ Intended use is to provide a plug-n-play DMA object to 'Link' with a peripheral.
 # Requirements
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 * C++11 is assumed
-* PA configured peripheral, for example Usart.
+* A configured peripheral, for example Usart.
 
 # Notes
 The callbacks are called withing ISR context.
@@ -60,5 +61,11 @@ void Application::ReadDone(uint16_t bytesReceived)
     {
         // Do stuff ...
     }
+}
+
+// The WriteDone callback (as example)
+void Application::WriteDone()
+{
+    ;    // Flag, trigger next action, ...
 }
 ```

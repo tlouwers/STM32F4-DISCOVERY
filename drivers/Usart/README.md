@@ -1,3 +1,4 @@
+
 # Description
 USART peripheral driver class.
 
@@ -51,5 +52,11 @@ void Application::ReadDone(uint16_t bytesReceived)
     {
         // Do stuff ...
     }
+}
+
+// The WriteDone callback (as example):
+void Application::WriteDone()
+{
+    // Flag, trigger next action, ...
 }
 ```

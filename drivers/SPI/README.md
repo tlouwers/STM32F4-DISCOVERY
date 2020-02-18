@@ -1,3 +1,4 @@
+
 # Description
 SPI peripheral driver class.
 
@@ -48,6 +49,12 @@ assert(result);
 // The ReadDone callback (as example):
 void Application::ReadDone()
 {
-    // Do stuff...
+    // Flag, trigger next action, ...
+}
+
+// The WriteDone callback (as example):
+void Application::WriteDone()
+{
+    // Flag, trigger next action, ...
 }
 ```

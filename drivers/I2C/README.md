@@ -54,4 +54,5 @@ void Application::TestReadIdCS43L22()
             // Do stuff with the received variable
         }
     }
+}
 ```

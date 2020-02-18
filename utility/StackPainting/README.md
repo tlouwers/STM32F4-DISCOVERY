@@ -25,10 +25,10 @@ To check the stack usage, a method known as "stack painting" is used: upon start
 // In the main.cpp file, add the 'paint_stack()' function as close to the board startup as possible.
 void main(void)
 {
-    paint_stack();		<-- here
+    paint_stack();        <-- here
 
-	Board::Init();
-	Board::InitClock();
+    Board::Init();
+    Board::InitClock();
 
     // Remainder of the application	
     while(1)
@@ -38,7 +38,7 @@ void main(void)
 }
 
 // At certain intervals log the used stack memory (not too often, every 10 seconds or so):
-static volatile uint32_t used_stack = 0;			<-- global to store the (growing) stack value
+static volatile uint32_t used_stack = 0;      <-- global to store the (growing) stack value
 void Application::GetStack()
 {
     uint32_t tmp = get_used_stack();

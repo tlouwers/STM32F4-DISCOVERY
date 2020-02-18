@@ -25,7 +25,7 @@ To get an idea of the heap (dynamic memory currently in use), another trick is u
 #include "heap_check.h"
 
 // At a later point check where the block of memory can be allocated:
-static volatile uint32_t used_heap = 0;			<-- global to store the (growing) heap value
+static volatile uint32_t used_heap = 0;        <-- global to store the (growing) heap value
 void Application::GetUsedHeap()
 {
     uint32_t tmp = get_used_heap();
@@ -38,9 +38,9 @@ void Application::GetUsedHeap()
 // To check for stack overflow we can call a dedicated function (should be done regularly):
 void Application::CheckForStackOverflow()
 {
-	if (end_of_heap_overrun())
-	{
-		// Log, or take action ...
-	}
+    if (end_of_heap_overrun())
+    {
+        // Log, or take action ...
+    }
 }
 ```
