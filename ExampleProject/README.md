@@ -44,6 +44,7 @@ Intended use is to be a starting point for developing, debugging and unit testin
 * It may be needed to delete the 'build' folder inside the 'Project1' folder to be able to configure and build the target. It may be needed to close Visual Studio Code before Windows 10 allows it.
 
 # GCC options C++
+Specific C++ compiler flags can be changed by altering the 'gcc-options-cxx.txt' file. Please do not add them to the CMakeLists.txt file.
 | Compiler Flag | Description |
 | --- | --- |
 | -fno-exceptions | Disable exception handling |
@@ -54,3 +55,12 @@ Intended use is to be a starting point for developing, debugging and unit testin
 | -fno-use-cxa-atexit | Do not register destructors for objects with static storage duration with the __cxa_atexit function rather than the atexit function |
 | -fno-common | Place uninitialized global variables in the BSS section of the object file |
 | -fmessage-length=0 | Format error messages to be appear on a single line |
+
+# Configuration / Future Updates
+There will be a time components are updates, meaning this example and environment needs to be updated as well. As reminder (for me):
+* In folder '.vscode'
+- launch.json - contains the settings to start debugging, either the target (using OpenOCD) or the unit test executable.
+- settings.json - contains the settings which make IntelliSense happy, compiler and folder dependent.
+- tasks.json - contains the settings for configuration and building the project, both the target and unit tests.
+* In folder 'target/Drivers/STM32F4xx_HAL_Driver' is the STM32F4 HAL code.
+* The file 'arm-none-eabi-gg.cmake' contains the settings required for cross compiling for ARM.
