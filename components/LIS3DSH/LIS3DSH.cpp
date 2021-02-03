@@ -22,7 +22,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "LIS3DSH.hpp"
+#include "components/LIS3DSH/LIS3DSH.hpp"
 #include "utility/SlimAssert.h"
 #include <algorithm>
 #include <cstring>

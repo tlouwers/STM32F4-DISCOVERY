@@ -26,7 +26,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "I2C.hpp"
+#include "drivers/I2C/I2C.hpp"
 #include "utility/SlimAssert.h"
 #include "stm32f4xx_hal_i2c.h"
 

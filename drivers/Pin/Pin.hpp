@@ -22,6 +22,11 @@
  *          create and fill the Pin object with desired values. At this point
  *          the interrupts can be configured as well.
  *
+ * \note    All pin interrupts share the same interrupt priority, which can be
+ *          set via INTERRUPT_PRIORITY in the cpp file. This class assumes the
+ *          HAL has set NVIC_PRIORITYGROUP_4.
+ *          Per default, priority 5 is used.
+ *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
  * \date        03-2019

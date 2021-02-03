@@ -27,7 +27,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include <functional>
-#include "DMA.hpp"
+#include "drivers/DMA/DMA.hpp"
 #include "utility/SlimAssert.h"
 
 

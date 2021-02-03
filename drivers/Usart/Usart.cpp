@@ -24,7 +24,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "Usart.hpp"
+#include "drivers/Usart/Usart.hpp"
 #include "utility/SlimAssert.h"
 #include "stm32f4xx_hal_uart.h"
 

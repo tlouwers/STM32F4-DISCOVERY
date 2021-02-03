@@ -26,7 +26,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "SPI.hpp"
+#include "drivers/SPI/SPI.hpp"
 #include "utility/SlimAssert.h"
 #include "stm32f4xx_hal_uart.h"
 
