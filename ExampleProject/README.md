@@ -64,3 +64,6 @@ There will be a time components are updates, meaning this example and environmen
 - tasks.json - contains the settings for configuration and building the project, both the target and unit tests.
 * In folder 'target/Drivers/STM32F4xx_HAL_Driver' is the STM32F4 HAL code.
 * The file 'arm-none-eabi-gg.cmake' contains the settings required for cross compiling for ARM.
+
+# Upgrading the STM32 HAL
+Start by downloading the 'STM32CubeF4' package, along with any patch available (https://my.st.com/content/my_st_com/en/products/embedded-software/mcu-mpu-embedded-software/stm32-embedded-software/stm32cube-mcu-mpu-packages/stm32cubef4.html#). Then perform a manual compare of the 'target/Drivers/CMSIS' and 'target/Drivers/STM32F4xx_HAL_Driver' directory with the new HAL folders. Take note that this example project only uses the HAL, not the low level drivers (using the 'll_' prefix). It requires some manual compares, but overall relatively few files will have changed. The 'Legacy' part is not used.
