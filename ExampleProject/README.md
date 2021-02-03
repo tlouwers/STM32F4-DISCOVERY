@@ -15,6 +15,7 @@ A light sleep mode is used to conserve power.
 * Ninja as build system (https://ninja-build.org/)
 * The Cortex-Debug extension together with the proper device support pack to be able to debug and view registers of the target (https://marketplace.visualstudio.com/items?itemName=marus25.cortex-debug)
 * OpenOCD to to connect with the target (https://gnutoolchains.com/arm-eabi/openocd/)
+* Doxygen (https://www.doxygen.nl/download.html) and GraphViz (https://graphviz.org/download/) (Windows, stable) for generating documentation (optional)
 
 # Features
 * CMake setup for building STM32F4 code
@@ -25,6 +26,7 @@ A light sleep mode is used to conserve power.
 * Some statistics for the generated target binary are displayed after each build
 * Configuration of the cross-compile settings in a seperate CMake file
 * All C++ compiler flags in a seperate configuration file
+* Doxygen documentation (for target)
 
 # Notes
 * In 'Extensions', click the 'CMake Tools'extension. Then click the cog ('manage'), then 'Extension Settings'. This opens the settings of the extension. Scroll down to 'CMake: Generator', in the textbox below enter: 'Ninja'. This is the generator used per default for our project.
