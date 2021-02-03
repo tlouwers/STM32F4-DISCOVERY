@@ -11,7 +11,7 @@
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  *          State is preserved (partly) within the hardware.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/Pin
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Pin
  *
  * \details Intended use is to have a method at board startup which sets each
  *          pin to a defined state. This is done by constructing a Pin object,

@@ -10,7 +10,7 @@
  *
  * \brief   Main application file for Accelerometer demo.
  *
- * \note    <ToDo: link to url on github>
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/ExampleProject/target/Src
  *
  * \details Intended use is to provide an example how to read the accelerometer.
  *

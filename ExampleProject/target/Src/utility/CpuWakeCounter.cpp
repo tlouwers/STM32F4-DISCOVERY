@@ -11,7 +11,7 @@
  * \brief   Helper class intended to put the CPU into a 'light' sleep mode and
  *          measure the wake percentage in one go.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/CpuWakeCounter
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/utility/CpuWakeCounter
  *
  * \details This code is intended to be used as tracing mechanism. It measures
  *          the wake percentage of the CPU and keeps track of the (main) loop

@@ -10,7 +10,7 @@
  *
  * \brief   Heap check functions for ST Cortex-M4.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/utility/HeapCheck
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/utility/HeapCheck
  *
  * \details This code is intended to be used to determine the heap usage at
  *          runtime. The code is implemented in 'C', to be usable in both 'C'

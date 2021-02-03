@@ -10,7 +10,7 @@
  *
  * \brief   Stack painting functions for ST Cortex-M4.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/StackPainting
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/utility/StackPainting
  *
  * \details This code is intended to be used to determine the stack usage at
  *          runtime. The code is implemented in 'C', to be usable in both 'C'
