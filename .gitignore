@@ -1,0 +1,6 @@
+# Ignore build folders
+ExampleProject/build/**
+ExampleProject/target/build/**
+
+# Ignore doxygen folder
+ExampleProject/target/doxygen/docs/**
