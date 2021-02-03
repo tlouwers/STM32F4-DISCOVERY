@@ -22,14 +22,6 @@
  *          It is disabled when NDEBUG is defined. When debugging, the callstack is
  *          preserved.
  *
- *          Example:
- *          // Include the header (instead of <cassert> or <assert.h>)
- *          #include "utility/SlimAssert.h"
- *
- *          // Use the upper-case assert where needed
- *          ASSERT(3 > 5);      // Obviously this trips the assert
- *
- *
  * \note    If you happen to find an issue, and are able to provide a
  *          reproducible scenario I am happy to have a look. If you have a fix,
  *          or a refactoring that would improve the buffer please let me know
@@ -81,6 +73,9 @@ inline void _assert(const char* expression, const char* file, int line)
 #ifdef NDEBUG
 #define ASSERT( expr ) ( (void)0 )
 #else
+/**
+ * \brief       Assert macro replacement.
+ */
 #define ASSERT( expr ) ( (expr) ? (void)0 : _assert(#expr, __FILE__, __LINE__) )
 #endif
 

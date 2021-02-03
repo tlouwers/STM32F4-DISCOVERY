@@ -16,58 +16,10 @@
  *          runtime. The code is implemented in 'C', to be usable in both 'C'
  *          and 'C++' projects.
  *
- *          As example:
- *          // Include the header file
- *          #include "heap_check.h"
- *
- *          // At a later point check where the block of memory can be allocated:
- *          static volatile uint32_t used_heap = 0;         <-- global to store the (growing) heap value
- *          void Application::GetUsedHeap()
- *          {
- *              uint32_t tmp = get_used_heap();
- *              if (tmp > used_heap)
- *              {
- *                  used_heap = tmp;
- *              }
- *          }
- *
- *          // To check for stack overflow we can call a dedicated function (should be done regularly):
- *          void Application::CheckForStackOverflow()
- *          {
- *              if (end_of_heap_overrun())
- *              {
- *                  // Log, or take action ...
- *              }
- *          }
- *
  * \note    To use the 'end_of_heap_overrun()', a modification in the
  *          function '_sbrk()' needs to be made. For ST this is in the
  *          file 'sysmem.c', around line 65. A flag needs to be added to
  *          mark the end of the heap.
- *
- *          // Modified '_sbrk()' function:
- *
- *          caddr_t _sbrk(int incr)
- *          {
- *              extern char end asm("end");
- *              static char *heap_end;
- *              char *prev_heap_end;
- *
- *              if (heap_end == 0)
- *                  heap_end = &end;
- *
- *              prev_heap_end = heap_end;
- *              if (heap_end + incr > stack_ptr)
- *              {
- *                  errno = ENOMEM;
- *                  return (caddr_t) -1;
- *              }
- *
- *              heap_end += incr;
- *              *((uint32_t*)((void*)heap_end)) = 0xFAFBFCFD;   // Mark end of heap to detect stack overflow
- *
- *              return (caddr_t) prev_heap_end;
- *          }
  *
  * \note    This code is not to be used 'as-is': be sure you know where the
  *          stack and heap are located in your project and modify the code to

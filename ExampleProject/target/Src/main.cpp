@@ -31,6 +31,10 @@
 /************************************************************************/
 /* Main application entry point                                         */
 /************************************************************************/
+/**
+ * \brief       Main application entry point.
+ * \returns     Never returns.
+ */
 int main()
 {
     paint_stack();
