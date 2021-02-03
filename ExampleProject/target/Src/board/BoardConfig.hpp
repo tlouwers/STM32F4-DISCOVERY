@@ -45,7 +45,7 @@ constexpr PinIdPort PIN_USART2_TX   = { GPIO_PIN_2,  GPIOA };
 constexpr PinIdPort PIN_USART2_RX   = { GPIO_PIN_3,  GPIOA };
 constexpr PinIdPort PIN_USART2_CTS  = { GPIO_PIN_3,  GPIOD };
 
-// Audio Amplifier - control (CS43L22) - I2C
+// Audio Control (CS43L22) - I2C, address 0x94
 constexpr PinIdPort PIN_I2C1_SCL    = { GPIO_PIN_6,  GPIOB };
 constexpr PinIdPort PIN_I2C1_SDA    = { GPIO_PIN_9,  GPIOB };
 

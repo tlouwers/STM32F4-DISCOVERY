@@ -26,8 +26,11 @@
 /* Includes                                                             */
 /************************************************************************/
 #include <atomic>
+#include "components/LIS3DSH/LIS3DSH.hpp"
+#include "drivers/DMA/DMA.hpp"
 #include "drivers/Pin/Pin.hpp"
-#include "utility/CpuWakeCounter.hpp"
+#include "drivers/SPI/SPI.hpp"
+#include "utility/CpuWakeCounter/CpuWakeCounter.hpp"
 
 
 /************************************************************************/
@@ -52,11 +55,25 @@ private:
     Pin mLedOrange;
     Pin mLedRed;
     Pin mLedBlue;
+    Pin mChipSelect;
+    Pin mMotionInt1;
+    Pin mMotionInt2;
+
+    SPI mSPI;
+
+    DMA mDMA_SPI_Tx;
+    DMA mDMA_SPI_Rx;
+
+    LIS3DSH mLIS3DSH;
+	
     CpuWakeCounter mCpuWakeCounter;
 
     std::atomic<bool> mButtonPressed;
+    std::atomic<bool> mMotionDataAvailable;
+    uint8_t mMotionLength;
 
     void ButtonPressedCallback();
+    void MotionDataReceived(uint8_t length);
 
     void GetUsedStack();
     void GetUsedHeap();

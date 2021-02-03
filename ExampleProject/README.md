@@ -2,7 +2,9 @@
 A basic example or project structure for C++ development with the STM32F407G-DISC1 kit.
 
 Intended use is to be a starting point for developing, debugging and unit testing the STM32F407G-DISC1.
-This example read the accelerometer via DMA (and then discards the read samples). It also toggles the green led using the button via ISR.
+This example read the accelerometer via DMA (and then discards the read samples). Data is stored in accelerometer FIFO until a threshold is reached, then ISR flags data is available. Data then is read via SPI/DMA. Orange led is used to signal data available.
+When pressing the button the green led toggles, using ISR.
+A light sleep mode is used to conserve power. 
 
 # Requirements
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)

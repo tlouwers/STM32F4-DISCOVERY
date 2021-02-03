@@ -30,8 +30,8 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "Pin.hpp"
-#include "utility/SlimAssert.h"
+#include "drivers/Pin/Pin.hpp"
+#include "utility/SlimAssert/SlimAssert.h"
 
 
 /************************************************************************/
@@ -255,7 +255,7 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
     {
         case Drive::PUSH_PULL:               // Fall through
         case Drive::OPEN_DRAIN:              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
-        case Drive::OPEN_DRAIN_PULL_UP: 	 GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+        case Drive::OPEN_DRAIN_PULL_UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
         case Drive::OPEN_DRAIN_PULL_DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
         case Drive::OPEN_DRAIN_PULL_UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
         default: ASSERT(false);              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;    // Invalid drive

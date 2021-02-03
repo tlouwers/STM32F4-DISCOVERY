@@ -25,9 +25,9 @@
 #include <functional>
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
-#include "utility/heap_check.h"
-#include "utility/stack_painting.h"
-#include "utility/SlimAssert.h"
+#include "utility/HeapCheck/heap_check.h"
+#include "utility/StackPainting/stack_painting.h"
+#include "utility/SlimAssert/SlimAssert.h"
 
 
 /************************************************************************/
@@ -49,9 +49,19 @@ Application::Application() :
     mLedOrange(PIN_LED_ORANGE, Level::LOW),
     mLedRed(PIN_LED_RED, Level::LOW),
     mLedBlue(PIN_LED_BLUE, Level::LOW),
-    mButtonPressed(false)
+    mChipSelect(PIN_SPI1_CS, Level::HIGH),              // SPI ChipSelect for Motion
+    mMotionInt1(PIN_MOTION_INT1, PullUpDown::HIGHZ),
+    mMotionInt2(PIN_MOTION_INT2, PullUpDown::HIGHZ),
+    mSPI(SPIInstance::SPI_1),
+    mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
+    mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
+    mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
+    mButtonPressed(false),
+    mMotionDataAvailable(false),
+    mMotionLength(0)
 {
     mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
+    mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
 }
 
 /**
@@ -61,12 +71,35 @@ Application::Application() :
  */
 bool Application::Init()
 {
-    bool result = true;
-
     mLedGreen.Set(Level::HIGH);
-    
-    // Simulate initialization by adding delay
     HAL_Delay(750);
+
+    // Actual Init()
+    mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
+    mButtonPressed = false;
+
+    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    ASSERT(result);
+
+    result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    ASSERT(result);
+
+    result = mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
+    ASSERT(result);
+
+    result = mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
+    ASSERT(result);
+
+    result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+    ASSERT(result);
+
+    result = mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
+    ASSERT(result);
+    mMotionDataAvailable = false;
+    mMotionLength = 0;
+
+    result = mLIS3DSH.Enable();
+    ASSERT(result);
 
     mLedGreen.Set(Level::LOW);
 
@@ -79,11 +112,24 @@ bool Application::Init()
  */
 void Application::Process()
 {
+    static uint8_t motionArray[25 * 3 * 2] = {};
+
     if (mButtonPressed)
     {
         mButtonPressed = false;
 
-        mLedGreen.Toggle();
+        mLedGreen.Set(Level::LOW);
+    }
+
+    if (mMotionDataAvailable)
+    {
+        mMotionDataAvailable = false;
+
+        bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
+        ASSERT(retrieveResult);
+		(void)(retrieveResult);
+
+        // Deinterleave to X,Y,Z samples
     }
 
     mCpuWakeCounter.EnterSleepMode(SleepMode::WaitForInterrupt);
@@ -113,7 +159,7 @@ void Application::Process()
 
 /**
  * \brief   Error handler, acts as visual indicator to the user that the
- *          application entered an error state by toggling the green led.
+ *          application entered an error state by toggling the red led.
  */
 void Application::Error()
 {
@@ -143,6 +189,18 @@ void Application::Error()
 void Application::ButtonPressedCallback()
 {
     mButtonPressed = true;
+    mLedGreen.Set(Level::HIGH);
+}
+
+/**
+ * \brief   Callback called for the motion data received callback.
+ */
+void Application::MotionDataReceived(uint8_t length)
+{
+    mLedOrange.Toggle();
+
+    mMotionDataAvailable = true;
+    mMotionLength = length;
 }
 
 /**

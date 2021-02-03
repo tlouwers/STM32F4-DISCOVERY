@@ -125,8 +125,8 @@ void CpuWakeCounter::EnterSleepMode(SleepMode mode, bool suspend_systick /* = tr
     {
         mCpuStats.loopCount       = LoopCount;
         // Calculate percentage - assume we iterate once per second
-        mCpuStats.wakePercentage  = WakeCycleCount * 100;
-        mCpuStats.wakePercentage /= WakeCycleCount + SleepCycleCount;
+        mCpuStats.wakePercentage  = static_cast<float>(WakeCycleCount * 100);
+        mCpuStats.wakePercentage /= static_cast<float>(WakeCycleCount + SleepCycleCount);
 
         mUpdateAvailable = true;
 

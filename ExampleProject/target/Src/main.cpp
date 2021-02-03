@@ -25,7 +25,7 @@
 #include "stm32f4xx_hal.h"
 #include "board/Board.hpp"
 #include "Application.hpp"
-#include "utility/stack_painting.h"
+#include "utility/StackPainting/stack_painting.h"
 
 
 /************************************************************************/
