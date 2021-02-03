@@ -30,7 +30,6 @@
 #include "drivers/DMA/DMA.hpp"
 #include "drivers/Pin/Pin.hpp"
 #include "drivers/SPI/SPI.hpp"
-#include "utility/CpuWakeCounter/CpuWakeCounter.hpp"
 
 
 /************************************************************************/
@@ -50,7 +49,7 @@ public:
     void Error();
 
 private:
-    Pin mButton;
+//    Pin mButton;
     Pin mLedGreen;
     Pin mLedOrange;
     Pin mLedRed;
@@ -65,18 +64,13 @@ private:
     DMA mDMA_SPI_Rx;
 
     LIS3DSH mLIS3DSH;
-	
-    CpuWakeCounter mCpuWakeCounter;
 
-    std::atomic<bool> mButtonPressed;
+//    std::atomic<bool> mButtonPressed;
     std::atomic<bool> mMotionDataAvailable;
     uint8_t mMotionLength;
 
-    void ButtonPressedCallback();
+//    void ButtonPressedCallback();
     void MotionDataReceived(uint8_t length);
-
-    void GetUsedStack();
-    void GetUsedHeap();
 };
 
 

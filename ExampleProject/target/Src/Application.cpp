@@ -25,8 +25,6 @@
 #include <functional>
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
-#include "utility/HeapCheck/heap_check.h"
-#include "utility/StackPainting/stack_painting.h"
 #include "utility/SlimAssert/SlimAssert.h"
 
 
@@ -44,7 +42,7 @@ static volatile uint32_t used_heap  = 0;
  * \brief   Constructor, configures pins and callbacks.
  */
 Application::Application() :
-    mButton(PIN_BUTTON, PullUpDown::HIGHZ),             // Externally pulled down
+//    mButton(PIN_BUTTON, PullUpDown::HIGHZ),             // Externally pulled down
     mLedGreen(PIN_LED_GREEN, Level::LOW),               // Off
     mLedOrange(PIN_LED_ORANGE, Level::LOW),
     mLedRed(PIN_LED_RED, Level::LOW),
@@ -56,11 +54,12 @@ Application::Application() :
     mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
     mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-    mButtonPressed(false),
+//    mButtonPressed(false),
     mMotionDataAvailable(false),
     mMotionLength(0)
 {
-    mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
+    // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
+    //mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
     mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
 }
 
@@ -75,9 +74,6 @@ bool Application::Init()
     HAL_Delay(750);
 
     // Actual Init()
-    mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
-    mButtonPressed = false;
-
     bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
@@ -114,12 +110,14 @@ void Application::Process()
 {
     static uint8_t motionArray[25 * 3 * 2] = {};
 
+/*
     if (mButtonPressed)
     {
         mButtonPressed = false;
 
         mLedGreen.Set(Level::LOW);
     }
+*/
 
     if (mMotionDataAvailable)
     {
@@ -130,30 +128,6 @@ void Application::Process()
 		(void)(retrieveResult);
 
         // Deinterleave to X,Y,Z samples
-    }
-
-    mCpuWakeCounter.EnterSleepMode(SleepMode::WaitForInterrupt);
-
-    if (mCpuWakeCounter.IsUpdated()) {
-        GetUsedHeap();
-        GetUsedStack();
-
-        CpuStats stats = mCpuWakeCounter.GetStatistics();
-
-        // Do something with the statistics - log?
-        bool wakePercentageThresholdReached = (stats.wakePercentage > 90.0f);
-        if (wakePercentageThresholdReached) {
-            mLedRed.Set(Level::HIGH);
-            ASSERT(wakePercentageThresholdReached);
-        } else if (stats.wakePercentage > 20.0f) {
-            if (mLedOrange.Get() != Level::HIGH) {
-                mLedOrange.Set(Level::HIGH);
-            }
-        } else {
-            if (mLedOrange.Get() != Level::LOW) {
-                mLedOrange.Set(Level::LOW);
-            }
-        }
     }
 }
 
@@ -186,11 +160,13 @@ void Application::Error()
 /**
  * \brief   Callback for the button pressed event.
  */
+/*
 void Application::ButtonPressedCallback()
 {
     mButtonPressed = true;
     mLedGreen.Set(Level::HIGH);
 }
+*/
 
 /**
  * \brief   Callback called for the motion data received callback.
@@ -201,24 +177,4 @@ void Application::MotionDataReceived(uint8_t length)
 
     mMotionDataAvailable = true;
     mMotionLength = length;
-}
-
-/**
- * \brief   Update the max amount of stack memory used.
- */
-void Application::GetUsedStack() {
-    uint32_t tmp = get_used_stack();
-    if (tmp > used_stack) {
-        used_stack = tmp;
-    }
-}
-
-/**
- * \brief   Update the max amount of heap memory used.
- */
-void Application::GetUsedHeap() {
-    uint32_t tmp = get_used_heap();
-    if (tmp > used_heap) {
-        used_heap = tmp;
-    }
 }

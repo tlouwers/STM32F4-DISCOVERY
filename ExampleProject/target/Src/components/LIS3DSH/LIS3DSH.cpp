@@ -12,7 +12,10 @@
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
  *
- * \details Used to configure and read X,Y,Z (motion) samples from the LIS3DSH accelerometer. 
+ * \details Used to configure and read X,Y,Z (motion) samples from the LIS3DSH
+ *          accelerometer. Data is samples and kept in HW FIFO, when threshold
+ *          is exceeded via ISR this is signalled. On this trigger a readout
+ *          via SPI (with DMA) can be performed. 
  *
  * \author      T. Louwers <terry.louwers@fourtress.nl>
  * \version     1.0
@@ -133,7 +136,7 @@ LIS3DSH::LIS3DSH(SPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort
     mInitialized(false),
     mReadBuffer(nullptr),
     mODR(0)
-{
+{   
     mMotionInt1.Interrupt(Trigger::RISING, [this]() { this-> CallbackInt1(); }, false );
     mMotionInt2.Interrupt(Trigger::RISING, [this]() { this-> CallbackInt2(); }, false );
 }
