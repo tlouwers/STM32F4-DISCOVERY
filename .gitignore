@@ -1,0 +1,4 @@
+# Ignore build folders
+ExampleProject/build/**
+ExampleProject/target/build/**
+
