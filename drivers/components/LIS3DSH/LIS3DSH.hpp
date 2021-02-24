@@ -1,5 +1,5 @@
 /**
- * \file LIS3DSH.hpp
+ * \file    LIS3DSH.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,16 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- *
- * \brief   LIS3DSH accelerometer class.
+ * \class   LIS3DSH accelerometer class.
+ * 
+ * \brief   Driver for the LIS3DSH accelerometer.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/components/LIS3DSH
  *
- * \details Used to configure and read X,Y,Z (motion) samples from the LIS3DSH accelerometer. 
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        10-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    10-2019
  */
 
 #ifndef LIS3DSH_HPP_
@@ -34,9 +33,6 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-/**
- * \brief   LIS3DSH accelerometer class.
- */
 class LIS3DSH
 {
 public:

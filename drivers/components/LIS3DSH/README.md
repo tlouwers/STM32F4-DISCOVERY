@@ -1,21 +1,24 @@
-# Description
+
+# LIS3DSH
 LIS3DSH accelerometer class.
 
+## Description
 Intended use is to provide an easier means to work with the LIS3DSH accelerometer. This class makes use of the SPI and DMA class and is (per default) configured to readout accelerometer samples (X,Y,Z) at 52 Hz. The hardware FIFO of the LIS3DSH is used, meaning after 25 samples (X,Y,Z) the set threshold (or watermark level) signals to the microcontroller data is available, which is then read via DMA.
 
 To be able to decouple from the ISR as much as possible, data is read to internal buffer in LIS3DSH class first using DMA, after which a callback data is available is triggered. The requesting/consuming class can then (outside ISR context) read the data.
 
-# Requirements
-* ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-* C++11 is assumed
-* DMA utility class
-* SPI peripheral class
-* Pins already configured for SPI
+## Requirements
+- ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
+- C++11 is assumed
+- DMA utility class
+- SPI peripheral class
+- Pins already configured for SPI
 
-# Notes
+## Notes
 This is configured to read samples (X,Y,Z) - 16-bit each, at 52 Hz from the LIS3DSH. The hardware FIFO is used, the threshold (or watermark level) is set to 25 samples.
+If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.
  
-# Examples
+## Example
 ```cpp
 // Declare the required classes (in Application.hpp for example):
 DMA mDMA_SPI_Tx;
