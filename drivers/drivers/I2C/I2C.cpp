@@ -7,20 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- *
+ * \class   I2C
+ * 
  * \brief   I2C peripheral driver class.
- *
- * \details This implements 'master' only, for '7-bit' addressing.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/I2C
  *
- * \details Intended use is to provide an easier means to work with the I2C
- *          peripheral. This class assumes the pins to use for the I2C are
- *          already configured.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        10-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    10-2019
  */
 
 /************************************************************************/

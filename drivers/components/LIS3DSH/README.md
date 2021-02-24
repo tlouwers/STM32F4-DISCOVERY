@@ -9,7 +9,7 @@ To be able to decouple from the ISR as much as possible, data is read to interna
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11 is assumed
+- C++11
 - DMA utility class
 - SPI peripheral class
 - Pins already configured for SPI

@@ -1,19 +1,22 @@
-# Description
+
+# I2C
 I2C peripheral driver class.
 
+## Description
 Intended use is to provide an easier means to work with the I2C peripheral. This class assumes the pins to use for the I2C are already configured.
 
-# Requirements
-* ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-* C++11 is assumed
-* Pins already configured for I2C
+## Requirements
+- ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
+- C++11
+- Pins already configured for I2C
 
-# Notes
+## Notes
 Master only. Only 7-bit address.
 The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
+If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.
  
-# Examples
+## Example
 ```cpp
 // Declare the class (in Application.hpp for example):
 I2C mI2C;

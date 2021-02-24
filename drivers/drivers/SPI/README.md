@@ -1,21 +1,22 @@
 
-# Description
+# SPI
 SPI peripheral driver class.
 
+## Description
 Intended use is to provide an easier means to work with the SPI peripheral. This class assumes the pins to use for the SPI are already configured.
 
-# Requirements
-* ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-* C++11 is assumed
-* Pins already configured for SPI
+## Requirements
+- ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
+- C++11
+- Pins already configured for SPI
 
-# Notes
+## Notes
 Master only.
 The ChipSelect is to be toggled manually (outside the class).
 The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
  
-# Examples
+## Example
 ```cpp
 // Declare the class (in Application.hpp for example):
 SPI mSPI;

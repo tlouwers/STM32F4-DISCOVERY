@@ -9,7 +9,7 @@ Intended use is to have a single grouping of functionality which sets the clock 
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11 is assumed
+- C++11
 
 ## Notes
 This is not an extensive list, more pins and functionality is added when I encounter it when hacking away with this board.
