@@ -1,20 +1,21 @@
 
-# Description
+# USART
 USART peripheral driver class.
 
+## Description
 Intended use is to provide an easier means to work with the USART peripheral. This class assumes the pins to use for the USART are already configured.
 
-# Requirements
-* ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-* C++11 is assumed
-* Pins already configured for USART
+## Requirements
+- ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
+- C++11
+- Pins already configured for USART
 
-# Notes
+## Notes
 When using the IDLE line feature during an Rx transmission, there will be an Rx and an IDLE line interrupt. Only 1 callback to Rx is called with the correct number of bytes.
 The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
  
-# Examples
+## Example
 ```cpp
 // Declare the class (in Application.hpp for example):
 Usart mUsart;

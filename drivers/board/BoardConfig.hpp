@@ -1,5 +1,5 @@
 /**
- * \file BoardConfig.hpp
+ * \file    BoardConfig.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,19 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- *
  * \brief   List all pins of the system.
  *
- * \details Intended use is to have a human readable list of all pins of the
- *          system.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        04-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    04-2019
  */
 
-#ifndef BOARDCONFIG_HPP_
-#define BOARDCONFIG_HPP_
+#ifndef BOARD_CONFIG_HPP_
+#define BOARD_CONFIG_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -59,4 +55,4 @@ constexpr PinIdPort PIN_MOTION_INT1 = { GPIO_PIN_0,  GPIOE };
 constexpr PinIdPort PIN_MOTION_INT2 = { GPIO_PIN_1,  GPIOE };
 
 
-#endif  // BOARDCONFIG_HPP_
+#endif  // BOARD_CONFIG_HPP_

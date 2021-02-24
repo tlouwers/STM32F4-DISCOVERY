@@ -7,18 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   USART
  *
  * \brief   USART peripheral driver class.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Usart
  *
- * \details Intended use is to provide an easier means to work with the USART
- *          peripheral. This class assumes the pins to use for the USART are
- *          already configured.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.1
- * \date        09-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.1
+ * \date    09-2019
  */
 
 /************************************************************************/

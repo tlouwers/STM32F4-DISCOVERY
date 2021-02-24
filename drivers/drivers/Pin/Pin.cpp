@@ -7,29 +7,16 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- *
+ * \class   GPIO pin convenience class.
+ * 
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  *          State is preserved (partly) within the hardware.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Pin
  *
- * \details Intended use is to have a method at board startup which sets each
- *          pin to a defined state. This is done by constructing a Pin object,
- *          and let it go out of scope.
- *          Later in the application, for the few pins where needed, pass along
- *          the PinIdPort struct to the class where a pin object is needed.
- *          Then during the initialization of that class (not construction)
- *          create and fill the Pin object with desired values. At this point
- *          the interrupts can be configured as well.
- * 
- * \note    All pin interrupts share the same interrupt priority, which can be
- *          set via INTERRUPT_PRIORITY in the cpp file. This class assumes the
- *          HAL has set NVIC_PRIORITYGROUP_4.
- *          Per default, priority 5 is used.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        03-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    03-2019
  */
 
 /************************************************************************/

@@ -7,6 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   SPI
  *
  * \brief   SPI peripheral driver class - Master only.
  *
@@ -14,13 +15,9 @@
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/SPI
  *
- * \details Intended use is to provide an easier means to work with the SPI
- *          peripheral. This class assumes the pins to use for the SPI bus are
- *          already configured.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        10-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    10-2019
  */
 
 /************************************************************************/

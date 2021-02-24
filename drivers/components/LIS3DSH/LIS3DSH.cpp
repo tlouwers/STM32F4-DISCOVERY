@@ -7,16 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- *
- * \brief   LIS3DSH accelerometer class.
+ * \class   LIS3DSH accelerometer class.
+ * 
+ * \brief   Driver for the LIS3DSH accelerometer.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/components/LIS3DSH
  *
- * \details Used to configure and read X,Y,Z (motion) samples from the LIS3DSH accelerometer. 
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        10-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    10-2019
  */
 
 /************************************************************************/

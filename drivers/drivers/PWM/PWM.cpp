@@ -7,25 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   PWM
  *
- * \brief   PWM class.
+ * \brief   PWM peripheral driver class.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/PWM
  *
- * \details Intended use is to provide an easier means to work with PWM
- *          channels. For this driver it is hardcoded to timer 2, all 4 channels
- *          can be used.
- *          Can be ported easily to timer 3, 4 or 5 as well, since most features
- *          are generic. This is something for a future update.
- *          Hardcoded items:
- *          Using timer 2, which is using APB1 timer clock as clock source.
- *
- * \note    Inspiration from:
- *          https://stm32f4-discovery.net/2014/05/stm32f4-stm32f429-discovery-pwm-tutorial/
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        04-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    04-2019
  */
 
 /************************************************************************/

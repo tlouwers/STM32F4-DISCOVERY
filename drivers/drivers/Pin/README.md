@@ -1,6 +1,8 @@
-# Description
+
+# Pin
 Helper class intended as 'set & forget' for pin  configurations. State is preserved (partly) within the hardware.
 
+## Description
 Intended use is to have a method at board startup which sets each pin to a defined state. This is done by constructing a Pin object, and let it go out of scope.
 Later in the application, for the few pins where needed, pass along the PinIdPort struct to the class where a pin object is needed.
 Then during the initialisation of that class (not construction) create and fill the Pin object with desired values. At this point the interrupts can be configured as well.
@@ -17,19 +19,20 @@ constexpr PinIdPort PIN_LED_GREEN  = { GPIO_PIN_12, GPIOD };
 
 This can then be used as more human readable named ID of a pin. In a "Board.cpp" file a class with only static methods can be used to set all pins in their 'initial' state, meaning the pins are prepared for use by low level peripheral drivers, like USART, and leds can be off. Another method would be a 'sleep' method, which puts all pins into an appropriate lowest power consuming state - this is used for when the CPU is put into a sleep mode.
 
-# Requirements
-* ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-* C++11 is assumed
+## Requirements
+- ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
+- C++11
 
-# Notes
+## Notes
 All pin interrupts share the same interrupt priority, which can be set via INTERRUPT_PRIORITY in the cpp file.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
 Per default, priority 5 is used.
+If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.
 
 ## Warning
 It is quite easy to bypass this class and set pins outside of it. For convenience, choose either style, but don't mix them up to prevent issues.
  
-# Examples
+## Example
 ```cpp
 // Declaration (in header file, say in Application.hpp):
 Pin a1;                                    // Note: requires construction during construction of owning class

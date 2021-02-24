@@ -7,20 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   DMA
  *
- * \brief   DMA utility class.
+ * \brief   DMA utility class, intended for peripherals only.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/DMA
  *
- * \details Intended use is to provide a plug-n-play DMA object to 'Link' with a
- *          peripheral. This way a peripheral can be extended with DMA
- *          functionality in a more generic way without modifying the
- *          peripheral much. The complexity of DMA configuration is handled
- *          within this class.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        09-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    09-2019
  */
 
 /************************************************************************/
