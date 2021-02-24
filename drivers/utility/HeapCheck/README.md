@@ -2,7 +2,7 @@
 Low level functions to determine heap usage during run time.
 
 ## Description
-Assuming there is no memory manager in use, the heap size can de queried.
+Assuming there is no memory manager in use, the heap size can be queried.
 To get an idea of the heap (dynamic memory currently in use), a trick is used: a low level method called `_sbrk()` is called with size 0. Usually this function is used by `malloc()` to request memory from the heap, but when we request nothing (size 0) we get the current heap address. Together with the start of the heap (address) we can determine how much heap memory is used. If the amount of memory increases over time (constantly), this indicates there is either a memory leak or memory fragmentation. Assuming the programmer handles the heap correctly (request and release memory) there should be no memory leaks, only fragmentation.
 
 ## Requirements
@@ -53,22 +53,22 @@ To use the 'end_of_heap_overrun()', a modification in the function '_sbrk()' nee
 caddr_t _sbrk(int incr)
 {
     extern char end asm("end");
-	static char *heap_end;
-	char *prev_heap_end;
+    static char *heap_end;
+    char *prev_heap_end;
 
     if (heap_end == 0)
-		heap_end = &end;
+        heap_end = &end;
 
-	prev_heap_end = heap_end;
-	if (heap_end + incr > stack_ptr)
-	{
-		errno = ENOMEM;
-		return (caddr_t) -1;
-	}
+        prev_heap_end = heap_end;
+        if (heap_end + incr > stack_ptr)
+        {
+            errno = ENOMEM;
+            return (caddr_t) -1;
+        }
 
-	heap_end += incr;
-	*((uint32_t*)((void*)heap_end)) = 0xFAFBFCFD;   // Mark end of heap to detect stack overflow
+        heap_end += incr;
+        *((uint32_t*)((void*)heap_end)) = 0xFAFBFCFD;   // Mark end of heap to detect stack overflow
 
-	return (caddr_t) prev_heap_end;
+        return (caddr_t) prev_heap_end;
 }
 ```
