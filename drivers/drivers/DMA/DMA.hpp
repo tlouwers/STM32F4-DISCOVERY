@@ -11,7 +11,7 @@
  *
  * \brief   DMA utility class, intended for peripherals only.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/DMA
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/DMA
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0

@@ -54,5 +54,8 @@ constexpr PinIdPort PIN_SPI1_CS     = { GPIO_PIN_3,  GPIOE };
 constexpr PinIdPort PIN_MOTION_INT1 = { GPIO_PIN_0,  GPIOE };
 constexpr PinIdPort PIN_MOTION_INT2 = { GPIO_PIN_1,  GPIOE };
 
+// DAC
+constexpr PinIdPort PIN_DAC_CHANNEL1 = { GPIO_PIN_4,  GPIOA };
+constexpr PinIdPort PIN_DAC_CHANNEL2 = { GPIO_PIN_5,  GPIOA };
 
 #endif  // BOARD_CONFIG_HPP_

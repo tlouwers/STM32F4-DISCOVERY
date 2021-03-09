@@ -1,5 +1,5 @@
 /**
- * \file SPI.cpp
+ * \file    SPI.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -13,7 +13,7 @@
  *
  * \note    The ChipSelect must be toggled outside this driver.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/SPI
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/SPI
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -24,8 +24,8 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/SPI/SPI.hpp"
-#include "utility/SlimAssert.h"
-#include "stm32f4xx_hal_uart.h"
+#include "utility/SlimAssert/SlimAssert.h"
+#include "stm32f4xx_hal_spi.h"
 
 
 /************************************************************************/

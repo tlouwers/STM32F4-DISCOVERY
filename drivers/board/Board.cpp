@@ -49,6 +49,9 @@ void Board::InitPins()
     // PIN_SPI1_CS     -- ChipSelect, handled in software
     // PIN_MOTION_INT1 -- Input, handled in LIS3DSH class
     // PIN_MOTION_INT2 -- Input, handled in LIS3DSH class
+
+    // DAC
+    Pin(PIN_DAC_CHANNEL2, PullUpDown::ANALOG);
 }
 
 /**

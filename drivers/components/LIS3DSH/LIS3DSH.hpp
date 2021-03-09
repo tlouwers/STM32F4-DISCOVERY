@@ -11,7 +11,7 @@
  * 
  * \brief   Driver for the LIS3DSH accelerometer.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/components/LIS3DSH
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0

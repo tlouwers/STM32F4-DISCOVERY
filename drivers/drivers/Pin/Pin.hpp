@@ -12,7 +12,7 @@
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  *          State is preserved (partly) within the hardware.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Pin
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Pin
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
