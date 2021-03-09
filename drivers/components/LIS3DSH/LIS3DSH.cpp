@@ -8,7 +8,7 @@
  *          a beer in return.
  *                                                                Terry Louwers
  * \class   LIS3DSH accelerometer class.
- * 
+ *
  * \brief   Driver for the LIS3DSH accelerometer.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
@@ -22,7 +22,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "components/LIS3DSH/LIS3DSH.hpp"
-#include "utility/SlimAssert.h"
+#include "utility/SlimAssert/SlimAssert.h"
 #include <algorithm>
 #include <cstring>
 

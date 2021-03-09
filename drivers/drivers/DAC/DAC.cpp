@@ -196,7 +196,7 @@ bool Dac::ConfigureWaveform(const Channel& channel, uint16_t* values, uint16_t l
 /**
  * \brief   Output a value with the DAC.
  * \param   channel     The channel on which to output a value.
- * \param   value       THe value to output. This is in DAC counts.
+ * \param   value       The value to output. This is in DAC counts.
  * \returns True if the value could be output, else false. Starts the channel
  *          if needed.
  */
