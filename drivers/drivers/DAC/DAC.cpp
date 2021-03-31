@@ -145,10 +145,7 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
         switch (channel)
         {
             case Channel::CHANNEL_1:
-                if (mChannel1.mStarted)
-                {
-                    StopChannel(Channel::CHANNEL_1);
-                }
+                StopChannel(Channel::CHANNEL_1);
                 mChannel1.mStarted   = false;
                 mChannel1.mPrecision = channelConfig.mPrecision;
                 mChannel1.mTrigger   = channelConfig.mTrigger;
@@ -158,10 +155,7 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
                 }
                 break;
             case Channel::CHANNEL_2:
-                if (mChannel1.mStarted)
-                {
-                    StopChannel(Channel::CHANNEL_2);
-                }
+                StopChannel(Channel::CHANNEL_2);
                 mChannel2.mStarted   = false;
                 mChannel2.mPrecision = channelConfig.mPrecision;
                 mChannel2.mTrigger   = channelConfig.mTrigger;
@@ -327,6 +321,7 @@ uint32_t Dac::GetTrigger(const Trigger& trigger)
 
     switch (trigger)
     {
+        case Trigger::NONE:       { trigger_value = DAC_TRIGGER_NONE;     } break;
         case Trigger::TIMER_2:    { trigger_value = DAC_TRIGGER_T2_TRGO;  } break;
         case Trigger::TIMER_4:    { trigger_value = DAC_TRIGGER_T4_TRGO;  } break;
         case Trigger::TIMER_5:    { trigger_value = DAC_TRIGGER_T5_TRGO;  } break;
@@ -334,7 +329,6 @@ uint32_t Dac::GetTrigger(const Trigger& trigger)
         case Trigger::TIMER_7:    { trigger_value = DAC_TRIGGER_T7_TRGO;  } break;
         case Trigger::TIMER_8:    { trigger_value = DAC_TRIGGER_T8_TRGO;  } break;
         case Trigger::EXT_LINE_9: { trigger_value = DAC_TRIGGER_EXT_IT9;  } break;
-        case Trigger::SOFTWARE:   { trigger_value = DAC_TRIGGER_SOFTWARE; } break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 
@@ -371,26 +365,24 @@ bool Dac::StartChannel(const Channel& channel)
     switch (channel)
     {
         case Channel::CHANNEL_1:
-            if (! mChannel1.mStarted)
+            if (mChannel1.mStarted) { return true; }    // Already started
+            
+            if (HAL_DAC_Start(&mHandle, DAC_CHANNEL_1) == HAL_OK)
             {
-                if (! HAL_DAC_Start(&mHandle, DAC_CHANNEL_1) == HAL_OK)
-                {
-                    mChannel1.mStarted = false;
-                    return false;
-                }
                 mChannel1.mStarted = true;
+                return true;
             }
+            mChannel1.mStarted = false;
             break;
         case Channel::CHANNEL_2:
-            if (! mChannel2.mStarted)
+            if (mChannel2.mStarted) { return true; }    // Already started
+
+            if (HAL_DAC_Start(&mHandle, DAC_CHANNEL_2) == HAL_OK)
             {
-                if (! HAL_DAC_Start(&mHandle, DAC_CHANNEL_2) == HAL_OK)
-                {
-                    mChannel2.mStarted = false;
-                    return false;
-                }
                 mChannel2.mStarted = true;
+                return true;
             }
+            mChannel2.mStarted = false;
             break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     };

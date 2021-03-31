@@ -47,23 +47,23 @@ bool Application::Initialize()
 // Declare the class (in Application.hpp for example):
 BasicTimer mBasicTimer;
 Dac        mDAC;
-DMA        mDMA_DAC_Ch2;
+DMA        mDMA_DAC_Ch1;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
-	mBasicTimer(BasicTimerInstance::TIMER_7),
-	mDMA_DAC_Ch2(DMA::Stream::Dma1_Stream6),
+	mBasicTimer(BasicTimerInstance::TIMER_6),
+	mDMA_DAC_Ch1(DMA::Stream::Dma1_Stream5),
 {}
 
 // Initialize the class:
 bool Application::Initialize()
 {
-	// Initialize DMA for DAC channel 2
-	bool result = mDMA_DAC_Ch2.Configure(DMA::Channel::Channel7, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Circular, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+	// Initialize DMA for DAC channel 1
+	bool result = mDMA_DAC_Ch1.Configure(DMA::Channel::Channel7, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Circular, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
 	ASSERT(result);
 	
 	// Link DMA with the DAC
-	result &= mDMA_DAC_Ch2.Link(mDAC.GetPeripheralHandle(), mDAC.GetDmaChannel2Handle());
+	result &= mDMA_DAC_Ch1.Link(mDAC.GetPeripheralHandle(), mDAC.GetDmaChannel1Handle());
 	ASSERT(result);
 
 	// Initialize the BasicTimer
@@ -74,12 +74,12 @@ bool Application::Initialize()
 	result &= mDAC.Init();
 	ASSERT(result);
 
-	// Configure the wavefor which is later output on the DAC
-	result &= mDAC.ConfigureWaveform(Dac::Channel::CHANNEL_2, const_cast<uint16_t*>(sine_table), SINE_TABLE_LEN);
+	// Configure the waveform which is later output on the DAC
+	result &= mDAC.ConfigureWaveform(Dac::Channel::CHANNEL_1, const_cast<uint16_t*>(sine_table), SINE_TABLE_LEN);
 	ASSERT(result);
 
-	// Configure channel 2: using BasicTimer7, configured before
-	result &= mDAC.ConfigureChannel(Dac::Channel::CHANNEL_2, Dac::ChannelConfig(Dac::Precision::_12_BIT_R, Dac::Trigger::TIMER_7));
+	// Configure channel 1: using BasicTimer6, configured before
+	result &= mDAC.ConfigureChannel(Dac::Channel::CHANNEL_1, Dac::ChannelConfig(Dac::Precision::_12_BIT_R, Dac::Trigger::TIMER_6));
 	ASSERT(result);
 
 	// Start the 'heartbeat' timer for the DAC DMA
@@ -88,8 +88,8 @@ bool Application::Initialize()
 
     // Other stuff...
 
-	// Start the waveform output loop on DAC channel 2
-	result &= mDAC.StartWaveform(Dac::Channel::CHANNEL_2);
+	// Start the waveform output loop on DAC channel 1
+	result &= mDAC.StartWaveform(Dac::Channel::CHANNEL_1);
 	ASSERT(result);
 
     return result;

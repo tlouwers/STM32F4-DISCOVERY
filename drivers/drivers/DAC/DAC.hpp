@@ -70,6 +70,7 @@ public:
      */
     enum class Trigger : uint8_t
     {
+        NONE,       ///< Default
         TIMER_2,
         TIMER_4,
         TIMER_5,
@@ -77,7 +78,7 @@ public:
         TIMER_7,
         TIMER_8,
         EXT_LINE_9,
-        SOFTWARE    ///< Default
+        //SOFTWARE      // Requires HAL_DAC_Start() after loading value in output register
     };
 
     /**
@@ -91,7 +92,7 @@ public:
          * \param   precision   The precision or alignment of the data.
          * \param   trigger     The trigger for the channel.
          */
-        ChannelConfig(Precision precision = Precision::_12_BIT_R, Trigger trigger = Trigger::SOFTWARE) :
+        ChannelConfig(Precision precision = Precision::_12_BIT_R, Trigger trigger = Trigger::NONE) :
             mStarted(false),
             mPrecision(precision),
             mTrigger(trigger)
