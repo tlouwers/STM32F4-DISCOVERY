@@ -94,7 +94,7 @@ enum class Drive : uint8_t
 /**
  * \enum    PullUpDown
  * \brief   Input pull up or pull down mode of a pin.
- * \note    Analog is when using the pin for ADC input.
+ * \note    Analog is when using the pin for ADC input or DAC output.
  */
 enum class PullUpDown : uint8_t
 {

@@ -1,5 +1,5 @@
 /**
- * \file LIS3DSH.cpp
+ * \file    LIS3DSH.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
