@@ -66,13 +66,14 @@ public:
     /**
      * \struct  Config
      * \brief   Configuration struct for BasicTimer.
+     * \note    Can fine-tune frequency in the Init() and CalculatePeriod() methods.
      */
     struct Config
     {
         /**
          * \brief   Constructor of the BasicTimer configuration struct.
          * \param   interruptPriority   Priority of the interrupt.
-         * \param   frequency           Frequency of the timer in Hz.
+         * \param   frequency           Frequency of the timer in Hz. Range [20..65535] Hz. 
          */
         Config(uint8_t interruptPriority,
                uint16_t frequency) :
@@ -106,6 +107,7 @@ private:
     void CheckAndEnableAHB1PeripheralClock(const BasicTimerInstance& instance);
     uint16_t CalculatePeriod(uint16_t desiredFrequency);
     IRQn_Type GetIRQn(const BasicTimerInstance& instance);
+    void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
 };
 

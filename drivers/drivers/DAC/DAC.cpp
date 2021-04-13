@@ -177,7 +177,7 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
  * \param   length  Length of the buffer.
  * \returns True if the waveform could be configured, else false.
  */
-bool Dac::ConfigureWaveform(const Channel& channel, uint16_t* values, uint16_t length)
+bool Dac::ConfigureWaveform(const Channel& channel, const uint16_t* values, uint16_t length)
 {
     if (values != nullptr && length > 0)
     {
@@ -231,35 +231,31 @@ bool Dac::StartWaveform(const Channel& channel)
     switch (channel)
     {
         case Channel::CHANNEL_1:
-            if (! mChannel1.mStarted && (mWaveformChannel1.mLength > 0))
-            {
-                if (mHandle.DMA_Handle1 == nullptr) { return false; }
+            if ((mHandle.DMA_Handle1 == nullptr) || (mWaveformChannel1.mLength == 0)) { return false; }
 
-                if (! HAL_DAC_Start_DMA(&mHandle, DAC_CHANNEL_1,
+            if (! mChannel1.mStarted)
+            {
+                if (HAL_DAC_Start_DMA(&mHandle, DAC_CHANNEL_1,
                         reinterpret_cast<uint32_t*>(mWaveformChannel1.mValues), mWaveformChannel1.mLength,
                         GetAlignment(mChannel1.mPrecision)) == HAL_OK)
                 {
-                    mChannel1.mStarted = false;
-                    return false;
+                    mChannel1.mStarted = true;
+                    return true;
                 }
-                mChannel1.mStarted = true;
-                return true;
             }
             break;
         case Channel::CHANNEL_2:
-            if (! mChannel2.mStarted && (mWaveformChannel2.mLength > 0))
-            {
-                if (mHandle.DMA_Handle2 == nullptr) { return false; }
+            if ((mHandle.DMA_Handle2 == nullptr) || (mWaveformChannel2.mLength == 0)) { return false; }
 
-                if (! HAL_DAC_Start_DMA(&mHandle, DAC_CHANNEL_2,
+            if (! mChannel2.mStarted)
+            {
+                if (HAL_DAC_Start_DMA(&mHandle, DAC_CHANNEL_2,
                         reinterpret_cast<uint32_t*>(mWaveformChannel2.mValues), mWaveformChannel2.mLength,
                         GetAlignment(mChannel2.mPrecision)) == HAL_OK)
                 {
-                    mChannel2.mStarted = false;
-                    return false;
+                    mChannel2.mStarted = true;
+                    return true;
                 }
-                mChannel2.mStarted = true;
-                return true;
             }
             break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
@@ -277,7 +273,7 @@ bool Dac::StopWaveform(const Channel& channel)
     switch (channel)
     {
         case Channel::CHANNEL_1:
-            if (mChannel1.mStarted && (mWaveformChannel1.mLength > 0))
+            if (mChannel1.mStarted)
             {
                 HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_1);
                 mChannel1.mStarted = false;
@@ -285,7 +281,7 @@ bool Dac::StopWaveform(const Channel& channel)
             }
             break;
         case Channel::CHANNEL_2:
-            if (mChannel2.mStarted && (mWaveformChannel2.mLength > 0))
+            if (mChannel2.mStarted)
             {
                 HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_2);
                 mChannel2.mStarted = false;
@@ -366,13 +362,12 @@ bool Dac::StartChannel(const Channel& channel)
     {
         case Channel::CHANNEL_1:
             if (mChannel1.mStarted) { return true; }    // Already started
-            
+
             if (HAL_DAC_Start(&mHandle, DAC_CHANNEL_1) == HAL_OK)
             {
                 mChannel1.mStarted = true;
                 return true;
             }
-            mChannel1.mStarted = false;
             break;
         case Channel::CHANNEL_2:
             if (mChannel2.mStarted) { return true; }    // Already started
@@ -382,7 +377,6 @@ bool Dac::StartChannel(const Channel& channel)
                 mChannel2.mStarted = true;
                 return true;
             }
-            mChannel2.mStarted = false;
             break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     };
@@ -435,17 +429,17 @@ bool Dac::StopChannel(const Channel& channel)
  * \param   values      Pointer to the buffer containing the waveform values.
  * \param   length      Length of the buffer.
  */
-void Dac::SetWaveform(const Channel& channel, uint16_t* values, uint16_t length)
+void Dac::SetWaveform(const Channel& channel, const uint16_t* values, uint16_t length)
 {
     switch (channel)
     {
         case Channel::CHANNEL_1:
-            mWaveformChannel1.mValues = values;
+            mWaveformChannel1.mValues = const_cast<uint16_t*>(values);
             mWaveformChannel1.mLength = length;
             mWaveformChannel1.mIndex  = 0;
             break;
         case Channel::CHANNEL_2:
-            mWaveformChannel2.mValues = values;
+            mWaveformChannel2.mValues = const_cast<uint16_t*>(values);
             mWaveformChannel2.mLength = length;
             mWaveformChannel2.mIndex  = 0;
             break;

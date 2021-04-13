@@ -130,12 +130,7 @@ bool SPI::Init(const Config& config)
     if (HAL_SPI_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt
-        const IRQn_Type irq = GetIRQn(mInstance);
-        HAL_NVIC_DisableIRQ(irq);
-        HAL_NVIC_ClearPendingIRQ(irq);
-        HAL_NVIC_SetPriority(irq, config.mInterruptPriority, 0);
-
-        HAL_NVIC_EnableIRQ(irq);
+        SetIRQn(GetIRQn(mInstance), config.mInterruptPriority, 0);
 
         mInitialized = true;
         return true;
@@ -494,11 +489,25 @@ IRQn_Type SPI::GetIRQn(const SPIInstance& instance)
 }
 
 /**
+ * \brief   Lower level configuration for the SPI interrupts.
+ * \param   type        IRQn External interrupt number.
+ * \param   preemptPrio The preemption priority for the IRQn channel.
+ * \param   subPrio     The subpriority level for the IRQ channel.
+ */
+void SPI::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
+{
+    HAL_NVIC_DisableIRQ(type);
+    HAL_NVIC_ClearPendingIRQ(type);
+    HAL_NVIC_SetPriority(type, preemptPrio, subPrio);
+    HAL_NVIC_EnableIRQ(type);
+}
+
+/**
  * \brief   Generic SPI IRQ callback. Will propagate other interrupts.
  */
-void SPI::CallbackIRQ()
+void SPI::CallbackIRQ() const
 {
-    HAL_SPI_IRQHandler(&mHandle);
+    HAL_SPI_IRQHandler(const_cast<SPI_HandleTypeDef*>(&mHandle));
 }
 
 

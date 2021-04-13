@@ -93,20 +93,21 @@ bool BasicTimer::Init(const Config& config)
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
     mHandle.Init.Period            = CalculatePeriod(config.mFrequency); // (Freq. desired) = (Freq. CNT_CLK) / (TIM_ARR + 1)
     mHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
-    mHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    mHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
 
     if (HAL_TIM_Base_Init(&mHandle) == HAL_OK)
     {
-        // Configure NVIC to generate interrupt
-        const IRQn_Type irq = GetIRQn(mInstance);
-        HAL_NVIC_DisableIRQ(irq);
-        HAL_NVIC_ClearPendingIRQ(irq);
-        HAL_NVIC_SetPriority(irq, config.mInterruptPriority, 0);
+        TIM_MasterConfigTypeDef masterConfig = {};
+        masterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+        masterConfig.MasterSlaveMode     = TIM_MASTERSLAVEMODE_DISABLE;
+        if (HAL_TIMEx_MasterConfigSynchronization(&mHandle, &masterConfig) == HAL_OK)
+        {
+            // Configure NVIC to generate interrupt
+            SetIRQn(GetIRQn(mInstance), config.mInterruptPriority, 0);
 
-        HAL_NVIC_EnableIRQ(irq);
-
-        mInitialized = true;
-        return true;
+            mInitialized = true;
+            return true;
+        }
     }
     return false;
 };
@@ -251,6 +252,20 @@ IRQn_Type BasicTimer::GetIRQn(const BasicTimerInstance& instance)
         case BasicTimerInstance::TIMER_7: return TIM7_IRQn; break;
         default: ASSERT(false); while(1) { __NOP(); } return TIM6_DAC_IRQn; break;      // Impossible selection
     }
+}
+
+/**
+ * \brief   Lower level configuration for the BasicTimer interrupts.
+ * \param   type        IRQn External interrupt number.
+ * \param   preemptPrio The preemption priority for the IRQn channel.
+ * \param   subPrio     The subpriority level for the IRQ channel.
+ */
+void BasicTimer::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
+{
+    HAL_NVIC_DisableIRQ(type);
+    HAL_NVIC_ClearPendingIRQ(type);
+    HAL_NVIC_SetPriority(type, preemptPrio, subPrio);
+    HAL_NVIC_EnableIRQ(type);
 }
 
 /**

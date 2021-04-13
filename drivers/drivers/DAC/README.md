@@ -59,7 +59,7 @@ Application::Application() :
 bool Application::Initialize()
 {
 	// Initialize DMA for DAC channel 1
-	bool result = mDMA_DAC_Ch1.Configure(DMA::Channel::Channel7, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Circular, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+	bool result = mDMA_DAC_Ch1.Configure(DMA::Channel::Channel7, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Circular, DMA::DataWidth::HalfWord, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
 	ASSERT(result);
 	
 	// Link DMA with the DAC
@@ -67,7 +67,7 @@ bool Application::Initialize()
 	ASSERT(result);
 
 	// Initialize the BasicTimer
-	result &= mBasicTimer.Init(BasicTimer::Config(12, 10000)); // 10 kHz
+	result &= mBasicTimer.Init(BasicTimer::Config(12, 20));    // 20 Hz
 	ASSERT(result);
 
 	// Initialize the DAC
@@ -75,12 +75,12 @@ bool Application::Initialize()
 	ASSERT(result);
 
 	// Configure the waveform which is later output on the DAC
-	result &= mDAC.ConfigureWaveform(Dac::Channel::CHANNEL_1, const_cast<uint16_t*>(sine_table), SINE_TABLE_LEN);
-	ASSERT(result);
+	result &= mDAC.ConfigureWaveform(Dac::Channel::CHANNEL_1, sine_table, SINE_TABLE_LEN);
+    ASSERT(result);
 
 	// Configure channel 1: using BasicTimer6, configured before
 	result &= mDAC.ConfigureChannel(Dac::Channel::CHANNEL_1, Dac::ChannelConfig(Dac::Precision::_12_BIT_R, Dac::Trigger::TIMER_6));
-	ASSERT(result);
+    ASSERT(result);
 
 	// Start the 'heartbeat' timer for the DAC DMA
 	result &= mBasicTimer.Start();

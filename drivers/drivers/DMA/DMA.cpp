@@ -64,11 +64,13 @@ DMA::~DMA()
  * \param   channel             The DMA channel to configure for.
  * \param   direction           The direction of the DMA to use.
  * \param   bufferMode          The buffer mode to use.
+ * \param   width               Memory data width to use. Default Byte size.
  * \param   priority            DMA priority. Default Low.
  * \param   halfBufferInterrupt Flag, indicating half buffer interrupt is to be used or not. Default true.
  * \returns True if the DMA object could be configured, else false.
+ * \note    Peripheral data width is fixed at Byte size.
  */
-bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode, Priority priority /* = Priority::Low */, HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */)
+bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width /* = DataWidth::Byte */, Priority priority /* = Priority::Low */, HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */)
 {
     mHalfBufferInterrupt = halfBufferInterrupt;
 
@@ -79,8 +81,8 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     mHandle.Init.Direction           = GetDirection(direction);
     mHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
     mHandle.Init.MemInc              = DMA_MINC_ENABLE;
-    mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-    mHandle.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
+    mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;     // Fixed ay Byte size.
+    mHandle.Init.MemDataAlignment    = GetDataWidth(width);
     mHandle.Init.Mode                = (bufferMode == DMA::BufferMode::Circular) ? DMA_CIRCULAR : DMA_NORMAL;
     mHandle.Init.Priority            = GetPriority(priority);
     mHandle.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
@@ -193,6 +195,22 @@ uint32_t DMA::GetDirection(Direction direction)
         case Direction::PeripheralToMemory: return DMA_PERIPH_TO_MEMORY; break;
         case Direction::MemoryToMemory:     return DMA_MEMORY_TO_MEMORY; break;
         default: ASSERT(false); while(1) { __NOP(); } return DMA_MEMORY_TO_MEMORY; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the DMA data width as register value.
+ * \param   width   The data width to get the register value for.
+ * \returns The data width as register value.
+ */
+uint32_t DMA::GetDataWidth(DataWidth width)
+{
+    switch (width)
+    {
+        case DataWidth::Byte:     return DMA_PDATAALIGN_BYTE;     break;
+        case DataWidth::HalfWord: return DMA_PDATAALIGN_HALFWORD; break;
+        case DataWidth::Word:     return DMA_PDATAALIGN_WORD;     break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_PDATAALIGN_BYTE; break;    // Impossible selection
     }
 }
 

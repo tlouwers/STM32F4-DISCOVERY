@@ -136,7 +136,7 @@ public:
     DMA_HandleTypeDef*& GetDmaChannel2Handle();
 
     bool ConfigureChannel(const Channel& channel, const ChannelConfig& channelConfig);
-    bool ConfigureWaveform(const Channel& channel, uint16_t* values, uint16_t length);
+    bool ConfigureWaveform(const Channel& channel, const uint16_t* values, uint16_t length);
 
     bool SetValue(const Channel& channel, uint16_t value);
 
@@ -158,7 +158,7 @@ private:
 
     bool StartChannel(const Channel& channel);
     bool StopChannel(const Channel& channel);
-    void SetWaveform(const Channel& channel, uint16_t* values, uint16_t length);
+    void SetWaveform(const Channel& channel, const uint16_t* values, uint16_t length);
 };
 
 

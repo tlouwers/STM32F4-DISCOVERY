@@ -32,7 +32,7 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class DMA
+class DMA final
 {
 public:
     /**
@@ -97,6 +97,17 @@ public:
     };
 
     /**
+     * \enum    DataWidth
+     * \brief   Available data widths.
+     */
+    enum class DataWidth : uint8_t
+    {
+        Byte,
+        HalfWord,
+        Word
+    };
+
+    /**
      * \enum    BufferMode
      * \brief   Available DMA buffer modes.
      */
@@ -132,7 +143,7 @@ public:
     explicit DMA(Stream stream);
     ~DMA();
 
-    bool Configure(Channel channel, Direction direction, BufferMode bufferMode, Priority priority = Priority::Low, HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled);
+    bool Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width = DataWidth::Byte, Priority priority = Priority::Low, HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled);
     bool Link(const void* parent, DMA_HandleTypeDef*& handle);
 
 private:
@@ -143,6 +154,7 @@ private:
     DMA_Stream_TypeDef* GetInstance(Stream stream);
     uint32_t GetChannel(Channel channel);
     uint32_t GetDirection(Direction direction);
+    uint32_t GetDataWidth(DataWidth width);
     uint32_t GetPriority(Priority priority);
 
     void ConnectInternalCallback(Stream stream);
