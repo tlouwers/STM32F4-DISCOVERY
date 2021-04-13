@@ -1,5 +1,5 @@
 /**
- * \file LIS3DSH.cpp
+ * \file    LIS3DSH.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -8,10 +8,10 @@
  *          a beer in return.
  *                                                                Terry Louwers
  * \class   LIS3DSH accelerometer class.
- * 
+ *
  * \brief   Driver for the LIS3DSH accelerometer.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/components/LIS3DSH
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -22,7 +22,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "components/LIS3DSH/LIS3DSH.hpp"
-#include "utility/SlimAssert.h"
+#include "utility/SlimAssert/SlimAssert.h"
 #include <algorithm>
 #include <cstring>
 

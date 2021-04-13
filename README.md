@@ -7,6 +7,8 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | ------ | -------- |
 | Drivers/board | Helper class and configuration file to configure clock and pins of the board. |
 | Drivers/components/LIS3DSH | LIS3DSH accelerometer class with HW fifo support. |
+| Drivers/drivers/BasicTimer | BasicTimer peripheral driver class. Intended for use with DAC. |
+| Drivers/drivers/DAC | DAC peripheral driver class. Simple and DMA based output for any waveform (uses BasicTimer). |
 | Drivers/drivers/DMA | DMA utility class, intended as plug-in functionality for peripherals. |
 | Drivers/drivers/I2C | I2C peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | Drivers/drivers/Pin | Helper class intended as 'set & forget' for pin  configurations. State is preserved (partly) within the hardware. |
