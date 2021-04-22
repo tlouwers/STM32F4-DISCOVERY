@@ -192,11 +192,7 @@ bool Adc::GetValueInterrupt(const std::function<void(uint16_t)>& handler)
 
     mADCCallbacks.callbackEndOfConversion = handler;
 
-    if (HAL_ADC_Start_IT(&mHandle) == HAL_OK)
-    {
-        return true;
-    }
-    return false;
+    return (HAL_ADC_Start_IT(&mHandle) == HAL_OK);
 }
 
 
@@ -326,36 +322,19 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* handle)
     ASSERT(handle);
 
     // Could only get here via interrupt: stop, as new requests will start anew
-    if (HAL_ADC_Stop_IT(handle) == HAL_OK)
-    {
-        ASSERT(false);
+    if (HAL_ADC_Stop_IT(handle) != HAL_OK) { ASSERT(false); }
 
-        if (handle->Instance == ADC1) { CallbackEndOfConversion(adc1_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
-        if (handle->Instance == ADC2) { CallbackEndOfConversion(adc2_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
-        if (handle->Instance == ADC3) { CallbackEndOfConversion(adc3_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
-    }
+    if (handle->Instance == ADC1) { CallbackEndOfConversion(adc1_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
+    if (handle->Instance == ADC2) { CallbackEndOfConversion(adc2_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
+    if (handle->Instance == ADC3) { CallbackEndOfConversion(adc3_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
 }
 
 /**
- * \brief   ISR: route ADC1 interrupts to 'CallbackIRQ'.
+ * \brief   ISR: route ADC1, ADC2, ADC3 interrupts to 'CallbackIRQ'.
  */
-extern "C" void ADC1_IRQHandler(void)
+extern "C" void ADC_IRQHandler(void)
 {
     CallbackIRQ(adc1_callbacks);
-}
-
-/**
- * \brief   ISR: route ADC2 interrupts to 'CallbackIRQ'.
- */
-extern "C" void ADC2_IRQHandler(void)
-{
     CallbackIRQ(adc2_callbacks);
-}
-
-/**
- * \brief   ISR: route ADC3 interrupts to 'CallbackIRQ'.
- */
-extern "C" void ADC3_IRQHandler(void)
-{
     CallbackIRQ(adc3_callbacks);
 }

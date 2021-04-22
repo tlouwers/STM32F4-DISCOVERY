@@ -15,7 +15,7 @@ It has 2 modes implemented: either use only GetValue() as blocking method to get
 All data is right aligned. No DMA methods are implemented as the ADC class is envisioned to be used to retrieve a value sporadically.
 Also no multichannel is implemented.
  
-## Example 1
+## Example 1 (Polling/Blocking)
 ```cpp
 // Declare the class (in Application.hpp for example):
 Adc mADC;
@@ -24,9 +24,8 @@ Adc mADC;
 bool Application::Initialize()
 {
     // Initialize the ADC
-    bool result = mADC.Init(Adc::Config(13, Adc::Channel::CHANNEL_10, Adc::Resolution::_12_BIT));
+    bool result = mADC.Init(Adc::Config(13, Adc::Channel::CHANNEL_11, Adc::Resolution::_12_BIT));
     ASSERT(result);
-
 
     // Other stuff...
 
@@ -35,7 +34,35 @@ bool Application::Initialize()
     result &= mADC.GetValue(sample);
     ASSERT(result);
 
+    return result;
+}
+```
+
+## Example 2 (Interrupt)
+```cpp
+// Declare the class (in Application.hpp for example):
+Adc mADC;
+
+// Initialize the class:
+bool Application::Initialize()
+{
+    // Initialize the ADC
+    bool result = mADC.Init(Adc::Config(13, Adc::Channel::CHANNEL_11, Adc::Resolution::_12_BIT));
+    ASSERT(result);
+
+    // Other stuff...
+
+    // Sample a value: in ADC counts (in this case 12-bit). This starts a single
+    // conversion, when completed the handler is called with the result.
+    result &= mADC.GetValueInterrupt([this](uint16_t  value) { this->AdcDataReceived(value); });
+    ASSERT(result);
 
     return result;
+}
+
+// Handler for the ADC value captured callback
+void Application::AdcDataReceived(uint16_t value)
+{
+    // Do something with 'value'
 }
 ```
