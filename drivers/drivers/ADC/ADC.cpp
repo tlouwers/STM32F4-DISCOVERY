@@ -115,12 +115,7 @@ bool Adc::Init(const Config& config)
 
     if (HAL_ADC_Init(&mHandle) == HAL_OK)
     {
-        const IRQn_Type irq = ADC_IRQn;
-        HAL_NVIC_DisableIRQ(irq);
-        HAL_NVIC_ClearPendingIRQ(irq);
-        HAL_NVIC_SetPriority(irq, config.mInterruptPriority, 0);
-
-        HAL_NVIC_EnableIRQ(irq);
+        SetIRQn(ADC_IRQn, config.mInterruptPriority, 0);
 
         // Configure channel
         ADC_ChannelConfTypeDef adcChannelConfig = {};
@@ -197,7 +192,11 @@ bool Adc::GetValueInterrupt(const std::function<void(uint16_t)>& handler)
 
     mADCCallbacks.callbackEndOfConversion = handler;
 
-    return (HAL_ADC_Start_IT(&mHandle) == HAL_OK);
+    if (HAL_ADC_Start_IT(&mHandle) == HAL_OK)
+    {
+        return true;
+    }
+    return false;
 }
 
 
@@ -292,11 +291,25 @@ uint32_t Adc::GetResolution(const Resolution& resolution)
 }
 
 /**
+ * \brief   Lower level configuration for the ADC interrupts.
+ * \param   type        IRQn External interrupt number.
+ * \param   preemptPrio The preemption priority for the IRQn channel.
+ * \param   subPrio     The subpriority level for the IRQ channel.
+ */
+void Adc::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
+{
+    HAL_NVIC_DisableIRQ(type);
+    HAL_NVIC_ClearPendingIRQ(type);
+    HAL_NVIC_SetPriority(type, preemptPrio, subPrio);
+    HAL_NVIC_EnableIRQ(type);
+}
+
+/**
  * \brief   Generic ADC IRQ callback. Will propagate other interrupts.
  */
-void Adc::CallbackIRQ()
+void Adc::CallbackIRQ() const
 {
-    HAL_ADC_IRQHandler(&mHandle);
+    HAL_ADC_IRQHandler(const_cast<ADC_HandleTypeDef*>(&mHandle));
 }
 
 
@@ -313,13 +326,14 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* handle)
     ASSERT(handle);
 
     // Could only get here via interrupt: stop, as new requests will start anew
-    HAL_ADC_Stop_IT(handle);
+    if (HAL_ADC_Stop_IT(handle) == HAL_OK)
+    {
+        ASSERT(false);
 
-    // ToDo: check for error
-
-    if (handle->Instance == ADC1) { CallbackEndOfConversion(adc1_callbacks, HAL_ADC_GetValue(handle)); }
-    if (handle->Instance == ADC2) { CallbackEndOfConversion(adc2_callbacks, HAL_ADC_GetValue(handle)); }
-    if (handle->Instance == ADC3) { CallbackEndOfConversion(adc3_callbacks, HAL_ADC_GetValue(handle)); }
+        if (handle->Instance == ADC1) { CallbackEndOfConversion(adc1_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
+        if (handle->Instance == ADC2) { CallbackEndOfConversion(adc2_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
+        if (handle->Instance == ADC3) { CallbackEndOfConversion(adc3_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
+    }
 }
 
 /**

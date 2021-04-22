@@ -58,5 +58,24 @@ constexpr PinIdPort PIN_MOTION_INT2 = { GPIO_PIN_1,  GPIOE };
 constexpr PinIdPort PIN_DAC_CHANNEL1 = { GPIO_PIN_4,  GPIOA };
 constexpr PinIdPort PIN_DAC_CHANNEL2 = { GPIO_PIN_5,  GPIOA };
 
+// ADC
+constexpr PinIdPort PIN_ADC1_CHANNEL10 = { GPIO_PIN_0,  GPIOC };
+/*
+constexpr PinIdPort PIN_ADC1_CHANNEL0  = { GPIO_PIN_0,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL1  = { GPIO_PIN_1,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL2  = { GPIO_PIN_2,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL3  = { GPIO_PIN_3,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL4  = { GPIO_PIN_4,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL5  = { GPIO_PIN_5,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL6  = { GPIO_PIN_6,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL7  = { GPIO_PIN_7,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL8  = { GPIO_PIN_0,  GPIOB };
+constexpr PinIdPort PIN_ADC1_CHANNEL9  = { GPIO_PIN_1,  GPIOB };
+constexpr PinIdPort PIN_ADC1_CHANNEL10 = { GPIO_PIN_0,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL11 = { GPIO_PIN_1,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL12 = { GPIO_PIN_2,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL13 = { GPIO_PIN_3,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL14 = { GPIO_PIN_4,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL15 = { GPIO_PIN_5,  GPIOC };
 
 #endif  // BOARD_CONFIG_HPP_

@@ -146,9 +146,8 @@ private:
     void CheckAndEnableAHB2PeripheralClock(const ADCInstance& instance);
     uint32_t GetChannel(const Channel& channel);
     uint32_t GetResolution(const Resolution& resolution);
-
-    IRQn_Type GetIRQn(const ADCInstance& instance);
-    void CallbackIRQ();
+    void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
+    void CallbackIRQ() const;
 };
 
 
