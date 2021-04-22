@@ -1,5 +1,5 @@
 /**
- * \file Board.cpp
+ * \file    Board.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain

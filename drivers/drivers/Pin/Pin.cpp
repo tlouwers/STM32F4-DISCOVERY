@@ -1,5 +1,5 @@
 /**
- * \file Pin.cpp
+ * \file    Pin.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,8 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   GPIO pin convenience class.
- * 
+ *
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  *          State is preserved (partly) within the hardware.
  *
@@ -23,7 +22,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/Pin/Pin.hpp"
-#include "utility/SlimAssert.h"
+#include "utility/SlimAssert/SlimAssert.h"
 
 
 /************************************************************************/
