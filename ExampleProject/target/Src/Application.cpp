@@ -1,5 +1,5 @@
 /**
- * \file Application.cpp
+ * \file    Application.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -14,9 +14,9 @@
  *
  * \details Intended use is to provide an example how to read the accelerometer.
  *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        10-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    10-2019
  */
 
 /************************************************************************/
@@ -26,13 +26,6 @@
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
 #include "utility/SlimAssert/SlimAssert.h"
-
-
-/************************************************************************/
-/* Static Variables                                                     */
-/************************************************************************/
-static volatile uint32_t used_stack = 0;
-static volatile uint32_t used_heap  = 0;
 
 
 /************************************************************************/
@@ -74,10 +67,10 @@ bool Application::Init()
     HAL_Delay(750);
 
     // Actual Init()
-    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
-    result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
     result = mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
@@ -125,7 +118,7 @@ void Application::Process()
 
         bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
         ASSERT(retrieveResult);
-		(void)(retrieveResult);
+        (void)(retrieveResult);
 
         // Deinterleave to X,Y,Z samples
     }

@@ -1,5 +1,5 @@
 /**
- * \file DMA.cpp
+ * \file     DMA.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,20 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   DMA
  *
- * \brief   DMA utility class.
+ * \brief   DMA utility class, intended for peripherals only.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/DMA
  *
- * \details Intended use is to provide a plug-n-play DMA object to 'Link' with a
- *          peripheral. This way a peripheral can be extended with DMA
- *          functionality in a more generic way without modifying the
- *          peripheral much. The complexity of DMA configuration is handled
- *          within this class.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        09-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    09-2019
  */
 
 /************************************************************************/
@@ -69,11 +64,13 @@ DMA::~DMA()
  * \param   channel             The DMA channel to configure for.
  * \param   direction           The direction of the DMA to use.
  * \param   bufferMode          The buffer mode to use.
+ * \param   width               Memory data width to use. Default Byte size.
  * \param   priority            DMA priority. Default Low.
  * \param   halfBufferInterrupt Flag, indicating half buffer interrupt is to be used or not. Default true.
  * \returns True if the DMA object could be configured, else false.
+ * \note    Peripheral data width is fixed at Byte size.
  */
-bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode, Priority priority /* = Priority::Low */, HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */)
+bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width /* = DataWidth::Byte */, Priority priority /* = Priority::Low */, HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */)
 {
     mHalfBufferInterrupt = halfBufferInterrupt;
 
@@ -84,8 +81,8 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     mHandle.Init.Direction           = GetDirection(direction);
     mHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
     mHandle.Init.MemInc              = DMA_MINC_ENABLE;
-    mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-    mHandle.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
+    mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;     // Fixed ay Byte size.
+    mHandle.Init.MemDataAlignment    = GetDataWidth(width);
     mHandle.Init.Mode                = (bufferMode == DMA::BufferMode::Circular) ? DMA_CIRCULAR : DMA_NORMAL;
     mHandle.Init.Priority            = GetPriority(priority);
     mHandle.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
@@ -198,6 +195,22 @@ uint32_t DMA::GetDirection(Direction direction)
         case Direction::PeripheralToMemory: return DMA_PERIPH_TO_MEMORY; break;
         case Direction::MemoryToMemory:     return DMA_MEMORY_TO_MEMORY; break;
         default: ASSERT(false); while(1) { __NOP(); } return DMA_MEMORY_TO_MEMORY; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the DMA data width as register value.
+ * \param   width   The data width to get the register value for.
+ * \returns The data width as register value.
+ */
+uint32_t DMA::GetDataWidth(DataWidth width)
+{
+    switch (width)
+    {
+        case DataWidth::Byte:     return DMA_PDATAALIGN_BYTE;     break;
+        case DataWidth::HalfWord: return DMA_PDATAALIGN_HALFWORD; break;
+        case DataWidth::Word:     return DMA_PDATAALIGN_WORD;     break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_PDATAALIGN_BYTE; break;    // Impossible selection
     }
 }
 

@@ -1,5 +1,5 @@
 /**
- * \file BoardConfig.hpp
+ * \file    BoardConfig.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,19 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- *
  * \brief   List all pins of the system.
  *
- * \details Intended use is to have a human readable list of all pins of the
- *          system.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        04-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    04-2019
  */
 
-#ifndef BOARDCONFIG_HPP_
-#define BOARDCONFIG_HPP_
+#ifndef BOARD_CONFIG_HPP_
+#define BOARD_CONFIG_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -45,9 +41,10 @@ constexpr PinIdPort PIN_USART2_TX   = { GPIO_PIN_2,  GPIOA };
 constexpr PinIdPort PIN_USART2_RX   = { GPIO_PIN_3,  GPIOA };
 constexpr PinIdPort PIN_USART2_CTS  = { GPIO_PIN_3,  GPIOD };
 
-// Audio Control (CS43L22) - I2C, address 0x94
+// Audio Amplifier - control (CS43L22) - I2C
 constexpr PinIdPort PIN_I2C1_SCL    = { GPIO_PIN_6,  GPIOB };
 constexpr PinIdPort PIN_I2C1_SDA    = { GPIO_PIN_9,  GPIOB };
+constexpr PinIdPort PIN_AUDIO_nRST  = { GPIO_PIN_4,  GPIOD };
 
 // Motion (LIS3DSH) - SPI1
 constexpr PinIdPort PIN_SPI1_SCK    = { GPIO_PIN_5,  GPIOA };
@@ -57,5 +54,62 @@ constexpr PinIdPort PIN_SPI1_CS     = { GPIO_PIN_3,  GPIOE };
 constexpr PinIdPort PIN_MOTION_INT1 = { GPIO_PIN_0,  GPIOE };
 constexpr PinIdPort PIN_MOTION_INT2 = { GPIO_PIN_1,  GPIOE };
 
+// DAC
+constexpr PinIdPort PIN_DAC_CHANNEL1 = { GPIO_PIN_4,  GPIOA };
+constexpr PinIdPort PIN_DAC_CHANNEL2 = { GPIO_PIN_5,  GPIOA };
 
-#endif  // BOARDCONFIG_HPP_
+// ADC
+constexpr PinIdPort PIN_ADC1_CHANNEL11 = { GPIO_PIN_1,  GPIOC };
+/*
+constexpr PinIdPort PIN_ADC1_CHANNEL0  = { GPIO_PIN_0,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL1  = { GPIO_PIN_1,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL2  = { GPIO_PIN_2,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL3  = { GPIO_PIN_3,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL4  = { GPIO_PIN_4,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL5  = { GPIO_PIN_5,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL6  = { GPIO_PIN_6,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL7  = { GPIO_PIN_7,  GPIOA };
+constexpr PinIdPort PIN_ADC1_CHANNEL8  = { GPIO_PIN_0,  GPIOB };
+constexpr PinIdPort PIN_ADC1_CHANNEL9  = { GPIO_PIN_1,  GPIOB };
+constexpr PinIdPort PIN_ADC1_CHANNEL10 = { GPIO_PIN_0,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL11 = { GPIO_PIN_1,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL12 = { GPIO_PIN_2,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL13 = { GPIO_PIN_3,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL14 = { GPIO_PIN_4,  GPIOC };
+constexpr PinIdPort PIN_ADC1_CHANNEL15 = { GPIO_PIN_5,  GPIOC };
+
+constexpr PinIdPort PIN_ADC2_CHANNEL0  = { GPIO_PIN_0,  GPIOA };
+constexpr PinIdPort PIN_ADC2_CHANNEL1  = { GPIO_PIN_1,  GPIOA };
+constexpr PinIdPort PIN_ADC2_CHANNEL2  = { GPIO_PIN_2,  GPIOA };
+constexpr PinIdPort PIN_ADC2_CHANNEL3  = { GPIO_PIN_3,  GPIOA };
+constexpr PinIdPort PIN_ADC2_CHANNEL4  = { GPIO_PIN_4,  GPIOA };
+constexpr PinIdPort PIN_ADC2_CHANNEL5  = { GPIO_PIN_5,  GPIOA };
+constexpr PinIdPort PIN_ADC2_CHANNEL6  = { GPIO_PIN_6,  GPIOA };
+constexpr PinIdPort PIN_ADC2_CHANNEL7  = { GPIO_PIN_7,  GPIOA };
+constexpr PinIdPort PIN_ADC2_CHANNEL8  = { GPIO_PIN_0,  GPIOB };
+constexpr PinIdPort PIN_ADC2_CHANNEL9  = { GPIO_PIN_1,  GPIOB };
+constexpr PinIdPort PIN_ADC2_CHANNEL10 = { GPIO_PIN_0,  GPIOC };
+constexpr PinIdPort PIN_ADC2_CHANNEL11 = { GPIO_PIN_1,  GPIOC };
+constexpr PinIdPort PIN_ADC2_CHANNEL12 = { GPIO_PIN_2,  GPIOC };
+constexpr PinIdPort PIN_ADC2_CHANNEL13 = { GPIO_PIN_3,  GPIOC };
+constexpr PinIdPort PIN_ADC2_CHANNEL14 = { GPIO_PIN_4,  GPIOC };
+constexpr PinIdPort PIN_ADC2_CHANNEL15 = { GPIO_PIN_5,  GPIOC };
+
+constexpr PinIdPort PIN_ADC3_CHANNEL0  = { GPIO_PIN_0,  GPIOA };
+constexpr PinIdPort PIN_ADC3_CHANNEL1  = { GPIO_PIN_1,  GPIOA };
+constexpr PinIdPort PIN_ADC3_CHANNEL2  = { GPIO_PIN_2,  GPIOA };
+constexpr PinIdPort PIN_ADC3_CHANNEL3  = { GPIO_PIN_3,  GPIOA };
+constexpr PinIdPort PIN_ADC3_CHANNEL4  = { GPIO_PIN_6,  GPIOF };
+constexpr PinIdPort PIN_ADC3_CHANNEL5  = { GPIO_PIN_7,  GPIOF };
+constexpr PinIdPort PIN_ADC3_CHANNEL6  = { GPIO_PIN_8,  GPIOF };
+constexpr PinIdPort PIN_ADC3_CHANNEL8  = { GPIO_PIN_10, GPIOF };
+constexpr PinIdPort PIN_ADC3_CHANNEL9  = { GPIO_PIN_3,  GPIOF };
+constexpr PinIdPort PIN_ADC3_CHANNEL10 = { GPIO_PIN_0,  GPIOC };
+constexpr PinIdPort PIN_ADC3_CHANNEL11 = { GPIO_PIN_1,  GPIOC };
+constexpr PinIdPort PIN_ADC3_CHANNEL12 = { GPIO_PIN_2,  GPIOC };
+constexpr PinIdPort PIN_ADC3_CHANNEL13 = { GPIO_PIN_3,  GPIOC };
+constexpr PinIdPort PIN_ADC3_CHANNEL14 = { GPIO_PIN_4,  GPIOF };
+constexpr PinIdPort PIN_ADC3_CHANNEL15 = { GPIO_PIN_5,  GPIOF };
+*/
+
+#endif  // BOARD_CONFIG_HPP_

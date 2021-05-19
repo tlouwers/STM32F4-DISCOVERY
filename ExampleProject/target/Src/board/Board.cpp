@@ -1,5 +1,5 @@
 /**
- * \file Board.cpp
+ * \file    Board.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,17 +7,13 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   Board
  *
  * \brief   Helper class intended to configure the pins and clock of the system.
  *
- *
- * \details Intended use it to have a single grouping of functionality which
- *          sets the clock and pins of the board into a defined state, and later
- *          into a defined sleep state (for low power behavior).
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        04-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    04-2019
  */
 
 /************************************************************************/
@@ -43,8 +39,8 @@ void Board::InitPins()
     Pin(PIN_USART2_CTS, Alternate::AF7);
 
     // Audio Control - I2C
-    Pin(PIN_I2C1_SCL, Alternate::AF4);
-    Pin(PIN_I2C1_SDA, Alternate::AF4);
+    Pin(PIN_I2C1_SCL, Alternate::AF4, PullUpDown::HIGHZ, Mode::OPEN_DRAIN);
+    Pin(PIN_I2C1_SDA, Alternate::AF4, PullUpDown::HIGHZ, Mode::OPEN_DRAIN);
 
     // Motion - SPI1
     Pin(PIN_SPI1_SCK,  Alternate::AF5);
