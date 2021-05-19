@@ -44,9 +44,9 @@ Note: the button pin conflicts with the accelerometer Int1 pin, a board layout i
 * Set the toolkit (compiler) to the Mingw64 installed one.
 * Use the 'Terminal -> Run Task' menu to configure and build either the target or the tests.
 * Use the 'Run -> '.
-* The build for for the unit tests is in the 'Project1' folder, the build folder for the target is in the 'target' folder.
+* The build for for the unit tests is in the 'ExampleProject' folder, the build folder for the target is in the 'target' folder.
 * Per default for the target the binary (*.out) and mapfile (*.map) are generated.
-* It may be needed to delete the 'build' folder inside the 'Project1' folder to be able to configure and build the target. It may be needed to close Visual Studio Code before Windows 10 allows it.
+* It may be needed to delete the 'build' folder inside the 'ExampleProject' folder to be able to configure and build the target. It may be needed to close Visual Studio Code before Windows 10 allows it.
 
 # GCC options C++
 Specific C++ compiler flags can be changed by altering the 'gcc-options-cxx.txt' file. Please do not add them to the CMakeLists.txt file.
