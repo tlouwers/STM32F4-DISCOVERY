@@ -1,5 +1,5 @@
 /**
- * \file Application.cpp
+ * \file    Application.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -14,9 +14,9 @@
  *
  * \details Intended use is to provide an example how to read the accelerometer.
  *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        10-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    10-2019
  */
 
 /************************************************************************/
@@ -26,13 +26,6 @@
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
 #include "utility/SlimAssert/SlimAssert.h"
-
-
-/************************************************************************/
-/* Static Variables                                                     */
-/************************************************************************/
-static volatile uint32_t used_stack = 0;
-static volatile uint32_t used_heap  = 0;
 
 
 /************************************************************************/
@@ -125,7 +118,7 @@ void Application::Process()
 
         bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
         ASSERT(retrieveResult);
-		(void)(retrieveResult);
+        (void)(retrieveResult);
 
         // Deinterleave to X,Y,Z samples
     }

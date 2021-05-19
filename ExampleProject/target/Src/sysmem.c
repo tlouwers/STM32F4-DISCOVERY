@@ -75,6 +75,7 @@ void *_sbrk(ptrdiff_t incr)
 
   prev_heap_end = __sbrk_heap_end;
   __sbrk_heap_end += incr;
+  *((uint32_t*)((void*)__sbrk_heap_end)) = 0xFAFBFCFD;   // Mark end of heap to detect stack overflow
 
   return (void *)prev_heap_end;
 }

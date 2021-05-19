@@ -1,5 +1,5 @@
 /**
- * \file main.cpp
+ * \file    main.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -10,13 +10,13 @@
  *
  * \brief   Main entry point for Accelerometer demo.
  *
-* \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/ExampleProject/target/Src
+* \note     https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/ExampleProject/target/Src
  *
  * \details Intended use is to provide an example how to read the accelerometer.
  *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        10-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    10-2019
  */
 
 /************************************************************************/
