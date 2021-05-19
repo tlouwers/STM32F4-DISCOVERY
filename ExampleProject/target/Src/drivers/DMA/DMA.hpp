@@ -1,5 +1,5 @@
 /**
- * \file DMA.hpp
+ * \file    DMA.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,20 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   DMA
  *
- * \brief   DMA utility class.
+ * \brief   DMA utility class, intended for peripherals only.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/DMA
  *
- * \details Intended use is to provide a plug-n-play DMA object to 'Link' with a
- *          peripheral. This way a peripheral can be extended with DMA
- *          functionality in a more generic way without modifying the
- *          peripheral much. The complexity of DMA configuration is handled
- *          within this class.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        09-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    09-2019
  */
 
 #ifndef DMA_HPP_
@@ -37,10 +32,7 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-/**
- * \brief   DMA utility class, intended for peripherals only.
- */
-class DMA
+class DMA final
 {
 public:
     /**
@@ -105,6 +97,17 @@ public:
     };
 
     /**
+     * \enum    DataWidth
+     * \brief   Available data widths.
+     */
+    enum class DataWidth : uint8_t
+    {
+        Byte,
+        HalfWord,
+        Word
+    };
+
+    /**
      * \enum    BufferMode
      * \brief   Available DMA buffer modes.
      */
@@ -140,7 +143,7 @@ public:
     explicit DMA(Stream stream);
     ~DMA();
 
-    bool Configure(Channel channel, Direction direction, BufferMode bufferMode, Priority priority = Priority::Low, HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled);
+    bool Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width = DataWidth::Byte, Priority priority = Priority::Low, HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled);
     bool Link(const void* parent, DMA_HandleTypeDef*& handle);
 
 private:
@@ -151,6 +154,7 @@ private:
     DMA_Stream_TypeDef* GetInstance(Stream stream);
     uint32_t GetChannel(Channel channel);
     uint32_t GetDirection(Direction direction);
+    uint32_t GetDataWidth(DataWidth width);
     uint32_t GetPriority(Priority priority);
 
     void ConnectInternalCallback(Stream stream);

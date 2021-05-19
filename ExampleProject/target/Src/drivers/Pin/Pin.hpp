@@ -1,5 +1,5 @@
 /**
- * \file Pin.hpp
+ * \file    Pin.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,24 +7,16 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- *
+ * \class   GPIO pin convenience class.
+ * 
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
- * 			State is preserved (partly) within the hardware.
+ *          State is preserved (partly) within the hardware.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Pin
  *
- * \details Intended use is to have a method at board startup which sets each
- *          pin to a defined state. This is done by constructing a Pin object,
- *          and let it go out of scope.
- *          Later in the application, for the few pins where needed, pass along
- *          the PinIdPort struct to the class where a pin object is needed.
- *          Then during the initialisation of that class (not construction)
- *          create and fill the Pin object with desired values. At this point
- *          the interrupts can be configured as well.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        03-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    03-2019
  */
 
 #ifndef PIN_HPP_
@@ -70,8 +62,8 @@ struct PinInterrupt
  */
 enum class Level : bool
 {
-	LOW,
-	HIGH
+    LOW,
+    HIGH
 };
 
 /**
@@ -80,10 +72,10 @@ enum class Level : bool
  */
 enum class Direction : uint8_t
 {
-	UNDEFINED,
-	INPUT,
-	OUTPUT,
-	ALTERNATE
+    UNDEFINED,
+    INPUT,
+    OUTPUT,
+    ALTERNATE
 };
 
 /**
@@ -102,13 +94,15 @@ enum class Drive : uint8_t
 /**
  * \enum    PullUpDown
  * \brief   Input pull up or pull down mode of a pin.
+ * \note    Analog is when using the pin for ADC input or DAC output.
  */
 enum class PullUpDown : uint8_t
 {
-	HIGHZ,
-	UP,
-	DOWN,
-	UP_DOWN
+    HIGHZ,
+    UP,
+    DOWN,
+    UP_DOWN,
+    ANALOG
 };
 
 /**
@@ -117,9 +111,9 @@ enum class PullUpDown : uint8_t
  */
 enum class Trigger : uint8_t
 {
-	RISING,
-	FALLING,
-	BOTH
+    RISING,
+    FALLING,
+    BOTH
 };
 
 /**
@@ -147,62 +141,57 @@ enum class Alternate : uint8_t
     AF15,
 };
 
+/**
+ * \enum    Mode
+ * \brief   Alternate function drive mode of a pin.
+ */
+enum class Mode : bool
+{
+    PUSH_PULL,
+    OPEN_DRAIN,
+};
+
 
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-/**
- * \brief   GPIO pin convenience class.
- */
 class Pin
 {
 public:
     Pin(Pin&& other);
 
-	explicit Pin(PinIdPort idAndPort);
-	Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
-	Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
-	Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ);
+    explicit Pin(PinIdPort idAndPort);
+    Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
+    Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
+    Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
 
-	void Configure(Level level, Drive drive = Drive::PUSH_PULL);
-	void Configure(PullUpDown pullUpDown);
-	void Configure(Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ);
+    void Configure(Level level, Drive drive = Drive::PUSH_PULL);
+    void Configure(PullUpDown pullUpDown);
+    void Configure(Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
 
-	bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true);
-	bool InterruptEnable();
-	bool InterruptDisable();
-	bool InterruptRemove();
+    bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true);
+    bool InterruptEnable();
+    bool InterruptDisable();
+    bool InterruptRemove();
 
-	void Toggle() const;
-	void Set(Level level);
-	Level Get() const;
+    void Toggle() const;
+    void Set(Level level);
+    Level Get() const;
 
-	Pin& operator= (Pin&& other);
+    Pin& operator= (Pin&& other);
 
 private:
-	uint16_t      mId        = UINT16_MAX;
-	GPIO_TypeDef* mPort      = nullptr;
-	Direction     mDirection = Direction::UNDEFINED;
+    uint16_t      mId        = UINT16_MAX;
+    GPIO_TypeDef* mPort      = nullptr;
+    Direction     mDirection = Direction::UNDEFINED;
 
-	void CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port);
+    void CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port);
 
     // Explicit disabled constructors/operators
     Pin() = delete;
     Pin(const Pin&) = delete;
     Pin& operator= (const Pin& other) = delete;
 };
-
-
-extern "C"
-{
-    void EXTI0_IRQHandler(void);
-    void EXTI1_IRQHandler(void);
-    void EXTI2_IRQHandler(void);
-    void EXTI3_IRQHandler(void);
-    void EXTI4_IRQHandler(void);
-    void EXTI9_5_IRQHandler(void);
-    void EXTI15_10_IRQHandler(void);
-}
 
 
 #endif	// PIN_HPP_

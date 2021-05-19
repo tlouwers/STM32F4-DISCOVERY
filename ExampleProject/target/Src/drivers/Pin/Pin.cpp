@@ -1,5 +1,5 @@
 /**
- * \file Pin.cpp
+ * \file    Pin.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -11,20 +11,11 @@
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  *          State is preserved (partly) within the hardware.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Pin
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Pin
  *
- * \details Intended use is to have a method at board startup which sets each
- *          pin to a defined state. This is done by constructing a Pin object,
- *          and let it go out of scope.
- *          Later in the application, for the few pins where needed, pass along
- *          the PinIdPort struct to the class where a pin object is needed.
- *          Then during the initialisation of that class (not construction)
- *          create and fill the Pin object with desired values. At this point
- *          the interrupts can be configured as well.
- *
- * \author      T. Louwers <terry.louwers@fourtress.nl>
- * \version     1.0
- * \date        03-2019
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    03-2019
  */
 
 /************************************************************************/
@@ -90,31 +81,34 @@ static int GetIndexById(uint16_t id)
  */
 static bool IsIRQSharedWithOtherPin(uint16_t id)
 {
-    bool result = true;
+    int index = GetIndexById(id);
+    uint8_t count = 0;
 
-    if (id < GPIO_PIN_5 )
+    if (id < GPIO_PIN_5)
     {
         return false;
     }
     else if (id < GPIO_PIN_10)
     {
-        if (id !=  5) { result &= (pinInterruptList[5].callback  == nullptr); }
-        if (id !=  6) { result &= (pinInterruptList[6].callback  == nullptr); }
-        if (id !=  7) { result &= (pinInterruptList[7].callback  == nullptr); }
-        if (id !=  8) { result &= (pinInterruptList[8].callback  == nullptr); }
-        if (id !=  9) { result &= (pinInterruptList[9].callback  == nullptr); }
+        if (pinInterruptList[5].callback != nullptr) { count++; }
+        if (pinInterruptList[6].callback != nullptr) { count++; }
+        if (pinInterruptList[7].callback != nullptr) { count++; }
+        if (pinInterruptList[8].callback != nullptr) { count++; }
+        if (pinInterruptList[9].callback != nullptr) { count++; }
     }
     else
     {
-        if (id != 10) { result &= (pinInterruptList[10].callback == nullptr); }
-        if (id != 11) { result &= (pinInterruptList[11].callback == nullptr); }
-        if (id != 12) { result &= (pinInterruptList[12].callback == nullptr); }
-        if (id != 13) { result &= (pinInterruptList[13].callback == nullptr); }
-        if (id != 14) { result &= (pinInterruptList[14].callback == nullptr); }
-        if (id != 15) { result &= (pinInterruptList[15].callback == nullptr); }
+        if (pinInterruptList[10].callback != nullptr) { count++; }
+        if (pinInterruptList[11].callback != nullptr) { count++; }
+        if (pinInterruptList[12].callback != nullptr) { count++; }
+        if (pinInterruptList[13].callback != nullptr) { count++; }
+        if (pinInterruptList[14].callback != nullptr) { count++; }
+        if (pinInterruptList[15].callback != nullptr) { count++; }
     }
 
-    return !result;
+    if (pinInterruptList[index].callback != nullptr) { count--; }
+
+    return (count > 0);
 }
 
 /**
@@ -201,9 +195,7 @@ Pin::Pin(PinIdPort idAndPort, Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
-	mDirection = Direction::OUTPUT;
-
-	Configure(level, drive);
+    Configure(level, drive);
 }
 
 /**
@@ -215,9 +207,7 @@ Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
-	mDirection = Direction::INPUT;
-
-	Configure(pullUpDown);
+    Configure(pullUpDown);
 }
 
 /**
@@ -225,15 +215,14 @@ Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
  * \param   idAndPort   Pin id and port to which the pin belongs.
  * \param   alternate   The alternate function for the pin.
  * \param   pullUpDown  Pull up or pull down mode configuration.
+ * \param   mode        Alternate function drive mode configuration, default push pull.
  * \note    If pullUpDown is set to HIGHZ it is ignored.
  */
-Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */)
+Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */, Mode mode /* = Mode::PUSH_PULL */)
 {
     CheckAndSetIdAndPort(idAndPort.id, idAndPort.port);
 
-    mDirection = Direction::ALTERNATE;
-
-    Configure(alternate, pullUpDown);
+    Configure(alternate, pullUpDown, mode);
 }
 
 /**
@@ -243,11 +232,9 @@ Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = Pu
  */
 void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
 {
-    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
-
     CheckAndEnableAHB1PeripheralClock(mPort);
 
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitTypeDef GPIO_InitStructure = {};
 
     GPIO_InitStructure.Pin  = mId;
     GPIO_InitStructure.Mode = (drive == Drive::PUSH_PULL) ? GPIO_MODE_OUTPUT_PP : GPIO_MODE_OUTPUT_OD;
@@ -275,23 +262,30 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
  */
 void Pin::Configure(PullUpDown pullUpDown)
 {
-    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
-
     CheckAndEnableAHB1PeripheralClock(mPort);
 
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitTypeDef GPIO_InitStructure = {};
 
-    GPIO_InitStructure.Pin  = mId;
-    GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
-    switch (pullUpDown)
-    {
-        case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
-        case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-        case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
-        case PullUpDown::HIGHZ:   // Fall through
-        default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
-    }
+    GPIO_InitStructure.Pin   = mId;
     GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+
+    if (pullUpDown == PullUpDown::ANALOG)
+    {
+        GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
+        GPIO_InitStructure.Pull = GPIO_NOPULL;
+    }
+    else
+    {
+        GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
+        switch (pullUpDown)
+        {
+            case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+            case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
+            case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+            case PullUpDown::HIGHZ:   // Fall through
+            default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+        }
+    }
 
     HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
@@ -302,18 +296,17 @@ void Pin::Configure(PullUpDown pullUpDown)
  * \brief   Configuration method for pin as alternate function.
  * \param   alternate   The alternate function for the pin.
  * \param   pullUpDown  Pull up or pull down mode configuration.
+ * \param   mode        Alternate function drive mode configuration, default push pull.
  * \note    If pullUpDown is set to HIGHZ it is ignored.
  */
-void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */)
+void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */, Mode mode /* = Mode::PUSH_PULL */)
 {
-    ASSERT(mDirection != Direction::UNDEFINED);     // Pin direction is undefined
-
     CheckAndEnableAHB1PeripheralClock(mPort);
 
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitTypeDef GPIO_InitStructure = {};
 
     GPIO_InitStructure.Pin  = mId;
-    GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStructure.Mode = (mode == Mode::PUSH_PULL) ? GPIO_MODE_AF_PP : GPIO_MODE_AF_OD;
     switch (pullUpDown)
     {
         case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
@@ -368,7 +361,7 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
         pinInterruptList[index].enabled  = enableAfterConfigure;
     }
 
-	GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitTypeDef GPIO_InitStructure = {};
 
     switch (trigger)
     {
@@ -506,7 +499,7 @@ Level Pin::Get() const
             break;
         case Direction::UNDEFINED:      // Fall through
         default:
-            ASSERT(false);              // Cannot get pin level if pin not defined as input or output
+        	ASSERT(false);              // Cannot get pin level if pin not defined as input or output
             while (true) { __NOP(); }   // User must resolve this incorrect use of Get()
             break;
     }
@@ -553,7 +546,7 @@ void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
     }
     else
     {
-        ASSERT(false);              // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
+    	ASSERT(false);              // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
     }
 }
 
@@ -566,10 +559,10 @@ void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
  *          callback. If interrupt for pin is not enabled the interrupt is
  *          absorbed here.
  */
-void HAL_GPIO_EXTI_Callback(uint16_t id)
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     // No nested vector priority issue as all interrupt priorities for pins are the same.
-    const auto index = GetIndexById(id);
+    const auto index = GetIndexById(GPIO_Pin);
 
     if ((pinInterruptList[index].enabled == true) && (pinInterruptList[index].callback != nullptr))
     {
