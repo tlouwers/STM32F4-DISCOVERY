@@ -8,7 +8,7 @@
  *          a beer in return.
  *                                                                Terry Louwers
  *
- * \brief   GenericTimer peripheral driver class.
+ * \brief   Helper class to provide general elapsed timer functionality.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/GenericTimer
  *
@@ -28,16 +28,16 @@
 /************************************************************************/
 /* Static variables                                                     */
 /************************************************************************/
-static GenericTimerCallback timer2_callback {};
-static GenericTimerCallback timer3_callback {};
-static GenericTimerCallback timer4_callback {};
-static GenericTimerCallback timer5_callback {};
-static GenericTimerCallback timer9_callback {};
-static GenericTimerCallback timer10_callback {};
-static GenericTimerCallback timer11_callback {};
-static GenericTimerCallback timer12_callback {};
-static GenericTimerCallback timer13_callback {};
-static GenericTimerCallback timer14_callback {};
+static GenericTimerCallbacks timer2_callback {};
+static GenericTimerCallbacks timer3_callback {};
+static GenericTimerCallbacks timer4_callback {};
+static GenericTimerCallbacks timer5_callback {};
+static GenericTimerCallbacks timer9_callback {};
+static GenericTimerCallbacks timer10_callback {};
+static GenericTimerCallbacks timer11_callback {};
+static GenericTimerCallbacks timer12_callback {};
+static GenericTimerCallbacks timer13_callback {};
+static GenericTimerCallbacks timer14_callback {};
 
 
 /************************************************************************/
@@ -47,7 +47,7 @@ static GenericTimerCallback timer14_callback {};
  * \brief   Call the callbackIRQ, if configured.
  * \param   timer_callback  Structure containing the callbackIRQ to call.
  */
-static void CallbackIRQ(const GenericTimerCallback& timer_callback)
+static void CallbackIRQ(const GenericTimerCallbacks& timer_callback)
 {
     if (timer_callback.callbackIRQ)
     {
@@ -59,7 +59,7 @@ static void CallbackIRQ(const GenericTimerCallback& timer_callback)
  * \brief   Call the callbackElapsed, if configured.
  * \param   timer_callback  Structure containing the callbackElapsed to call.
  */
-static void CallbackElapsed(const GenericTimerCallback& timer_callback)
+static void CallbackElapsed(const GenericTimerCallbacks& timer_callback)
 {
     if (timer_callback.callbackElapsed)
     {
@@ -99,27 +99,22 @@ GenericTimer::GenericTimer(const GenericTimerInstance& instance) :
  */
 GenericTimer::~GenericTimer()
 {
-    Stop();
-
-    // Disable interrupts
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
-
-    mInitialized = false;
+    Sleep();
 }
 
 /**
  * \brief   Initializes the GenericTimer instance with the given configuration.
  * \param   config  The configuration for the GenericTimer instance to use.
  * \returns True if the configuration could be applied, else false.
- * \note    APB1 assumed to be 8 MHz.
+ * \note    APB1 and APB2 assumed to be 8 MHz.
  */
 bool GenericTimer::Init(const Config& config)
 {
     CheckAndEnableAHBPeripheralClock(mInstance);
 
-    mHandle.Init.Prescaler         = 800 - 1;                            // (Freq. APB) / (Prescaler + 1) = (Freq. CLK_CNT) --> Get from 8 MHz to 10 kHz as timer counter
+    mHandle.Init.Prescaler         = 800 - 1;                            // (Freq. APB) / (Prescaler + 1) = (Freq. CK_CNT) --> Get from 8 MHz to 10 kHz as timer counter
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
-    mHandle.Init.Period            = CalculatePeriod(config.mFrequency); // (Freq. desired) = (Freq. CNT_CLK) / (TIM_ARR + 1)
+    mHandle.Init.Period            = CalculatePeriod(config.mFrequency); // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     mHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
     mHandle.Init.RepetitionCounter = 0;
     mHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
@@ -147,17 +142,23 @@ bool GenericTimer::IsInit() const
 /**
  * \brief   Puts the GenericTimer module in sleep mode.
  * \details Stops the timer.
+ * \returns True if timer could be put in sleep mode, else false.
  */
-void GenericTimer::Sleep()
+bool GenericTimer::Sleep()
 {
     Stop();
+
+    mInitialized = false;
 
     // Disable interrupts
     HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
 
-    mInitialized = false;
-
-    // ToDo: low power state, check recovery after sleep
+    if (HAL_TIM_Base_DeInit(&mHandle) == HAL_OK)
+    {
+        CheckAndDisableAHBPeripheralClock(mInstance);
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -167,18 +168,17 @@ void GenericTimer::Sleep()
  */
 bool GenericTimer::Start(const std::function<void()>& handler)
 {
-    if (mInitialized)
-    {
-        if (! mStarted)
-        {
-            mGenericTimerCallback.callbackElapsed = handler;
+    if (!mInitialized) { return false; }
 
-            HAL_TIM_Base_Start_IT(&mHandle);
-            mStarted = true;
-        }
-        return true;
+    if (!mStarted)
+    {
+        mGenericTimerCallback.callbackElapsed = handler;
+
+        HAL_TIM_Base_Start_IT(&mHandle);
+        mStarted = true;
     }
-    return false;
+
+    return true;
 }
 
 /**
@@ -196,16 +196,15 @@ bool GenericTimer::IsStarted() const
  */
 bool GenericTimer::Stop()
 {
-    if (mInitialized)
+    if (!mInitialized) { return false; }
+
+    if (mStarted)
     {
-        if (mStarted)
-        {
-            HAL_TIM_Base_Stop_IT(&mHandle);
-            mStarted = false;
-        }
-        return true;
+        HAL_TIM_Base_Stop_IT(&mHandle);
+        mStarted = false;
     }
-    return false;
+
+    return true;
 }
 
 
@@ -260,15 +259,39 @@ void GenericTimer::CheckAndEnableAHBPeripheralClock(const GenericTimerInstance& 
 }
 
 /**
+ * \brief   Check if the appropriate AHB1 or AHB2 peripheral clock for the GenericTimer
+ *          instance is enabled, if so disable it.
+ * \param   instance    The GenericTimer instance to disable the clock for.
+ * \note    Asserts if not a valid GenericTimer instance provided.
+ */
+void GenericTimer::CheckAndDisableAHBPeripheralClock(const GenericTimerInstance& instance)
+{
+    switch (instance)
+    {
+        case GenericTimerInstance::TIMER_2:  if (__HAL_RCC_TIM2_IS_CLK_ENABLED())  { __HAL_RCC_TIM2_CLK_DISABLE();  } break;
+        case GenericTimerInstance::TIMER_3:  if (__HAL_RCC_TIM3_IS_CLK_ENABLED())  { __HAL_RCC_TIM3_CLK_DISABLE();  } break;
+        case GenericTimerInstance::TIMER_4:  if (__HAL_RCC_TIM4_IS_CLK_ENABLED())  { __HAL_RCC_TIM4_CLK_DISABLE();  } break;
+        case GenericTimerInstance::TIMER_5:  if (__HAL_RCC_TIM5_IS_CLK_ENABLED())  { __HAL_RCC_TIM5_CLK_DISABLE();  } break;
+        case GenericTimerInstance::TIMER_9:  if (__HAL_RCC_TIM9_IS_CLK_ENABLED())  { __HAL_RCC_TIM9_CLK_DISABLE();  } break;
+        case GenericTimerInstance::TIMER_10: if (__HAL_RCC_TIM10_IS_CLK_ENABLED()) { __HAL_RCC_TIM10_CLK_DISABLE(); } break;
+        case GenericTimerInstance::TIMER_11: if (__HAL_RCC_TIM11_IS_CLK_ENABLED()) { __HAL_RCC_TIM11_CLK_DISABLE(); } break;
+        case GenericTimerInstance::TIMER_12: if (__HAL_RCC_TIM12_IS_CLK_ENABLED()) { __HAL_RCC_TIM12_CLK_DISABLE(); } break;
+        case GenericTimerInstance::TIMER_13: if (__HAL_RCC_TIM13_IS_CLK_ENABLED()) { __HAL_RCC_TIM13_CLK_DISABLE(); } break;
+        case GenericTimerInstance::TIMER_14: if (__HAL_RCC_TIM14_IS_CLK_ENABLED()) { __HAL_RCC_TIM14_CLK_DISABLE(); } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+}
+
+/**
  * \brief   Calculate the GenericTimer period value.
  * \param   desiredFrequency    The desired frequency in Hz to use.
  * \returns Period value (TIM_ARR).
- * \note    The CLK_CNT is assumed to be 10 kHz.
+ * \note    The CK_CNT is assumed to be 10 kHz.
  */
 uint16_t GenericTimer::CalculatePeriod(uint16_t desiredFrequency)
 {
-    // Freq. CLK_CNT is 10 kHz
-    // (Freq. desired) = (Freq. CNT_CLK) / (TIM_ARR + 1)
+    // Freq. CK_CNT is 10 kHz
+    // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     // (10000 / desiredFrequency) - 1 = TIM_ARR
 
     uint32_t period = (10000 / desiredFrequency) - 1;

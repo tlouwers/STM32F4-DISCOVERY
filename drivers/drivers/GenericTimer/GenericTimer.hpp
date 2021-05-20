@@ -7,8 +7,9 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   GenericTimer
  *
- * \brief   GenericTimer peripheral driver class.
+ * \brief   Helper class to provide general elapsed timer functionality.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/GenericTimer
  *
@@ -54,10 +55,10 @@ enum class GenericTimerInstance : uint8_t
 /* Structures                                                           */
 /************************************************************************/
 /**
- * \struct  GenericTimerCallback
+ * \struct  GenericTimerCallbacks
  * \brief   Data structure to contain callback for a GenericTimer instance.
  */
-struct GenericTimerCallback {
+struct GenericTimerCallbacks {
     std::function<void()> callbackIRQ = nullptr;        ///< Callback to call when IRQ occurs.
     std::function<void()> callbackElapsed = nullptr;    ///< Callback to call when timer elapsed event occurs.
 };
@@ -96,21 +97,22 @@ public:
 
     bool Init(const Config& config);
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
     bool Start(const std::function<void()>& handler);
     bool IsStarted() const;
     bool Stop();
 
 private:
-    GenericTimerInstance  mInstance;
-    TIM_HandleTypeDef     mHandle = {};
-    GenericTimerCallback& mGenericTimerCallback;
-    bool                  mInitialized;
-    bool                  mStarted;
+    GenericTimerInstance   mInstance;
+    TIM_HandleTypeDef      mHandle = {};
+    GenericTimerCallbacks& mGenericTimerCallback;
+    bool                   mInitialized;
+    bool                   mStarted;
 
     void SetInstance(const GenericTimerInstance& instance);
     void CheckAndEnableAHBPeripheralClock(const GenericTimerInstance& instance);
+    void CheckAndDisableAHBPeripheralClock(const GenericTimerInstance& instance);
     uint16_t CalculatePeriod(uint16_t desiredFrequency);
     IRQn_Type GetIRQn(const GenericTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
