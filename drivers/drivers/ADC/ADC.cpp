@@ -313,8 +313,8 @@ void Adc::CallbackIRQ() const
 /* Interrupts                                                           */
 /************************************************************************/
 /**
- * \brief   ISR: handler to dispatch the ADC conversion complete interrupt into a
- *          EndOfConversion callback.
+ * \brief   ISR: handler to dispatch the ADC conversion complete interrupt into
+ *          an EndOfConversion callback.
  * \param   handle  The ADC handle from which the conversion complete ISR came.
  */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* handle)

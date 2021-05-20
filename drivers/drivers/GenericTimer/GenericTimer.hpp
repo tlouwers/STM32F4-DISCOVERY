@@ -1,5 +1,5 @@
 /**
- * \file    BasicTimer.hpp
+ * \file    GenericTimer.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,18 +7,19 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   GenericTimer
  *
- * \brief   BasicTimer peripheral driver class.
+ * \brief   Helper class to provide general elapsed timer functionality.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/BasicTimer
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/GenericTimer
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
- * \date    03-2021
+ * \date    05-2021
  */
 
-#ifndef BASIC_TIMER_HPP_
-#define BASIC_TIMER_HPP_
+#ifndef GENERIC_TIMER_HPP_
+#define GENERIC_TIMER_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -32,13 +33,21 @@
 /* Enums                                                                */
 /************************************************************************/
 /**
- * \enum    BasicTimerInstance
- * \brief   Available BasicTimer instances.
+ * \enum    GenericTimerInstance
+ * \brief   Available GenericTimer instances.
  */
-enum class BasicTimerInstance : uint8_t
+enum class GenericTimerInstance : uint8_t
 {
-    TIMER_6 = 6,
-    TIMER_7 = 7
+    TIMER_2  =  2,
+    TIMER_3  =  3,
+    TIMER_4  =  4,
+    TIMER_5  =  5,
+    TIMER_9  =  9,
+    TIMER_10 = 10,
+    TIMER_11 = 11,
+    TIMER_12 = 12,
+    TIMER_13 = 13,
+    TIMER_14 = 14
 };
 
 
@@ -46,31 +55,32 @@ enum class BasicTimerInstance : uint8_t
 /* Structures                                                           */
 /************************************************************************/
 /**
- * \struct  BasicTimerCallback
- * \brief   Data structure to contain callback for a BasicTimer instance.
+ * \struct  GenericTimerCallbacks
+ * \brief   Data structure to contain callback for a GenericTimer instance.
  */
-struct BasicTimerCallback {
-    std::function<void()> callbackIRQ = nullptr;    ///< Callback to call when IRQ occurs.
+struct GenericTimerCallbacks {
+    std::function<void()> callbackIRQ = nullptr;        ///< Callback to call when IRQ occurs.
+    std::function<void()> callbackElapsed = nullptr;    ///< Callback to call when timer elapsed event occurs.
 };
 
 
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class BasicTimer
+class GenericTimer
 {
 public:
     /**
      * \struct  Config
-     * \brief   Configuration struct for BasicTimer.
+     * \brief   Configuration struct for GenericTimer.
      * \note    Can fine-tune frequency in the Init() and CalculatePeriod() methods.
      */
     struct Config
     {
         /**
-         * \brief   Constructor of the BasicTimer configuration struct.
+         * \brief   Constructor of the GenericTimer configuration struct.
          * \param   interruptPriority   Priority of the interrupt.
-         * \param   frequency           Frequency of the timer in Hz. Range [20..65535] Hz.
+         * \param   frequency           Frequency of the timer in Hz. Range [1..10000] Hz.
          */
         Config(uint8_t interruptPriority,
                uint16_t frequency) :
@@ -82,31 +92,32 @@ public:
         uint16_t mFrequency;            ///< Frequency in Hz.
     };
 
-    explicit BasicTimer(const BasicTimerInstance& instance);
-    virtual ~BasicTimer();
+    explicit GenericTimer(const GenericTimerInstance& instance);
+    virtual ~GenericTimer();
 
     bool Init(const Config& config);
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
-    bool Start();
+    bool Start(const std::function<void()>& handler);
     bool IsStarted() const;
     bool Stop();
 
 private:
-    BasicTimerInstance  mInstance;
-    TIM_HandleTypeDef   mHandle = {};
-    BasicTimerCallback& mBasicTimerCallback;
-    bool                mInitialized;
-    bool                mStarted;
+    GenericTimerInstance   mInstance;
+    TIM_HandleTypeDef      mHandle = {};
+    GenericTimerCallbacks& mGenericTimerCallback;
+    bool                   mInitialized;
+    bool                   mStarted;
 
-    void SetInstance(const BasicTimerInstance& instance);
-    void CheckAndEnableAHB1PeripheralClock(const BasicTimerInstance& instance);
+    void SetInstance(const GenericTimerInstance& instance);
+    void CheckAndEnableAHBPeripheralClock(const GenericTimerInstance& instance);
+    void CheckAndDisableAHBPeripheralClock(const GenericTimerInstance& instance);
     uint16_t CalculatePeriod(uint16_t desiredFrequency);
-    IRQn_Type GetIRQn(const BasicTimerInstance& instance);
+    IRQn_Type GetIRQn(const GenericTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
 };
 
 
-#endif  // BASIC_TIMER_HPP_
+#endif  // GENERIC_TIMER_HPP_
