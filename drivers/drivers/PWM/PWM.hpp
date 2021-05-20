@@ -118,7 +118,7 @@ public:
 
     bool Init(const Config& config);
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
     bool ConfigureChannel(const ChannelConfig& channelConfig);
 
@@ -132,6 +132,7 @@ private:
 
     void SetInstance(const PwmTimerInstance& instance);
     void CheckAndEnableAHB1PeripheralClock(const PwmTimerInstance& instance);
+    void CheckAndDisbleAHB1PeripheralClock(const PwmTimerInstance& instance);
     uint16_t CalculatePeriod(uint16_t desiredFrequency);
     uint32_t CalculatePulse(uint8_t desiredDutyCycle, uint32_t period);
     uint32_t GetChannel(Channel channel);

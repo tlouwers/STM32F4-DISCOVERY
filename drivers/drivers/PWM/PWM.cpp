@@ -43,23 +43,17 @@ PWM::PWM(const PwmTimerInstance& instance) :
  */
 PWM::~PWM()
 {
-    StopAllChannels();
-
-    mInitialized = false;
+    Sleep();
 }
 
 /**
- * \brief   ToDo ...
+ * \brief   Initializes the PWM timer instance with the given configuration.
+ *          It does not configure the channel(s).
  * \param   config  The configuration for the PWM instance to use.
  * \returns True if the configuration could be applied, else false.
  */
 bool PWM::Init(const Config& config)
 {
-    ASSERT(config.mFrequency > 0);
-    ASSERT(config.mFrequency <= UINT16_MAX);
-
-    if (config.mFrequency == 0) { return false; }
-
     CheckAndEnableAHB1PeripheralClock(mInstance);
 
     // Start the timer as clock for PWM. No channels are configured yet.
@@ -88,17 +82,23 @@ bool PWM::IsInit() const
 }
 
 /**
- * \brief    Puts the PWM module in sleep mode.
- *           Stops PWM output on all channels.
+ * \brief   Puts the PWM module in sleep mode.
+ * \details Stops PWM output on all channels.
+ * \returns True if the PWM module could be put in sleep mode, else false.
  */
-void PWM::Sleep()
+bool PWM::Sleep()
 {
     bool result = StopAllChannels();
     ASSERT(result);
 
     mInitialized = false;
 
-    // ToDo: low power state, check recovery after sleep
+    if (HAL_TIM_PWM_DeInit(&mHandle) == HAL_OK)
+    {
+        CheckAndDisbleAHB1PeripheralClock(mInstance);
+        return result;
+    }
+    return false;
 }
 
 /**
@@ -162,7 +162,27 @@ bool PWM::Stop(Channel channel)
 /* Private Methods                                                      */
 /************************************************************************/
 /**
- * \brief   Check if the APB1 timer clock for the PWM timer is started, else enable it.
+ * \brief   Set the PWM timer instance into internal administration.
+ * \param   instance    The PWM timer instance to use.
+ * \note    Asserts if the PWM timer instance is invalid.
+ */
+void PWM::SetInstance(const PwmTimerInstance& instance)
+{
+    switch (instance)
+    {
+        case PwmTimerInstance::TIMER_2: mHandle.Instance = TIM2; break;
+        case PwmTimerInstance::TIMER_3: mHandle.Instance = TIM3; break;
+        case PwmTimerInstance::TIMER_4: mHandle.Instance = TIM4; break;
+        case PwmTimerInstance::TIMER_5: mHandle.Instance = TIM5; break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    };
+}
+
+/**
+ * \brief   Check if the APB1 peripheral clock for the PWM timer is started,
+ *          if so enable it.
+ * \param   instance    The PWM timer instance to enable the clock for.
+ * \note    Asserts if not a valid PWM timer instance provided.
  */
 void PWM::CheckAndEnableAHB1PeripheralClock(const PwmTimerInstance& instance)
 {
@@ -172,6 +192,24 @@ void PWM::CheckAndEnableAHB1PeripheralClock(const PwmTimerInstance& instance)
         case PwmTimerInstance::TIMER_3: if (__HAL_RCC_TIM3_IS_CLK_DISABLED())  { __HAL_RCC_TIM3_CLK_ENABLE();  } break;
         case PwmTimerInstance::TIMER_4: if (__HAL_RCC_TIM4_IS_CLK_DISABLED())  { __HAL_RCC_TIM4_CLK_ENABLE();  } break;
         case PwmTimerInstance::TIMER_5: if (__HAL_RCC_TIM5_IS_CLK_DISABLED())  { __HAL_RCC_TIM5_CLK_ENABLE();  } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Check if the appropriate AHB1 peripheral clock for the PWM timer
+ *          instance is enabled, if so disable it.
+ * \param   instance    The PWM timer instance to disable the clock for.
+ * \note    Asserts if not a valid PWM timer instance provided.
+ */
+void PWM::CheckAndDisbleAHB1PeripheralClock(const PwmTimerInstance& instance)
+{
+    switch (instance)
+    {
+        case PwmTimerInstance::TIMER_2: if (__HAL_RCC_TIM2_IS_CLK_ENABLED())  { __HAL_RCC_TIM2_CLK_DISABLE();  } break;
+        case PwmTimerInstance::TIMER_3: if (__HAL_RCC_TIM3_IS_CLK_ENABLED())  { __HAL_RCC_TIM3_CLK_DISABLE();  } break;
+        case PwmTimerInstance::TIMER_4: if (__HAL_RCC_TIM4_IS_CLK_ENABLED())  { __HAL_RCC_TIM4_CLK_DISABLE();  } break;
+        case PwmTimerInstance::TIMER_5: if (__HAL_RCC_TIM5_IS_CLK_ENABLED())  { __HAL_RCC_TIM5_CLK_DISABLE();  } break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
