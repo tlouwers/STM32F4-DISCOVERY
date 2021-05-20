@@ -7,6 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   LIS3DSH
  *
  * \brief   Driver for the LIS3DSH accelerometer.
  *

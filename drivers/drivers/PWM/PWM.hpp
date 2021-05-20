@@ -9,13 +9,13 @@
  *                                                                Terry Louwers
  * \class   PWM
  *
- * \brief   PWM peripheral driver class.
+ * \brief   Helper class using Timer2..4 to provide PWM functionality.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/PWM
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    04-2019
+ * \version 1.1
+ * \date    05-2021
  */
 
 #ifndef PWM_HPP_
@@ -27,10 +27,23 @@
 #include <cstdint>
 #include <functional>
 #include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_tim.h"
 
 
-// For Timer 2 (General purpose) on STM32F407G
+/************************************************************************/
+/* Enums                                                                */
+/************************************************************************/
+/**
+ * \enum    PwmTimerInstance
+ * \brief   Available PWM timer instances.
+ */
+enum class PwmTimerInstance : uint8_t
+{
+    TIMER_2  =  2,
+    TIMER_3  =  3,
+    TIMER_4  =  4,
+    TIMER_5  =  5
+};
+
 
 /************************************************************************/
 /* Class declaration                                                    */
@@ -47,7 +60,7 @@ public:
         Channel_1 = 1,
         Channel_2,
         Channel_3,
-        Channel_4,
+        Channel_4
     };
 
     /**
@@ -100,10 +113,11 @@ public:
         uint16_t mFrequency;    ///< The frequency in Hz to use.
     };
 
-    PWM();
+    explicit PWM(const PwmTimerInstance& instance);
     virtual ~PWM();
 
     bool Init(const Config& config);
+    bool IsInit() const;
     bool Sleep();
 
     bool ConfigureChannel(const ChannelConfig& channelConfig);
@@ -112,10 +126,15 @@ public:
     bool Stop(Channel channel);
 
 private:
+    PwmTimerInstance  mInstance;
     TIM_HandleTypeDef mHandle = {};
-    bool mInitialized;
-    void CheckAndEnableAPB1TimerClock();
-    void DisableAPB1TimerClock();
+    bool              mInitialized;
+
+    void SetInstance(const PwmTimerInstance& instance);
+    void CheckAndEnableAHB1PeripheralClock(const PwmTimerInstance& instance);
+    void CheckAndDisbleAHB1PeripheralClock(const PwmTimerInstance& instance);
+    uint16_t CalculatePeriod(uint16_t desiredFrequency);
+    uint32_t CalculatePulse(uint8_t desiredDutyCycle, uint32_t period);
     uint32_t GetChannel(Channel channel);
     bool StopAllChannels();
 };
