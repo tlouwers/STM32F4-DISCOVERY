@@ -7,8 +7,9 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   GenericTimer
  *
- * \brief   GenericTimer peripheral driver class.
+ * \brief   Helper class to provide general elapsed timer functionality.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/GenericTimer
  *
@@ -54,10 +55,10 @@ enum class GenericTimerInstance : uint8_t
 /* Structures                                                           */
 /************************************************************************/
 /**
- * \struct  GenericTimerCallback
+ * \struct  GenericTimerCallbacks
  * \brief   Data structure to contain callback for a GenericTimer instance.
  */
-struct GenericTimerCallback {
+struct GenericTimerCallbacks {
     std::function<void()> callbackIRQ = nullptr;        ///< Callback to call when IRQ occurs.
     std::function<void()> callbackElapsed = nullptr;    ///< Callback to call when timer elapsed event occurs.
 };
@@ -103,11 +104,11 @@ public:
     bool Stop();
 
 private:
-    GenericTimerInstance  mInstance;
-    TIM_HandleTypeDef     mHandle = {};
-    GenericTimerCallback& mGenericTimerCallback;
-    bool                  mInitialized;
-    bool                  mStarted;
+    GenericTimerInstance   mInstance;
+    TIM_HandleTypeDef      mHandle = {};
+    GenericTimerCallbacks& mGenericTimerCallback;
+    bool                   mInitialized;
+    bool                   mStarted;
 
     void SetInstance(const GenericTimerInstance& instance);
     void CheckAndEnableAHBPeripheralClock(const GenericTimerInstance& instance);

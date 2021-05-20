@@ -8,7 +8,7 @@
  *          a beer in return.
  *                                                                Terry Louwers
  *
- * \brief   BasicTimer peripheral driver class.
+ * \brief   BasicTimer class used for the DAC to drive the DMA based output sampling.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/BasicTimer
  *
