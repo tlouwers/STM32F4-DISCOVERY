@@ -7,8 +7,8 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   LIS3DSH accelerometer class.
- * 
+ * \class   LIS3DSH
+ *
  * \brief   Driver for the LIS3DSH accelerometer.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
