@@ -88,7 +88,7 @@ public:
 
     bool Init(const Config& config);
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
     bool Start();
     bool IsStarted() const;
@@ -103,6 +103,7 @@ private:
 
     void SetInstance(const BasicTimerInstance& instance);
     void CheckAndEnableAHB1PeripheralClock(const BasicTimerInstance& instance);
+    void CheckAndDisableAHB1PeripheralClock(const BasicTimerInstance& instance);
     uint16_t CalculatePeriod(uint16_t desiredFrequency);
     IRQn_Type GetIRQn(const BasicTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);

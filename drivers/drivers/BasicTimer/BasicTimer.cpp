@@ -71,12 +71,7 @@ BasicTimer::BasicTimer(const BasicTimerInstance& instance) :
  */
 BasicTimer::~BasicTimer()
 {
-    Stop();
-
-    // Disable interrupts
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
-
-    mInitialized = false;
+    Sleep();
 }
 
 /**
@@ -125,17 +120,23 @@ bool BasicTimer::IsInit() const
 /**
  * \brief   Puts the BasicTimer module in sleep mode.
  * \details Stops the timer.
+ * \returns True if timer could be put in sleep mode, else false.
  */
-void BasicTimer::Sleep()
+bool BasicTimer::Sleep()
 {
     Stop();
+
+    mInitialized = false;
 
     // Disable interrupts
     HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
 
-    mInitialized = false;
-
-    // ToDo: low power state, check recovery after sleep
+    if (HAL_TIM_Base_DeInit(&mHandle) == HAL_OK)
+    {
+        CheckAndDisableAHB1PeripheralClock(mInstance);
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -214,6 +215,22 @@ void BasicTimer::CheckAndEnableAHB1PeripheralClock(const BasicTimerInstance& ins
     {
         case BasicTimerInstance::TIMER_6: if (__HAL_RCC_TIM6_IS_CLK_DISABLED()) { __HAL_RCC_TIM6_CLK_ENABLE(); } break;
         case BasicTimerInstance::TIMER_7: if (__HAL_RCC_TIM7_IS_CLK_DISABLED()) { __HAL_RCC_TIM7_CLK_ENABLE(); } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Check if the appropriate AHB1 peripheral clock for the BasicTimer
+ *          instance is enabled, if so disable it.
+ * \param   instance    The BasicTimer instance to disable the clock for.
+ * \note    Asserts if not a valid BasicTimer instance provided.
+ */
+void BasicTimer::CheckAndDisableAHB1PeripheralClock(const BasicTimerInstance& instance)
+{
+    switch (instance)
+    {
+        case BasicTimerInstance::TIMER_6: if (__HAL_RCC_TIM6_IS_CLK_ENABLED()) { __HAL_RCC_TIM6_CLK_DISABLE(); } break;
+        case BasicTimerInstance::TIMER_7: if (__HAL_RCC_TIM7_IS_CLK_ENABLED()) { __HAL_RCC_TIM7_CLK_DISABLE(); } break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
