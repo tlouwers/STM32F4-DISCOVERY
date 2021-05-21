@@ -8,14 +8,14 @@
  *          a beer in return.
  *                                                                Terry Louwers
  * \class   I2C
- * 
- * \brief   I2C peripheral driver class.
+ *
+ * \brief   I2C master peripheral driver class.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/I2C
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    10-2019
+ * \version 1.1
+ * \date    05-2021
  */
 
 #ifndef I2C_HPP_
@@ -95,8 +95,8 @@ public:
             mBusSpeed(busSpeed)
         { }
 
-        uint8_t     mInterruptPriority;     ///< Interrupt priority.
-        BusSpeed    mBusSpeed;              ///< Speed of the bus.
+        uint8_t  mInterruptPriority;    ///< Interrupt priority.
+        BusSpeed mBusSpeed;             ///< Speed of the bus.
     };
 
     explicit I2C(const I2CInstance& instance);
@@ -104,7 +104,7 @@ public:
 
     bool Init(const Config& config);
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
     const I2C_HandleTypeDef* GetPeripheralHandle() const;
     DMA_HandleTypeDef*& GetDmaTxHandle();
@@ -137,9 +137,12 @@ private:
 
     void SetInstance(const I2CInstance& instance);
     void CheckAndEnableAHB1PeripheralClock(const I2CInstance& instance);
+    void CheckAndDisableAHB1PeripheralClock(const I2CInstance& instance);
     IRQn_Type GetIRQn(const I2CInstance& instance, IRQType type);
+    void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackEvent();
     void CallbackError();
 };
+
 
 #endif  // I2C_HPP_

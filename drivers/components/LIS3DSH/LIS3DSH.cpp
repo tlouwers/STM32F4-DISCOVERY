@@ -141,16 +141,7 @@ LIS3DSH::LIS3DSH(SPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort
  */
 LIS3DSH::~LIS3DSH()
 {
-    mChipSelect.Configure(PullUpDown::HIGHZ);
-    mMotionInt1.Configure(PullUpDown::HIGHZ);
-    mMotionInt2.Configure(PullUpDown::HIGHZ);
-
-    mInitialized = false;
-
-    if (mReadBuffer)
-    {
-        delete[] mReadBuffer;
-    }
+    Sleep();
 }
 
 /**
@@ -193,7 +184,8 @@ bool LIS3DSH::IsInit() const
 }
 
 /**
- * \brief    Puts the LIS3DSH module in sleep mode.
+ * \brief   Puts the LIS3DSH module in sleep mode.
+ * \details Configures pins to HIGHZ, deletes read buffer.
  */
 void LIS3DSH::Sleep()
 {
@@ -208,7 +200,11 @@ void LIS3DSH::Sleep()
 
     mInitialized = false;
 
-    // ToDo: low power state, check recovery after sleep
+    if (mReadBuffer)
+    {
+        delete[] mReadBuffer;
+        mReadBuffer = nullptr;
+    }
 }
 
 /**

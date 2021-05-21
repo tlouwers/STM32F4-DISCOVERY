@@ -17,8 +17,8 @@
  *          Can be any timer. Also can be external trigger.
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    03-2021
+ * \version 1.1
+ * \date    05-2021
  */
 
 #ifndef DAC_HPP_
@@ -129,7 +129,7 @@ public:
 
     bool Init();
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
     const DAC_HandleTypeDef* GetPeripheralHandle() const;
     DMA_HandleTypeDef*& GetDmaChannel1Handle();
@@ -152,6 +152,7 @@ private:
     Waveform          mWaveformChannel2 = {};
 
     void CheckAndEnableAHB1PeripheralClock();
+    void CheckAndDisableAHB1PeripheralClock();
 
     uint32_t GetTrigger(const Trigger& trigger);
     uint32_t GetAlignment(const Precision& precision);

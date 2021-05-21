@@ -17,8 +17,8 @@
  *          GetValue uses: ADC(input) = value * (Vref / (ADC(resolution) + 1) ) - for 12-bit: ADC(input) = value * (3.3V / (0xFFF + 1) --> var = (value * (0xFFF + 1)) / 3.3V
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    03-2021
+ * \version 1.1
+ * \date    05-2021
  */
 
 /************************************************************************/
@@ -87,8 +87,6 @@ Adc::Adc(const ADCInstance& instance) :
 Adc::~Adc()
 {
     Sleep();
-
-    mInitialized = false;
 }
 
 /**
@@ -143,9 +141,11 @@ bool Adc::IsInit() const
 }
 
 /**
- * \brief    Puts the ADC module in sleep mode.
+ * \brief   Puts the ADC module in sleep mode.
+ * \details Aborts ongoing captures.
+ * \returns True if ADC module could be put in sleep mode, else false.
  */
-void Adc::Sleep()
+bool Adc::Sleep()
 {
     // Disable interrupts
     HAL_NVIC_DisableIRQ( ADC_IRQn );
@@ -154,7 +154,12 @@ void Adc::Sleep()
 
     mInitialized = false;
 
-    // ToDo: low power state, check recovery after sleep
+    if (HAL_ADC_DeInit(&mHandle) == HAL_OK)
+    {
+        CheckAndDisableAHB2PeripheralClock();
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -228,6 +233,23 @@ void Adc::CheckAndEnableAHB2PeripheralClock(const ADCInstance& instance)
         case ADCInstance::ADC_1: if (__HAL_RCC_ADC1_IS_CLK_DISABLED()) { __HAL_RCC_ADC1_CLK_ENABLE(); } break;
         case ADCInstance::ADC_2: if (__HAL_RCC_ADC2_IS_CLK_DISABLED()) { __HAL_RCC_ADC2_CLK_ENABLE(); } break;
         case ADCInstance::ADC_3: if (__HAL_RCC_ADC3_IS_CLK_DISABLED()) { __HAL_RCC_ADC3_CLK_ENABLE(); } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Check if the appropriate AHB2 peripheral clock for the ADC
+ *          instance is enabled, if so disable it.
+ * \param   instance    The ADC instance to disable the clock for.
+ * \note    Asserts if not a valid ADC instance provided.
+ */
+void Adc::CheckAndDisableAHB2PeripheralClock(const ADCInstance& instance)
+{
+    switch (instance)
+    {
+        case ADCInstance::ADC_1: if (__HAL_RCC_ADC1_IS_CLK_ENABLED()) { __HAL_RCC_ADC1_CLK_DISABLE(); } break;
+        case ADCInstance::ADC_2: if (__HAL_RCC_ADC2_IS_CLK_ENABLED()) { __HAL_RCC_ADC2_CLK_DISABLE(); } break;
+        case ADCInstance::ADC_3: if (__HAL_RCC_ADC3_IS_CLK_ENABLED()) { __HAL_RCC_ADC3_CLK_DISABLE(); } break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }

@@ -16,8 +16,8 @@
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/SPI
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    10-2019
+ * \version 1.1
+ * \date    05-2021
  */
 
 #ifndef SPI_HPP_
@@ -105,7 +105,7 @@ public:
 
     bool Init(const Config& config);
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
     const SPI_HandleTypeDef* GetPeripheralHandle() const;
     DMA_HandleTypeDef*& GetDmaTxHandle();
@@ -131,6 +131,9 @@ private:
 
     void SetInstance(const SPIInstance& instance);
     void CheckAndEnableAHB1PeripheralClock(const SPIInstance& instance);
+    void CheckAndDisableAHB1PeripheralClock(const SPIInstance& instance);
+    uint32_t GetPolarity(const Mode& mode);
+    uint32_t GetPhase(const Mode& mode);
     uint32_t CalculatePrescaler(uint32_t busSpeed);
     IRQn_Type GetIRQn(const SPIInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);

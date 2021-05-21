@@ -16,8 +16,8 @@
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/SPI
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    10-2019
+ * \version 1.1
+ * \date    05-2021
  */
 
 /************************************************************************/
@@ -86,10 +86,7 @@ SPI::SPI(const SPIInstance& instance) :
  */
 SPI::~SPI()
 {
-    // Disable interrupts
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
-
-    mInitialized = false;
+    Sleep();
 }
 
 /**
@@ -101,25 +98,14 @@ bool SPI::Init(const Config& config)
 {
     CheckAndEnableAHB1PeripheralClock(mInstance);
 
-    uint32_t polarity = SPI_POLARITY_LOW;
-    uint32_t phase    = SPI_PHASE_1EDGE;
-    switch (config.mMode)
-    {
-        case Mode::_0: polarity = SPI_POLARITY_LOW;  phase = SPI_PHASE_1EDGE; break;
-        case Mode::_1: polarity = SPI_POLARITY_LOW;  phase = SPI_PHASE_2EDGE; break;
-        case Mode::_2: polarity = SPI_POLARITY_HIGH; phase = SPI_PHASE_1EDGE; break;
-        case Mode::_3: polarity = SPI_POLARITY_HIGH; phase = SPI_PHASE_2EDGE; break;
-        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
-    }
-
     if (config.mBusSpeed < 1) { return false; }                         // If BusSpeed too low then return.
     if (config.mBusSpeed > HAL_RCC_GetPCLK1Freq()) { return false; }    // If BusSpeed higher than peripheral clock then return.
 
     mHandle.Init.Mode              = SPI_MODE_MASTER;
     mHandle.Init.Direction         = SPI_DIRECTION_2LINES;
     mHandle.Init.DataSize          = SPI_DATASIZE_8BIT;
-    mHandle.Init.CLKPolarity       = polarity;
-    mHandle.Init.CLKPhase          = phase;
+    mHandle.Init.CLKPolarity       = GetPolarity(config.mMode);
+    mHandle.Init.CLKPhase          = GetPhase(config.mMode);
     mHandle.Init.NSS               = SPI_NSS_SOFT;
     mHandle.Init.BaudRatePrescaler = CalculatePrescaler(config.mBusSpeed);
     mHandle.Init.FirstBit          = SPI_FIRSTBIT_MSB;
@@ -148,16 +134,23 @@ bool SPI::IsInit() const
 }
 
 /**
- * \brief    Puts the SPI module in sleep mode.
+ * \brief   Puts the SPI module in sleep mode.
+ * \details Aborts ongoing transfers.
+ * \returns True if SPI module could be put in sleep mode, else false.
  */
-void SPI::Sleep()
+bool SPI::Sleep()
 {
-    // Disable interrupts
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
+    // For Int. and DMA started transfers. Not handling result as to reach DeInit().
+    HAL_SPI_Abort(&mHandle);
 
     mInitialized = false;
 
-    // ToDo: low power state, check recovery after sleep
+    if (HAL_SPI_DeInit(&mHandle) == HAL_OK)
+    {
+        CheckAndDisableAHB1PeripheralClock(mInstance);
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -445,6 +438,65 @@ void SPI::CheckAndEnableAHB1PeripheralClock(const SPIInstance& instance)
         case SPIInstance::SPI_3: if (__HAL_RCC_SPI3_IS_CLK_DISABLED()) { __HAL_RCC_SPI3_CLK_ENABLE(); } break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
+}
+
+/**
+ * \brief   Check if the appropriate AHB1 peripheral clock for the SPI
+ *          instance is enabled, if so disable it.
+ * \param   instance    The SPI instance to disable the clock for.
+ * \note    Asserts if not a valid SPI instance provided.
+ */
+void SPI::CheckAndDisableAHB1PeripheralClock(const SPIInstance& instance)
+{
+    switch (instance)
+    {
+        case SPIInstance::SPI_1: if (__HAL_RCC_SPI1_IS_CLK_ENABLED()) { __HAL_RCC_SPI1_CLK_DISABLE(); } break;
+        case SPIInstance::SPI_2: if (__HAL_RCC_SPI2_IS_CLK_ENABLED()) { __HAL_RCC_SPI2_CLK_DISABLE(); } break;
+        case SPIInstance::SPI_3: if (__HAL_RCC_SPI3_IS_CLK_ENABLED()) { __HAL_RCC_SPI3_CLK_DISABLE(); } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the polarity for the given mode.
+ * \param   mode    The mode to get the polarity for.
+ * \returns The polarity if successful, else 0.
+ */
+uint32_t SPI::GetPolarity(const Mode& mode)
+{
+    uint32_t polarity = SPI_POLARITY_LOW;
+
+    switch (mode)
+    {
+        case Mode::_0: polarity = SPI_POLARITY_LOW;  break;
+        case Mode::_1: polarity = SPI_POLARITY_LOW;  break;
+        case Mode::_2: polarity = SPI_POLARITY_HIGH; break;
+        case Mode::_3: polarity = SPI_POLARITY_HIGH; break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+
+    return polarity;
+}
+
+/**
+ * \brief   Get the phase for the given mode.
+ * \param   mode    The mode to get the phase for.
+ * \returns The phase if successful, else 0.
+ */
+uint32_t SPI::GetPhase(const Mode& mode)
+{
+    uint32_t phase = SPI_PHASE_1EDGE;
+
+    switch (mode)
+    {
+        case Mode::_0: phase = SPI_PHASE_1EDGE; break;
+        case Mode::_1: phase = SPI_PHASE_2EDGE; break;
+        case Mode::_2: phase = SPI_PHASE_1EDGE; break;
+        case Mode::_3: phase = SPI_PHASE_2EDGE; break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+
+    return phase;
 }
 
 /**

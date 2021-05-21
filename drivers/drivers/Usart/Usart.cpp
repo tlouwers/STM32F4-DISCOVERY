@@ -1,5 +1,5 @@
 /**
- * \file Usart.cpp
+ * \file    Usart.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,22 +7,21 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   USART
  *
  * \brief   USART peripheral driver class.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Usart
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.1
- * \date    09-2019
+ * \version 1.2
+ * \date    05-2021
  */
 
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/Usart/Usart.hpp"
-#include "utility/SlimAssert.h"
+#include "utility/SlimAssert/SlimAssert.h"
 #include "stm32f4xx_hal_uart.h"
 
 
@@ -98,10 +97,7 @@ Usart::Usart(const UsartInstance& instance) :
  */
 Usart::~Usart()
 {
-    // Disable interrupts
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
-
-    mInitialized = false;
+    Sleep();
 }
 
 /**
@@ -113,18 +109,9 @@ bool Usart::Init(const Config& config)
 {
     CheckAndEnableAHB1PeripheralClock(mInstance);
 
-    uint32_t parity = UART_PARITY_NONE;
-    switch (config.mParity)
-    {
-        case Parity::EVEN: parity = UART_PARITY_EVEN; break;
-        case Parity::ODD:  parity = UART_PARITY_ODD;  break;
-        case Parity::NO:   parity = UART_PARITY_NONE; break;
-        default: ASSERT(false); break;
-    }
-
     mHandle.Init.BaudRate     = static_cast<uint32_t>(config.mBaudrate);
     mHandle.Init.WordLength   = (config.mWordLength == WordLength::_8_BIT) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;
-    mHandle.Init.Parity       = parity;
+    mHandle.Init.Parity       = GetParity(config.mParity);
     mHandle.Init.StopBits     = (config.mStopBits == StopBits::_1_BIT) ? UART_STOPBITS_1 : UART_STOPBITS_2;
     mHandle.Init.Mode         = UART_MODE_TX_RX;
     mHandle.Init.OverSampling = (config.mOverSampling == OverSampling::_8_TIMES) ? UART_OVERSAMPLING_8 : UART_OVERSAMPLING_16;
@@ -133,14 +120,9 @@ bool Usart::Init(const Config& config)
     if (HAL_UART_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt
-        const IRQn_Type irq = GetIRQn(mInstance);
-        HAL_NVIC_DisableIRQ(irq);
-        HAL_NVIC_ClearPendingIRQ(irq);
-        HAL_NVIC_SetPriority(irq, config.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance), config.mInterruptPriority, 0);
 
         __HAL_UART_CLEAR_FLAG(&mHandle, UART_FLAG_IDLE);
-
-        HAL_NVIC_EnableIRQ(irq);
 
         mInitialized = true;
         return true;
@@ -158,16 +140,23 @@ bool Usart::IsInit() const
 }
 
 /**
- * \brief    Puts the Usart module in sleep mode.
+ * \brief   Puts the Usart module in sleep mode.
+ * \details Aborts ongoing transfers.
+ * \returns True if Usart module could be put in sleep mode, else false.
  */
-void Usart::Sleep()
+bool Usart::Sleep()
 {
-    // Disable interrupts
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
+    // For Int. and DMA started transfers. Not handling result as to reach DeInit().
+    HAL_UART_Abort(&mHandle);
 
     mInitialized = false;
 
-    // ToDo: low power state, check recovery after sleep
+    if (HAL_UART_DeInit(&mHandle) == HAL_OK)
+    {
+        CheckAndDisableAHB1PeripheralClock(mInstance);
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -384,6 +373,44 @@ void Usart::CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance)
 }
 
 /**
+ * \brief   Check if the appropriate AHB1 peripheral clock for the USART
+ *          instance is enabled, if so disable it.
+ * \param   instance    The USART instance to disable the clock for.
+ * \note    Asserts if not a valid USART instance provided.
+ */
+void Usart::CheckAndDisableAHB1PeripheralClock(const UsartInstance& instance)
+{
+    switch (instance)
+    {
+        case UsartInstance::USART_1: if (__HAL_RCC_USART1_IS_CLK_ENABLED()) { __HAL_RCC_USART1_CLK_DISABLE(); } break;
+        case UsartInstance::USART_2: if (__HAL_RCC_USART2_IS_CLK_ENABLED()) { __HAL_RCC_USART2_CLK_DISABLE(); } break;
+        case UsartInstance::USART_3: if (__HAL_RCC_USART3_IS_CLK_ENABLED()) { __HAL_RCC_USART3_CLK_DISABLE(); } break;
+        case UsartInstance::USART_6: if (__HAL_RCC_USART6_IS_CLK_ENABLED()) { __HAL_RCC_USART6_CLK_DISABLE(); } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the parify mode for the Usart.
+ * \param   parity  The parity mode to get.
+ * \returns The parity mode value if successful, else 0.
+ */
+uint32_t Usart::GetParity(const Parity& parity)
+{
+    uint32_t parityValue = UART_PARITY_NONE;
+
+    switch (parity)
+    {
+        case Parity::EVEN: parityValue = UART_PARITY_EVEN; break;
+        case Parity::ODD:  parityValue = UART_PARITY_ODD;  break;
+        case Parity::NO:   parityValue = UART_PARITY_NONE; break;
+        default: ASSERT(false); break;
+    }
+
+    return parityValue;
+}
+
+/**
  * \brief   Get the IRQ belonging to the USART.
  * \param   instance    The USART instance to get the IRQ for.
  * \returns The interrupt line IRQ to which the USART belongs. If invalid
@@ -401,6 +428,20 @@ IRQn_Type Usart::GetIRQn(const UsartInstance& instance)
         case UsartInstance::USART_6: return USART6_IRQn; break;
         default: ASSERT(false); while(1) { __NOP(); } return USART1_IRQn; break;      // Impossible selection
     }
+}
+
+/**
+ * \brief   Lower level configuration for the USART interrupts.
+ * \param   type        IRQn External interrupt number.
+ * \param   preemptPrio The preemption priority for the IRQn channel.
+ * \param   subPrio     The subpriority level for the IRQ channel.
+ */
+void Usart::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
+{
+    HAL_NVIC_DisableIRQ(type);
+    HAL_NVIC_ClearPendingIRQ(type);
+    HAL_NVIC_SetPriority(type, preemptPrio, subPrio);
+    HAL_NVIC_EnableIRQ(type);
 }
 
 /**

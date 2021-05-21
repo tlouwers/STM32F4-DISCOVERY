@@ -20,8 +20,8 @@
  *                        DMA1 Channel 7, Stream 6 --> PA5 (DAC Channel 2)
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    03-2021
+ * \version 1.1
+ * \date    05-2021
  */
 
 /************************************************************************/
@@ -48,11 +48,6 @@ Dac::Dac() :
 Dac::~Dac()
 {
     Sleep();
-
-    SetWaveform(Channel::CHANNEL_1, nullptr, 0);
-    SetWaveform(Channel::CHANNEL_2, nullptr, 0);
-
-    mInitialized = false;
 }
 
 /**
@@ -83,16 +78,26 @@ bool Dac::IsInit() const
 }
 
 /**
- * \brief    Puts the DAC module in sleep mode.
+ * \brief   Puts the DAC module in sleep mode.
+ * \details Stops output on channel(s).
+ * \returns True if DAC module could be put in sleep mode, else false.
  */
-void Dac::Sleep()
+bool Dac::Sleep()
 {
     StopChannel(Channel::CHANNEL_1);
     StopChannel(Channel::CHANNEL_2);
 
+    SetWaveform(Channel::CHANNEL_1, nullptr, 0);
+    SetWaveform(Channel::CHANNEL_2, nullptr, 0);
+
     mInitialized = false;
 
-    // ToDo: low power state, check recovery after sleep
+    if (HAL_DAC_DeInit(&mHandle) == HAL_OK)
+    {
+        CheckAndDisableAHB1PeripheralClock();
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -304,6 +309,15 @@ bool Dac::StopWaveform(const Channel& channel)
 void Dac::CheckAndEnableAHB1PeripheralClock()
 {
     if (__HAL_RCC_DAC_IS_CLK_DISABLED()) { __HAL_RCC_DAC_CLK_ENABLE(); }
+}
+
+/**
+ * \brief   Check if the appropriate AHB1 peripheral clock for the DAC
+ *          is enabled, if so disable it.
+ */
+void Dac::CheckAndDisableAHB1PeripheralClock()
+{
+    if (__HAL_RCC_DAC_IS_CLK_ENABLED()) { __HAL_RCC_DAC_CLK_DISABLE(); }
 }
 
 /**

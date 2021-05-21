@@ -8,21 +8,21 @@
  *          a beer in return.
  *                                                                Terry Louwers
  * \class   I2C
- * 
- * \brief   I2C peripheral driver class.
+ *
+ * \brief   I2C master peripheral driver class.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/I2C
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    10-2019
+ * \version 1.1
+ * \date    05-2021
  */
 
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/I2C/I2C.hpp"
-#include "utility/SlimAssert.h"
+#include "utility/SlimAssert/SlimAssert.h"
 #include "stm32f4xx_hal_i2c.h"
 
 
@@ -109,11 +109,7 @@ I2C::I2C(const I2CInstance& instance) :
  */
 I2C::~I2C()
 {
-    // Disable interrupts
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::Event) );
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::Error) );
-
-    mInitialized = false;
+    Sleep();
 }
 
 /**
@@ -137,18 +133,10 @@ bool I2C::Init(const Config& config)
     if (HAL_I2C_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt on Event
-        const IRQn_Type irq_event = GetIRQn(mInstance, IRQType::Event);
-        HAL_NVIC_DisableIRQ(irq_event);
-        HAL_NVIC_ClearPendingIRQ(irq_event);
-        HAL_NVIC_SetPriority(irq_event, config.mInterruptPriority, 0);
-        HAL_NVIC_EnableIRQ(irq_event);
+        SetIRQn(GetIRQn(mInstance, IRQType::Event), config.mInterruptPriority, 0);
 
         // Configure NVIC to generate interrupt on Error
-        const IRQn_Type irq_error = GetIRQn(mInstance, IRQType::Error);
-        HAL_NVIC_DisableIRQ(irq_error);
-        HAL_NVIC_ClearPendingIRQ(irq_error);
-        HAL_NVIC_SetPriority(irq_error, config.mInterruptPriority, 0);
-        HAL_NVIC_EnableIRQ(irq_error);
+        SetIRQn(GetIRQn(mInstance, IRQType::Error), config.mInterruptPriority, 0);
 
         mInitialized = true;
         return true;
@@ -167,16 +155,26 @@ bool I2C::IsInit() const
 
 /**
  * \brief    Puts the I2C module in sleep mode.
+ * \details Aborts ongoing transfers.
+ * \returns True if I2C module could be put in sleep mode, else false.
  */
-void I2C::Sleep()
+bool I2C::Sleep()
 {
+    // For Int. and DMA started transfers. Not handling result as to reach DeInit().
+    HAL_I2C_Master_Abort_IT(&mHandle, mHandle.Devaddress);
+
+    mInitialized = false;
+
     // Disable interrupts
     HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::Event) );
     HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::Error) );
 
-    mInitialized = false;
-
-    // ToDo: low power state, check recovery after sleep
+    if (HAL_I2C_DeInit(&mHandle) == HAL_OK)
+    {
+        CheckAndDisableAHB1PeripheralClock(mInstance);
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -389,6 +387,23 @@ void I2C::CheckAndEnableAHB1PeripheralClock(const I2CInstance& instance)
 }
 
 /**
+ * \brief   Check if the appropriate AHB1 peripheral clock for the I2C
+ *          instance is enabled, if so disable it.
+ * \param   instance    The I2C instance to disable the clock for.
+ * \note    Asserts if not a valid I2C instance provided.
+ */
+void I2C::CheckAndDisableAHB1PeripheralClock(const I2CInstance& instance)
+{
+    switch (instance)
+    {
+        case I2CInstance::I2C_1: if (__HAL_RCC_I2C1_IS_CLK_ENABLED()) { __HAL_RCC_I2C1_CLK_DISABLE(); } break;
+        case I2CInstance::I2C_2: if (__HAL_RCC_I2C2_IS_CLK_ENABLED()) { __HAL_RCC_I2C2_CLK_DISABLE(); } break;
+        case I2CInstance::I2C_3: if (__HAL_RCC_I2C3_IS_CLK_ENABLED()) { __HAL_RCC_I2C3_CLK_DISABLE(); } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+}
+
+/**
  * \brief   Get the IRQ belonging to the I2C.
  * \param   instance    The I2C instance to get the IRQ for.
  * \param   type        The IRQ type to get.
@@ -419,6 +434,20 @@ IRQn_Type I2C::GetIRQn(const I2CInstance& instance, IRQType type)
             default: ASSERT(false); while(1) { __NOP(); } return I2C1_ER_IRQn; break;      // Impossible selection
         }
     }
+}
+
+/**
+ * \brief   Lower level configuration for the I2C interrupts.
+ * \param   type        IRQn External interrupt number.
+ * \param   preemptPrio The preemption priority for the IRQn channel.
+ * \param   subPrio     The subpriority level for the IRQ channel.
+ */
+void I2C::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
+{
+    HAL_NVIC_DisableIRQ(type);
+    HAL_NVIC_ClearPendingIRQ(type);
+    HAL_NVIC_SetPriority(type, preemptPrio, subPrio);
+    HAL_NVIC_EnableIRQ(type);
 }
 
 /**

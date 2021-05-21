@@ -7,15 +7,15 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   USART
+ * \class   Usart
  *
  * \brief   USART peripheral driver class.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Usart
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.1
- * \date    09-2019
+ * \version 1.2
+ * \date    05-2021
  */
 
 #ifndef USART_HPP_
@@ -169,7 +169,7 @@ public:
 
     bool Init(const Config& config);
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
     const UART_HandleTypeDef* GetPeripheralHandle() const;
     DMA_HandleTypeDef*& GetDmaTxHandle();
@@ -192,7 +192,10 @@ private:
 
     void SetInstance(const UsartInstance& instance);
     void CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance);
+    void CheckAndDisableAHB1PeripheralClock(const UsartInstance& instance);
+    uint32_t GetParity(const Parity& parity);
     IRQn_Type GetIRQn(const UsartInstance& instance);
+    void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
 };
 

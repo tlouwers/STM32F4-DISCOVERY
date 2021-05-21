@@ -17,8 +17,8 @@
  *          (polling) method or using interrupt.
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    03-2021
+ * \version 1.1
+ * \date    05-2021
  */
 
 #ifndef ADC_HPP_
@@ -131,7 +131,7 @@ public:
 
     bool Init(const Config& config);
     bool IsInit() const;
-    void Sleep();
+    bool Sleep();
 
     bool GetValue(uint16_t& value);
     bool GetValueInterrupt(const std::function<void(uint16_t)>& handler);
@@ -144,6 +144,7 @@ private:
 
     void SetInstance(const ADCInstance& instance);
     void CheckAndEnableAHB2PeripheralClock(const ADCInstance& instance);
+    void CheckAndDisableAHB2PeripheralClock(const ADCInstance& instance);
     uint32_t GetChannel(const Channel& channel);
     uint32_t GetResolution(const Resolution& resolution);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
