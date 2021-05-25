@@ -156,7 +156,7 @@ bool Adc::Sleep()
 
     if (HAL_ADC_DeInit(&mHandle) == HAL_OK)
     {
-        CheckAndDisableAHB2PeripheralClock();
+        CheckAndDisableAHB2PeripheralClock(mInstance);
         return true;
     }
     return false;
