@@ -96,7 +96,7 @@ SPI::~SPI()
  */
 bool SPI::Init(const Config& config)
 {
-    CheckAndEnableAHB1PeripheralClock(mInstance);
+    CheckAndEnableAHBPeripheralClock(mInstance);
 
     if (config.mBusSpeed < 1) { return false; }                         // If BusSpeed too low then return.
     if (config.mBusSpeed > HAL_RCC_GetPCLK1Freq()) { return false; }    // If BusSpeed higher than peripheral clock then return.
@@ -147,7 +147,7 @@ bool SPI::Sleep()
 
     if (HAL_SPI_DeInit(&mHandle) == HAL_OK)
     {
-        CheckAndDisableAHB1PeripheralClock(mInstance);
+        CheckAndDisableAHBPeripheralClock(mInstance);
         return true;
     }
     return false;
@@ -424,12 +424,12 @@ void SPI::SetInstance(const SPIInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the SPI
+ * \brief   Check if the appropriate AHB peripheral clock for the SPI
  *          instance is enabled, if not enable it.
  * \param   instance    The SPI instance to enable the clock for.
  * \note    Asserts if not a valid SPI instance provided.
  */
-void SPI::CheckAndEnableAHB1PeripheralClock(const SPIInstance& instance)
+void SPI::CheckAndEnableAHBPeripheralClock(const SPIInstance& instance)
 {
     switch (instance)
     {
@@ -441,12 +441,12 @@ void SPI::CheckAndEnableAHB1PeripheralClock(const SPIInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the SPI
+ * \brief   Check if the appropriate AHB peripheral clock for the SPI
  *          instance is enabled, if so disable it.
  * \param   instance    The SPI instance to disable the clock for.
  * \note    Asserts if not a valid SPI instance provided.
  */
-void SPI::CheckAndDisableAHB1PeripheralClock(const SPIInstance& instance)
+void SPI::CheckAndDisableAHBPeripheralClock(const SPIInstance& instance)
 {
     switch (instance)
     {
