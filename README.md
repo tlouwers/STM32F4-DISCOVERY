@@ -6,6 +6,7 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | Folder | Contents |
 | ------ | -------- |
 | Drivers/board | Helper class and configuration file to configure clock and pins of the board. |
+| Drivers/components/HI-M1388AR | HI-M1388AR 8x8 LED matrix display class. Includes library with digits, letters and symbols to display. |
 | Drivers/components/LIS3DSH | LIS3DSH accelerometer class with HW fifo support. |
 | Drivers/drivers/ADC | ADC peripheral driver class. Simple and Interrupt based input capture for single channel. |
 | Drivers/drivers/BasicTimer | BasicTimer peripheral driver class. Intended for use with DAC. |

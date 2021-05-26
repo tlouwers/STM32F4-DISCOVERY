@@ -2,9 +2,11 @@
 A basic example or project structure for C++ development with the STM32F407G-DISC1 kit.
 
 Intended use is to be a starting point for developing, debugging and unit testing the STM32F407G-DISC1.
-This example read the accelerometer via DMA (and then discards the read samples). Data is stored in accelerometer FIFO until a threshold is reached, then ISR flags data is available. Data then is read via SPI/DMA. Orange led is used to signal data available.
-A light sleep mode is used to conserve power. 
-Note: the button pin conflicts with the accelerometer Int1 pin, a board layout issue - they cannot be used at the same time. For now the accelerometer gets preference in this example.
+This example uses a HI-M1388AR 8x8 LED matrix display and Buzzer, together with the Button and Leds on the discovery board to implement a standup counter.
+After starting the counter, each person is given 105 seconds of speaking time, after which the Buzzer is giving beeps and the display is showing a countdown.
+Once the countdown is reached to Buzzer will beep a longer time.
+The intent is that people during a standup have a 'limited' time to speak and do not go over their timeslot.
+Note: this intended as a fun experiment, please make proper agreements within your team before using this as 'solution'.
 
 # Requirements
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
