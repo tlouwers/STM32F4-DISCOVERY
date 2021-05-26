@@ -1,0 +1,73 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure - Target [Debug]",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/target"
+            },
+            "command": "CMake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/target/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Configure - Target [Release]",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/target"
+            },
+            "command": "CMake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/target/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_BUILD_TYPE=Release"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build - Target",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/target/build"
+            },
+            "command": "Ninja",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Configure - Unit Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "command": "CMake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build - Unit Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "command": "Ninja",
+            "problemMatcher": []
+        }
+    ]
+}
