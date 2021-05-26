@@ -30,6 +30,13 @@
 
 
 /************************************************************************/
+/* Constants                                                            */
+/************************************************************************/
+static constexpr uint32_t MAX_LOOP_COUNT = 10;      // Do not set above 10, display logic can represent only a single digit!
+static constexpr uint32_t LONG_DELAY_MS  = 105000;
+
+
+/************************************************************************/
 /* Public Methods                                                       */
 /************************************************************************/
 /**
@@ -102,27 +109,31 @@ bool Application::Init()
  */
 void Application::Process()
 {
-    static bool pwm_on = false;
-    static uint8_t count = 0;
+    uint32_t SHORT_DELAY_MS = 2000;
+    uint32_t BEEP_LONG_MS   = 1000;
+    uint32_t BEEP_SHORT_MS  = 200;
 
     if (mButtonPressed)
     {
-        mButtonPressed = false;
+        bool result = false;
 
+        mLedGreen.Set(Level::HIGH);
+        mMatrix.WriteDigits(symbol_smiley);
+
+        // Since waiting and beeping is the only function of the device, put this in
+        // blocking delays. Power is not an issue, we are connected to USB.
+
+        // Person starts to speak, wait uninterrupted
+        HAL_Delay(LONG_DELAY_MS);
+
+        // Start of beep loop
         mLedGreen.Set(Level::LOW);
-
-        if (pwm_on) {
-            pwm_on = false;
-            mPWM.Stop(PWM::Channel::Channel_1);
-
-            bool result = mMatrix.ClearDisplay();
-            ASSERT(result);
-        } else {
-            pwm_on = true;
-            mPWM.Start(PWM::Channel::Channel_1);
-
-            bool result = false;
-            switch (count) {
+        mLedOrange.Set(Level::HIGH);
+        for (uint32_t i = 0; i < MAX_LOOP_COUNT; i++)
+        {
+            // Display digit - countdown
+            uint32_t j = MAX_LOOP_COUNT - i - 1;
+            switch (j) {
                 case 0: { result = mMatrix.WriteDigits(digit_zero);  } break;
                 case 1: { result = mMatrix.WriteDigits(digit_one);   } break;
                 case 2: { result = mMatrix.WriteDigits(digit_two);   } break;
@@ -133,10 +144,50 @@ void Application::Process()
                 case 7: { result = mMatrix.WriteDigits(digit_seven); } break;
                 case 8: { result = mMatrix.WriteDigits(digit_eight); } break;
                 case 9: { result = mMatrix.WriteDigits(digit_nine);  } break;
+                default: break;
             };
-            if (++count > 9) { count = 0; }
             ASSERT(result);
+
+            // Short beep
+            result = mPWM.Start(PWM::Channel::Channel_1);
+            ASSERT(result);
+            HAL_Delay(BEEP_SHORT_MS);
+            result = mPWM.Stop(PWM::Channel::Channel_1);
+            ASSERT(result);
+
+            // Wait before next loop
+            HAL_Delay(SHORT_DELAY_MS);
+
+            // Make delays between loops shorter each iteration
+            BEEP_SHORT_MS  += 5;
+            SHORT_DELAY_MS -= 100;
         }
+
+        // Last long beep
+        mLedOrange.Set(Level::LOW);
+        mLedRed.Set(Level::HIGH);
+        mMatrix.WriteDigits(symbol_sadface);
+        result = mPWM.Start(PWM::Channel::Channel_1);
+        ASSERT(result);
+        HAL_Delay(BEEP_LONG_MS);
+        result = mPWM.Stop(PWM::Channel::Channel_1);
+        ASSERT(result);
+
+        mLedRed.Set(Level::LOW);
+
+        // Reset counters
+        SHORT_DELAY_MS = 2000;
+        BEEP_LONG_MS   = 1000;
+        BEEP_SHORT_MS  = 200;
+
+        // Wait before returning to default state
+        HAL_Delay(SHORT_DELAY_MS);
+
+        // Prepare for new person
+        mLedRed.Set(Level::LOW);
+        mMatrix.ClearDisplay();
+
+        mButtonPressed = false;
     }
 }
 
@@ -172,5 +223,4 @@ void Application::Error()
 void Application::ButtonPressedCallback()
 {
     mButtonPressed = true;
-    mLedGreen.Set(Level::HIGH);
 }
