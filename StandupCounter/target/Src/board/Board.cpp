@@ -49,6 +49,12 @@ void Board::InitPins()
     // PIN_SPI1_CS     -- ChipSelect, handled in software
     // PIN_MOTION_INT1 -- Input, handled in LIS3DSH class
     // PIN_MOTION_INT2 -- Input, handled in LIS3DSH class
+
+    // HI_M1388AR - SPI2
+    Pin(PIN_SPI2_SCK,  Alternate::AF5);
+    // PIN_SPI2_MISO    -- MISO, not used
+    Pin(PIN_SPI2_MOSI, Alternate::AF5);
+    // PIN_SPI2_CS     -- ChipSelect, handled in software
 }
 
 /**

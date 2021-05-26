@@ -95,9 +95,9 @@ public:
             mBusSpeed(busSpeed)
         { }
 
-        uint8_t  mInterruptPriority;    ///< Interrupt priority.
-        Mode     mMode;                 ///< Clock polarity and phase.
-        uint32_t mBusSpeed;             ///< Speed of the bus.
+        uint8_t    mInterruptPriority;  ///< Interrupt priority.
+        Mode       mMode;               ///< Clock polarity and phase.
+        uint32_t   mBusSpeed;           ///< Speed of the bus.
     };
 
     explicit SPI(const SPIInstance& instance);
@@ -130,8 +130,8 @@ private:
     bool              mInitialized;
 
     void SetInstance(const SPIInstance& instance);
-    void CheckAndEnableAHB1PeripheralClock(const SPIInstance& instance);
-    void CheckAndDisableAHB1PeripheralClock(const SPIInstance& instance);
+    void CheckAndEnableAHBPeripheralClock(const SPIInstance& instance);
+    void CheckAndDisableAHBPeripheralClock(const SPIInstance& instance);
     uint32_t GetPolarity(const Mode& mode);
     uint32_t GetPhase(const Mode& mode);
     uint32_t CalculatePrescaler(uint32_t busSpeed);

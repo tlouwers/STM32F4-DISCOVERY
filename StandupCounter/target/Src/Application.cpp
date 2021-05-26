@@ -26,6 +26,7 @@
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
 #include "utility/SlimAssert/SlimAssert.h"
+#include "components/HI-M1388AR/HI-M1388AR_Lib.hpp"
 
 
 /************************************************************************/
@@ -40,10 +41,11 @@ Application::Application() :
     mLedOrange(PIN_LED_ORANGE, Level::LOW),
     mLedRed(PIN_LED_RED, Level::LOW),
     mLedBlue(PIN_LED_BLUE, Level::LOW),
-    mChipSelect(PIN_SPI2_CS, Level::HIGH),              // SPI ChipSelect
+    mChipSelect(PIN_SPI2_CS, Alternate::AF5),
     mPWMOut(PIN_PWM_CH1, Alternate::AF1),
     mPWM(PwmTimerInstance::TIMER_2),
     mSPI(SPIInstance::SPI_2),
+    mMatrix(mSPI, PIN_SPI2_CS),
     mDMA_SPI_Tx(DMA::Stream::Dma1_Stream4),
     mDMA_SPI_Rx(DMA::Stream::Dma1_Stream3),
     mButtonPressed(false)
@@ -66,24 +68,28 @@ bool Application::Init()
     bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel0, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
-    result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel0, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    result &= mDMA_SPI_Rx.Configure(DMA::Channel::Channel0, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
-    result = mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
+    result &= mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
     ASSERT(result);
 
-    result = mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
+    result &= mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
     ASSERT(result);
 
-    result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+    result &= mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+    ASSERT(result);
+
+    result &= mMatrix.Init(HI_M1388AR::Config(8));
     ASSERT(result);
 
 
-    result = mPWM.Init(PWM::Config(500));
+    result &= mPWM.Init(PWM::Config(500));
     ASSERT(result);
 
-    result = mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50, PWM::Polarity::High));
+    result &= mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50, PWM::Polarity::High));
     ASSERT(result);
+
 
     mLedGreen.Set(Level::LOW);
 
@@ -97,6 +103,7 @@ bool Application::Init()
 void Application::Process()
 {
     static bool pwm_on = false;
+    static uint8_t count = 0;
 
     if (mButtonPressed)
     {
@@ -107,9 +114,28 @@ void Application::Process()
         if (pwm_on) {
             pwm_on = false;
             mPWM.Stop(PWM::Channel::Channel_1);
+
+            bool result = mMatrix.ClearDisplay();
+            ASSERT(result);
         } else {
             pwm_on = true;
             mPWM.Start(PWM::Channel::Channel_1);
+
+            bool result = false;
+            switch (count) {
+                case 0: { result = mMatrix.WriteDigits(digit_zero);  } break;
+                case 1: { result = mMatrix.WriteDigits(digit_one);   } break;
+                case 2: { result = mMatrix.WriteDigits(digit_two);   } break;
+                case 3: { result = mMatrix.WriteDigits(digit_three); } break;
+                case 4: { result = mMatrix.WriteDigits(digit_four);  } break;
+                case 5: { result = mMatrix.WriteDigits(digit_five);  } break;
+                case 6: { result = mMatrix.WriteDigits(digit_six);   } break;
+                case 7: { result = mMatrix.WriteDigits(digit_seven); } break;
+                case 8: { result = mMatrix.WriteDigits(digit_eight); } break;
+                case 9: { result = mMatrix.WriteDigits(digit_nine);  } break;
+            };
+            if (++count > 9) { count = 0; }
+            ASSERT(result);
         }
     }
 }

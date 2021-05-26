@@ -26,6 +26,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include <atomic>
+#include "components/HI-M1388AR/HI-M1388AR.hpp"
 #include "drivers/DMA/DMA.hpp"
 #include "drivers/Pin/Pin.hpp"
 #include "drivers/PWM/PWM.hpp"
@@ -57,8 +58,9 @@ private:
     Pin mChipSelect;
     Pin mPWMOut;
 
-    PWM mPWM;
-    SPI mSPI;
+    PWM        mPWM;
+    SPI        mSPI;
+    HI_M1388AR mMatrix;
 
     DMA mDMA_SPI_Tx;
     DMA mDMA_SPI_Rx;
