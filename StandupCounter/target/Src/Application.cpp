@@ -159,8 +159,8 @@ void Application::Process()
             HAL_Delay(SHORT_DELAY_MS);
 
             // Make delays between loops shorter each iteration
-            BEEP_SHORT_MS  += 5;
-            SHORT_DELAY_MS -= 100;
+            BEEP_SHORT_MS  += 10;
+            SHORT_DELAY_MS -= 150;
         }
 
         // Last long beep
@@ -172,8 +172,6 @@ void Application::Process()
         HAL_Delay(BEEP_LONG_MS);
         result = mPWM.Stop(PWM::Channel::Channel_1);
         ASSERT(result);
-
-        mLedRed.Set(Level::LOW);
 
         // Reset counters
         SHORT_DELAY_MS = 2000;
