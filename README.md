@@ -18,6 +18,7 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | Drivers/drivers/PWM | PWM peripheral driver class. Using Timer 2..4 as clock source. |
 | Drivers/drivers/SPI | SPI peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | Drivers/drivers/Usart | USART peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
+| Drivers/utility/Assert | Alternate 'assert' logic for embedded systems with more fine-grained control. |
 | Drivers/utility/CpuWakeCounter | Helper class intended to put the CPU into a 'light' sleep mode and measure the wake percentage in one go. |
 | Drivers/utility/HeapCheck | Low level functions to determine heap usage during run time. |
 | Drivers/utility/StackPainting | Low level functions to determine stack usage during run time. |
