@@ -186,6 +186,9 @@ private:
     Direction     mDirection = Direction::UNDEFINED;
 
     void CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port);
+    void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port);
+    bool IsIRQSharedWithOtherPin(uint16_t id);
+    IRQn_Type GetIRQn(uint16_t id);
 
     // Explicit disabled constructors/operators
     Pin() = delete;
