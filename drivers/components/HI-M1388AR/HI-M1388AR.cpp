@@ -103,10 +103,8 @@ bool HI_M1388AR::IsInit() const
 bool HI_M1388AR::Sleep()
 {
     bool result = ClearDisplay();
-    ASSERT(result);
 
     result &= WriteRegister(SHUTDOWN, 0x00);
-    ASSERT(result);
 
     mChipSelect.Configure(PullUpDown::HIGHZ);
 
@@ -128,6 +126,7 @@ bool HI_M1388AR::ClearDisplay()
         // All leds off
         uint8_t buffer[8] = {};
         result = WriteDigits(buffer);
+        ASSERT(result);
     }
 
     return result;
@@ -147,22 +146,14 @@ bool HI_M1388AR::WriteDigits(const uint8_t* src)
 
     if (mInitialized)
     {
-        result = WriteRegister(DIGIT_0, *src++);
-        ASSERT(result);
+        result  = WriteRegister(DIGIT_0, *src++);
         result &= WriteRegister(DIGIT_1, *src++);
-        ASSERT(result);
         result &= WriteRegister(DIGIT_2, *src++);
-        ASSERT(result);
         result &= WriteRegister(DIGIT_3, *src++);
-        ASSERT(result);
         result &= WriteRegister(DIGIT_4, *src++);
-        ASSERT(result);
         result &= WriteRegister(DIGIT_5, *src++);
-        ASSERT(result);
         result &= WriteRegister(DIGIT_6, *src++);
-        ASSERT(result);
         result &= WriteRegister(DIGIT_7, *src);
-        ASSERT(result);
     }
 
     return result;
