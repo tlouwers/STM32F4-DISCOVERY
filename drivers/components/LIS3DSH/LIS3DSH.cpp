@@ -104,7 +104,7 @@ static constexpr uint8_t OUTS2       = 0x7F;
 /************************************************************************/
 static constexpr uint8_t IDENTIFIER       = 0x3F;
 static constexpr uint8_t READ_MASK        = 0x80;
-static constexpr uint8_t WATERMARK_LEVEL  = 0x19;                       // 25 samples X,Y,Z default
+static constexpr uint8_t WATERMARK_LEVEL  = 0x19;                       // 25 samples X,Y,Z default - fifo size max = 32
 static constexpr uint8_t READ_BUFFER_SIZE = 3 * 2 * WATERMARK_LEVEL;    // X,Y,Z * int16_t * 25 samples (in fifo)
 static constexpr uint8_t BDU              = 0;                          // 0: disabled (default if fifo is used), 1: enabled
 static constexpr uint8_t AXES_ENABLED     = 0x07;
@@ -336,25 +336,25 @@ bool LIS3DSH::Configure(const Config& config)
     bool result = WriteRegister(CTRL_REG4, &src, 1);
     ASSERT(result);
 
-    result = PrepareReadBuffer(config.mSampleFrequency);
+    result &= PrepareReadBuffer(config.mSampleFrequency);
     ASSERT(result);
 
     src = 0x68;                                         // INT1 enabled, active high, pulsed
-    result = WriteRegister(CTRL_REG3, &src, 1);
+    result &= WriteRegister(CTRL_REG3, &src, 1);
     ASSERT(result);
 
     src = (BW | FSCALE);                                // Default: anti-aliasing 200 Hz, +/- 2g
-    result = WriteRegister(CTRL_REG5, &src, 1);
+    result &= WriteRegister(CTRL_REG5, &src, 1);
     ASSERT(result);
 
     src = 0x54;                                         // FIFO enabled, watermark on INT1
-    result = WriteRegister(CTRL_REG6, &src, 1);
+    result &= WriteRegister(CTRL_REG6, &src, 1);
     ASSERT(result);
 
     // Leave fifo in 'bypass' mode: setting another mode enables acquisition.
     ASSERT(WATERMARK_LEVEL <= 32);                      // Fifo only 32 samples big
     src = WATERMARK_LEVEL;                              // FIFO mode (disabled), watermark level (default 25 samples X,Y,Z)
-    result = WriteRegister(FIFO_CTRL, &src, 1);
+    result &= WriteRegister(FIFO_CTRL, &src, 1);
     ASSERT(result);
 
     return result;
@@ -403,19 +403,19 @@ bool LIS3DSH::ClearFifo()
         {
             const uint8_t length = 3 * 2 * nrSamplesInFifo;   // X,Y,Z * int16_t * samples in fifo
             uint8_t samples[length] = {};
-            result = ReadRegister(OUT_X_L, samples, length);
+            result &= ReadRegister(OUT_X_L, samples, length);
             ASSERT(result);
         }
 
         dest = 0;
-        result = ReadRegister(FIFO_SRC, &dest, 1);
+        result &= ReadRegister(FIFO_SRC, &dest, 1);
         ASSERT(result);
 
         if ( ! (dest & FIFO_EMPTY) )
         {
             const uint8_t length = 3 * 2;                       // X,Y,Z * int16_t * 1 sample in fifo
             uint8_t samples[length] = {};
-            result = ReadRegister(OUT_X_L, samples, length);
+            result &= ReadRegister(OUT_X_L, samples, length);
             ASSERT(result);
         }
     }
@@ -542,7 +542,7 @@ bool LIS3DSH::WriteRegister(uint8_t reg, const uint8_t* src, uint16_t length)
     ASSERT(result);
     if (result)
     {
-        result = mSpi.WriteBlocking(src, length);
+        result &= mSpi.WriteBlocking(src, length);
         ASSERT(result);
     }
     mChipSelect.Set(Level::HIGH);
@@ -570,7 +570,7 @@ bool LIS3DSH::ReadRegister(uint8_t reg, uint8_t* dest, uint16_t length)
     ASSERT(result);
     if (result)
     {
-        result = mSpi.ReadBlocking(dest, length);
+        result &= mSpi.ReadBlocking(dest, length);
         ASSERT(result);
     }
     mChipSelect.Set(Level::HIGH);
@@ -593,7 +593,7 @@ void LIS3DSH::CallbackInt1()
         ASSERT(result);
         if (result)
         {
-            result = mSpi.ReadDMA(mReadBuffer, READ_BUFFER_SIZE, [this]() { this->ReadAxesCompleted(); } );
+            result &= mSpi.ReadDMA(mReadBuffer, READ_BUFFER_SIZE, [this]() { this->ReadAxesCompleted(); } );
             ASSERT(result);
         }
         else

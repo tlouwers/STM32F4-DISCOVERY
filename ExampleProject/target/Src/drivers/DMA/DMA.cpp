@@ -1,5 +1,5 @@
 /**
- * \file     DMA.cpp
+ * \file    DMA.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -23,7 +23,7 @@
 /************************************************************************/
 #include <functional>
 #include "drivers/DMA/DMA.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 
 
 /************************************************************************/
