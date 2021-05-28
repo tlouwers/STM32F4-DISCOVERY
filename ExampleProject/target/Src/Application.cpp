@@ -25,7 +25,7 @@
 #include <functional>
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 
 
 /************************************************************************/
@@ -117,7 +117,7 @@ void Application::Process()
         mMotionDataAvailable = false;
 
         bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
-        ASSERT(retrieveResult);
+        EXPECT(retrieveResult);
         (void)(retrieveResult);
 
         // Deinterleave to X,Y,Z samples
