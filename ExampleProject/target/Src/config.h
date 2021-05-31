@@ -1,5 +1,5 @@
 /**
- * \file     config.h.hpp
+ * \file     config.h
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -45,6 +45,7 @@ static const char versionString[] = "My Embedded Project v0.1";
 #define HANDLE_BY_BREAKPOINT  3
 #define HANDLE_BY_RESETTING   4
 
+// Configuration of the EXPECT/ASSERT macros
 #define EXPECT_MODE   HANDLE_BY_LOGGING
 #define ASSERT_MODE   HANDLE_BY_RESETTING
 
