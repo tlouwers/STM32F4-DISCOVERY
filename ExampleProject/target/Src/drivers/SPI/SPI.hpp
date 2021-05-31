@@ -28,6 +28,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "Interfaces/IInitable.hpp"
+#include "Interfaces/ISPI.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -62,7 +64,7 @@ struct SPICallbacks {
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class SPI
+class SPI final : public ISPI, public IConfigInitable
 {
 public:
     /**
@@ -81,7 +83,7 @@ public:
      * \struct  Config
      * \brief   Configuration struct for SPI.
      */
-    struct Config
+    struct Config : public IConfig
     {
         /**
          * \brief   Constructor of the SPI configuration struct.
@@ -103,25 +105,25 @@ public:
     explicit SPI(const SPIInstance& instance);
     virtual ~SPI();
 
-    bool Init(const Config& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
     const SPI_HandleTypeDef* GetPeripheralHandle() const;
     DMA_HandleTypeDef*& GetDmaTxHandle();
     DMA_HandleTypeDef*& GetDmaRxHandle();
 
-    bool WriteDMA(const uint8_t* src, uint16_t length, const std::function<void()>& handler);
-    bool WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler);
-    bool ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& handler);
+    bool WriteDMA(const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
+    bool WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;
+    bool ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;
 
-    bool WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler);
-    bool WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler);
-    bool ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void()>& handler);
+    bool WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
+    bool WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;
+    bool ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;
 
-    bool WriteBlocking(const uint8_t* src, uint16_t length);
-    bool WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length);
-    bool ReadBlocking(uint8_t* dest, uint16_t length);
+    bool WriteBlocking(const uint8_t* src, uint16_t length) override;
+    bool WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length) override;
+    bool ReadBlocking(uint8_t* dest, uint16_t length) override;
 
 private:
     SPIInstance       mInstance;

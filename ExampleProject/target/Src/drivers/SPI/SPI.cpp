@@ -94,20 +94,22 @@ SPI::~SPI()
  * \param   config  The configuration for the SPI instance to use.
  * \returns True if the configuration could be applied, else false.
  */
-bool SPI::Init(const Config& config)
+bool SPI::Init(const IConfig& config)
 {
     CheckAndEnableAHBPeripheralClock(mInstance);
 
-    if (config.mBusSpeed < 1) { return false; }                         // If BusSpeed too low then return.
-    if (config.mBusSpeed > HAL_RCC_GetPCLK1Freq()) { return false; }    // If BusSpeed higher than peripheral clock then return.
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
+    if (cfg.mBusSpeed < 1) { return false; }                         // If BusSpeed too low then return.
+    if (cfg.mBusSpeed > HAL_RCC_GetPCLK1Freq()) { return false; }    // If BusSpeed higher than peripheral clock then return.
 
     mHandle.Init.Mode              = SPI_MODE_MASTER;
     mHandle.Init.Direction         = SPI_DIRECTION_2LINES;
     mHandle.Init.DataSize          = SPI_DATASIZE_8BIT;
-    mHandle.Init.CLKPolarity       = GetPolarity(config.mMode);
-    mHandle.Init.CLKPhase          = GetPhase(config.mMode);
+    mHandle.Init.CLKPolarity       = GetPolarity(cfg.mMode);
+    mHandle.Init.CLKPhase          = GetPhase(cfg.mMode);
     mHandle.Init.NSS               = SPI_NSS_SOFT;
-    mHandle.Init.BaudRatePrescaler = CalculatePrescaler(config.mBusSpeed);
+    mHandle.Init.BaudRatePrescaler = CalculatePrescaler(cfg.mBusSpeed);
     mHandle.Init.FirstBit          = SPI_FIRSTBIT_MSB;
     mHandle.Init.TIMode            = SPI_TIMODE_DISABLE;
     mHandle.Init.CRCCalculation    = SPI_CRCCALCULATION_DISABLE;
@@ -116,7 +118,7 @@ bool SPI::Init(const Config& config)
     if (HAL_SPI_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt
-        SetIRQn(GetIRQn(mInstance), config.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
         mInitialized = true;
         return true;
