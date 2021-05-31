@@ -11,11 +11,13 @@ target_sources(TestRunner
     PRIVATE
         # Unit test files
         TestRunner.cpp
-        TestDummyClass.cpp
+        TestLIS3DSH.cpp
         # Mocks and Fakes
-        #   Fake/...
+        Fake/utility/Assert/Assert.cpp
+        Fake/Pin.cpp
+        Fake/stm32f4xx_hal.c
         # Test subjects
-        ../target/Src/DummyClass.cpp
+        ../target/Src/components/LIS3DSH/LIS3DSH.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )

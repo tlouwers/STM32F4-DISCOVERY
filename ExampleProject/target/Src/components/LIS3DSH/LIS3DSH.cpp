@@ -123,7 +123,7 @@ static constexpr uint8_t FIFO_EMPTY       = 0x20;
  * \param   motionInt1  Pin INT1, toggled by LIS3DSH.
  * \param   motionInt2  Pin INT2, toggled by LIS3DSH.
  */
-LIS3DSH::LIS3DSH(SPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort motionInt2) :
+LIS3DSH::LIS3DSH(ISPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort motionInt2) :
     mSpi(spi),
     mChipSelect(chipSelect, Level::HIGH),
     mMotionInt1(motionInt1, PullUpDown::HIGHZ),
@@ -151,7 +151,7 @@ LIS3DSH::~LIS3DSH()
  * \param   config  Configuration struct for LIS3DSH.
  * \returns True if the sensor could be initialized, else false.
  */
-bool LIS3DSH::Init(const Config& config)
+bool LIS3DSH::Init(const IConfig& config)
 {
     mChipSelect.Configure(Level::HIGH);
 
@@ -186,13 +186,17 @@ bool LIS3DSH::IsInit() const
 /**
  * \brief   Puts the LIS3DSH module in sleep mode.
  * \details Configures pins to HIGHZ, deletes read buffer.
+ * \returns True if the LIS3DSH module could be put in sleep mode, else false.
  */
-void LIS3DSH::Sleep()
+bool LIS3DSH::Sleep()
 {
-    Disable();
+    bool result = Disable();
+    ASSERT(result);
 
-    mMotionInt1.InterruptRemove();
-    mMotionInt2.InterruptRemove();
+    result &= mMotionInt1.InterruptRemove();
+    ASSERT(result);
+    result &= mMotionInt2.InterruptRemove();
+    ASSERT(result);
 
     mChipSelect.Configure(PullUpDown::HIGHZ);
     mMotionInt1.Configure(PullUpDown::HIGHZ);
@@ -205,6 +209,8 @@ void LIS3DSH::Sleep()
         delete[] mReadBuffer;
         mReadBuffer = nullptr;
     }
+
+    return result;
 }
 
 /**
@@ -326,17 +332,19 @@ bool LIS3DSH::SelfTest()
  * \note    The intended use is fifo mode: stream.
  * \note    AN3393 - LIS3DSH - Application note - 10.3.1 Bypass mode - last few lines.
  */
-bool LIS3DSH::Configure(const Config& config)
+bool LIS3DSH::Configure(const IConfig& config)
 {
-    uint8_t ODR    = GetSampleFrequencyAsODR(config.mSampleFrequency);
-    uint8_t FSCALE = GetScaleAsFCALE(config.mScale);
-    uint8_t BW     = GetAntiAliasingFilterAsBW(config.mAntiAliasingFilter);
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
+    uint8_t ODR    = GetSampleFrequencyAsODR(cfg.mSampleFrequency);
+    uint8_t FSCALE = GetScaleAsFCALE(cfg.mScale);
+    uint8_t BW     = GetAntiAliasingFilterAsBW(cfg.mAntiAliasingFilter);
 
     uint8_t src = (ODR | (BDU << 3) | AXES_ENABLED);    // Set sample frequency, all axes enabled, not using BDU
     bool result = WriteRegister(CTRL_REG4, &src, 1);
     EXPECT(result);
 
-    result &= PrepareReadBuffer(config.mSampleFrequency);
+    result &= PrepareReadBuffer(cfg.mSampleFrequency);
     EXPECT(result);
 
     src = 0x68;                                         // INT1 enabled, active high, pulsed

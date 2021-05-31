@@ -26,14 +26,15 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "Interfaces/IInitable.hpp"
+#include "Interfaces/ISPI.hpp"
 #include "drivers/Pin/Pin.hpp"
-#include "drivers/SPI/SPI.hpp"
 
 
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class LIS3DSH
+class LIS3DSH final : public IConfigInitable
 {
 public:
     /**
@@ -100,7 +101,7 @@ public:
      * \struct  Config
      * \brief   Configuration struct for LIS3DSH.
      */
-    struct Config
+    struct Config : public IConfig
     {
         /**
          * \brief   Constructor of the LIS3DSH configuration struct.
@@ -122,12 +123,12 @@ public:
         AntiAliasingFilter mAntiAliasingFilter;     ///< Anti-aliasing filter bandwidth.
     };
 
-    LIS3DSH(SPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort motionInt2);
+    LIS3DSH(ISPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort motionInt2);
     virtual ~LIS3DSH();
 
-    bool Init(const Config& config);
-    bool IsInit() const;
-    void Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
     bool Enable();
     bool Disable();
@@ -136,18 +137,18 @@ public:
     bool RetrieveAxesData(uint8_t* dest, uint8_t length);
 
 private:
-    SPI& mSpi;
-    Pin  mChipSelect;
-    Pin  mMotionInt1;
-    Pin  mMotionInt2;
-    bool mInitialized;
+    ISPI&    mSpi;
+    Pin      mChipSelect;
+    Pin      mMotionInt1;
+    Pin      mMotionInt2;
+    bool     mInitialized;
     uint8_t* mReadBuffer;
-    uint8_t mODR;
+    uint8_t  mODR;
 
     std::function<void(uint8_t length)> mHandler;
 
     bool SelfTest();
-    bool Configure(const Config& config);
+    bool Configure(const IConfig& config);
     bool PrepareReadBuffer(SampleFrequency sampleFrequency);
     bool ClearFifo();
     uint8_t GetSampleFrequencyAsODR(SampleFrequency sampleFrequency);

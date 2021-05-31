@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 
 # Define the toplevel project
-project(Project1_STM32F4 LANGUAGES CXX)
+project(Project1_STM32F4 LANGUAGES C CXX)
 
 # Define the C++ standard to use
 set(CMAKE_CXX_STANDARD 14)              # Be able to compile C++14.
