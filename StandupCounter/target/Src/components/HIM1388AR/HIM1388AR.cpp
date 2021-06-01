@@ -55,7 +55,8 @@ static constexpr uint8_t SHUTDOWN     = 0x0C;
  */
 HIM1388AR::HIM1388AR(ISPI& spi, PinIdPort chipSelect) :
     mSpi(spi),
-    mChipSelect(chipSelect, Level::HIGH)
+    mChipSelect(chipSelect, Level::HIGH),
+    mInitialized(false)
 { }
 
 /**
@@ -81,6 +82,10 @@ bool HIM1388AR::Init(const IConfig& config)
     if (result)
     {
         mInitialized = true;
+
+        // Initial value = all leds off
+        result &= ClearDisplay();
+        EXPECT(result);
     }
 
     return result;
@@ -119,17 +124,16 @@ bool HIM1388AR::Sleep()
  */
 bool HIM1388AR::ClearDisplay()
 {
-    bool result = false;
-
     if (mInitialized)
     {
         // All leds off
         uint8_t buffer[8] = {};
-        result = WriteDigits(buffer);
+        bool result = WriteDigits(buffer);
         EXPECT(result);
+        return result;
     }
 
-    return result;
+    return false;
 }
 
 /**
@@ -194,10 +198,6 @@ bool HIM1388AR::Configure(const IConfig& config)
     result &= WriteRegister(SCAN_LIMIT, 0x07);
     EXPECT(result);
 
-    // Initial value = all leds off
-    result &= ClearDisplay();
-    EXPECT(result);
-
     // Intensity to set value
     result &= WriteRegister(INTENSITY, cfg.mBrightness);
     EXPECT(result);
@@ -217,7 +217,6 @@ bool HIM1388AR::WriteRegister(uint8_t reg, uint8_t value)
 
     mChipSelect.Set(Level::LOW);
     bool result = mSpi.WriteBlocking(buffer, 2);
-    EXPECT(result);
     mChipSelect.Set(Level::HIGH);
 
     return result;
