@@ -23,7 +23,7 @@
 /************************************************************************/
 #include <functional>
 #include "drivers/DMA/DMA.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 
 
 /************************************************************************/

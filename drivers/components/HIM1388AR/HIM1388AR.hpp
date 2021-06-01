@@ -18,29 +18,30 @@
  * \date    05-2021
  */
 
-#ifndef HI_M1388AR_HPP_
-#define HI_M1388AR_HPP_
+#ifndef HIM1388AR_HPP_
+#define HIM1388AR_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "Interfaces/IInitable.hpp"
+#include "Interfaces/ISPI.hpp"
 #include "drivers/Pin/Pin.hpp"
-#include "drivers/SPI/SPI.hpp"
 
 
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class HI_M1388AR
+class HIM1388AR final : public IConfigInitable
 {
 public:
     /**
      * \struct  Config
      * \brief   Configuration struct for HI_M1388AR.
      */
-    struct Config
+    struct Config : IConfig
     {
         /**
          * \brief   Constructor of the HI_M1388AR configuration struct.
@@ -53,10 +54,10 @@ public:
         uint8_t mBrightness;    ///< Brightness of the LED display.
     };
 
-    HI_M1388AR(SPI& spi, PinIdPort chipSelect);
-    virtual ~HI_M1388AR();
+    HIM1388AR(ISPI& spi, PinIdPort chipSelect);
+    virtual ~HIM1388AR();
 
-    bool Init(const Config& config);
+    bool Init(const IConfig& config);
     bool IsInit() const;
     bool Sleep();
 
@@ -64,14 +65,14 @@ public:
     bool WriteDigits(const uint8_t* src);
 
 private:
-    SPI& mSpi;
-    Pin  mChipSelect;
-    bool mInitialized;
+    ISPI& mSpi;
+    Pin   mChipSelect;
+    bool  mInitialized;
 
-    bool Configure(const Config& config);
+    bool Configure(const IConfig& config);
 
     bool WriteRegister(uint8_t reg, uint8_t value);
 };
 
 
-#endif  // HI_M1388AR_HPP_
+#endif  // HIM1388AR_HPP_

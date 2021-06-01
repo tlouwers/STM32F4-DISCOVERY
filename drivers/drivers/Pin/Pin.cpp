@@ -22,7 +22,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/Pin/Pin.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 
 
 /************************************************************************/

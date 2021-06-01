@@ -21,7 +21,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "components/LIS3DSH/LIS3DSH.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 #include <algorithm>
 #include <cstring>
 
@@ -123,7 +123,7 @@ static constexpr uint8_t FIFO_EMPTY       = 0x20;
  * \param   motionInt1  Pin INT1, toggled by LIS3DSH.
  * \param   motionInt2  Pin INT2, toggled by LIS3DSH.
  */
-LIS3DSH::LIS3DSH(SPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort motionInt2) :
+LIS3DSH::LIS3DSH(ISPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort motionInt2) :
     mSpi(spi),
     mChipSelect(chipSelect, Level::HIGH),
     mMotionInt1(motionInt1, PullUpDown::HIGHZ),
@@ -151,7 +151,7 @@ LIS3DSH::~LIS3DSH()
  * \param   config  Configuration struct for LIS3DSH.
  * \returns True if the sensor could be initialized, else false.
  */
-bool LIS3DSH::Init(const Config& config)
+bool LIS3DSH::Init(const IConfig& config)
 {
     mChipSelect.Configure(Level::HIGH);
 
@@ -160,12 +160,12 @@ bool LIS3DSH::Init(const Config& config)
     if (result)
     {
         result = Configure(config);
-        ASSERT(result);
+        EXPECT(result);
 
         if (result)
         {
             result = ClearFifo();
-            ASSERT(result);
+            EXPECT(result);
 
             mInitialized = true;
         }
@@ -186,13 +186,17 @@ bool LIS3DSH::IsInit() const
 /**
  * \brief   Puts the LIS3DSH module in sleep mode.
  * \details Configures pins to HIGHZ, deletes read buffer.
+ * \returns True if the LIS3DSH module could be put in sleep mode, else false.
  */
-void LIS3DSH::Sleep()
+bool LIS3DSH::Sleep()
 {
-    Disable();
+    bool result = Disable();
+    ASSERT(result);
 
-    mMotionInt1.InterruptRemove();
-    mMotionInt2.InterruptRemove();
+    result &= mMotionInt1.InterruptRemove();
+    ASSERT(result);
+    result &= mMotionInt2.InterruptRemove();
+    ASSERT(result);
 
     mChipSelect.Configure(PullUpDown::HIGHZ);
     mMotionInt1.Configure(PullUpDown::HIGHZ);
@@ -205,6 +209,8 @@ void LIS3DSH::Sleep()
         delete[] mReadBuffer;
         mReadBuffer = nullptr;
     }
+
+    return result;
 }
 
 /**
@@ -273,9 +279,9 @@ void LIS3DSH::SetHandler(const std::function<void(uint8_t length)>& handler)
  */
 bool LIS3DSH::RetrieveAxesData(uint8_t* dest, uint8_t length)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
-    ASSERT(length <= READ_BUFFER_SIZE);
+    EXPECT(dest);
+    EXPECT(length > 0);
+    EXPECT(length <= READ_BUFFER_SIZE);
 
     if (dest == nullptr) { return false; }
     if (length == 0)     { return false; }
@@ -326,36 +332,38 @@ bool LIS3DSH::SelfTest()
  * \note    The intended use is fifo mode: stream.
  * \note    AN3393 - LIS3DSH - Application note - 10.3.1 Bypass mode - last few lines.
  */
-bool LIS3DSH::Configure(const Config& config)
+bool LIS3DSH::Configure(const IConfig& config)
 {
-    uint8_t ODR    = GetSampleFrequencyAsODR(config.mSampleFrequency);
-    uint8_t FSCALE = GetScaleAsFCALE(config.mScale);
-    uint8_t BW     = GetAntiAliasingFilterAsBW(config.mAntiAliasingFilter);
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
+    uint8_t ODR    = GetSampleFrequencyAsODR(cfg.mSampleFrequency);
+    uint8_t FSCALE = GetScaleAsFCALE(cfg.mScale);
+    uint8_t BW     = GetAntiAliasingFilterAsBW(cfg.mAntiAliasingFilter);
 
     uint8_t src = (ODR | (BDU << 3) | AXES_ENABLED);    // Set sample frequency, all axes enabled, not using BDU
     bool result = WriteRegister(CTRL_REG4, &src, 1);
-    ASSERT(result);
+    EXPECT(result);
 
-    result &= PrepareReadBuffer(config.mSampleFrequency);
-    ASSERT(result);
+    result &= PrepareReadBuffer(cfg.mSampleFrequency);
+    EXPECT(result);
 
     src = 0x68;                                         // INT1 enabled, active high, pulsed
     result &= WriteRegister(CTRL_REG3, &src, 1);
-    ASSERT(result);
+    EXPECT(result);
 
     src = (BW | FSCALE);                                // Default: anti-aliasing 200 Hz, +/- 2g
     result &= WriteRegister(CTRL_REG5, &src, 1);
-    ASSERT(result);
+    EXPECT(result);
 
     src = 0x54;                                         // FIFO enabled, watermark on INT1
     result &= WriteRegister(CTRL_REG6, &src, 1);
-    ASSERT(result);
+    EXPECT(result);
 
     // Leave fifo in 'bypass' mode: setting another mode enables acquisition.
-    ASSERT(WATERMARK_LEVEL <= 32);                      // Fifo only 32 samples big
+    EXPECT(WATERMARK_LEVEL <= 32);                      // Fifo only 32 samples big
     src = WATERMARK_LEVEL;                              // FIFO mode (disabled), watermark level (default 25 samples X,Y,Z)
     result &= WriteRegister(FIFO_CTRL, &src, 1);
-    ASSERT(result);
+    EXPECT(result);
 
     return result;
 }
@@ -394,7 +402,7 @@ bool LIS3DSH::ClearFifo()
 {
     uint8_t dest = 0;
     bool result = ReadRegister(FIFO_SRC, &dest, 1);
-    ASSERT(result);
+    EXPECT(result);
 
     if ( ! (dest & FIFO_EMPTY) )
     {
@@ -404,19 +412,19 @@ bool LIS3DSH::ClearFifo()
             const uint8_t length = 3 * 2 * nrSamplesInFifo;   // X,Y,Z * int16_t * samples in fifo
             uint8_t samples[length] = {};
             result &= ReadRegister(OUT_X_L, samples, length);
-            ASSERT(result);
+            EXPECT(result);
         }
 
         dest = 0;
         result &= ReadRegister(FIFO_SRC, &dest, 1);
-        ASSERT(result);
+        EXPECT(result);
 
         if ( ! (dest & FIFO_EMPTY) )
         {
             const uint8_t length = 3 * 2;                       // X,Y,Z * int16_t * 1 sample in fifo
             uint8_t samples[length] = {};
             result &= ReadRegister(OUT_X_L, samples, length);
-            ASSERT(result);
+            EXPECT(result);
         }
     }
     return result;
@@ -534,16 +542,16 @@ void LIS3DSH::ReadAxesCompleted()
  */
 bool LIS3DSH::WriteRegister(uint8_t reg, const uint8_t* src, uint16_t length)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     mChipSelect.Set(Level::LOW);
     bool result = mSpi.WriteBlocking(&reg, 1);
-    ASSERT(result);
+    EXPECT(result);
     if (result)
     {
         result &= mSpi.WriteBlocking(src, length);
-        ASSERT(result);
+        EXPECT(result);
     }
     mChipSelect.Set(Level::HIGH);
 
@@ -560,18 +568,18 @@ bool LIS3DSH::WriteRegister(uint8_t reg, const uint8_t* src, uint16_t length)
  */
 bool LIS3DSH::ReadRegister(uint8_t reg, uint8_t* dest, uint16_t length)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     reg = reg | READ_MASK;
 
     mChipSelect.Set(Level::LOW);
     bool result = mSpi.WriteBlocking(&reg, 1);
-    ASSERT(result);
+    EXPECT(result);
     if (result)
     {
         result &= mSpi.ReadBlocking(dest, length);
-        ASSERT(result);
+        EXPECT(result);
     }
     mChipSelect.Set(Level::HIGH);
 
@@ -590,11 +598,11 @@ void LIS3DSH::CallbackInt1()
 
         mChipSelect.Set(Level::LOW);
         bool result = mSpi.WriteBlocking(&reg, 1);
-        ASSERT(result);
+        EXPECT(result);
         if (result)
         {
             result &= mSpi.ReadDMA(mReadBuffer, READ_BUFFER_SIZE, [this]() { this->ReadAxesCompleted(); } );
-            ASSERT(result);
+            EXPECT(result);
         }
         else
         {

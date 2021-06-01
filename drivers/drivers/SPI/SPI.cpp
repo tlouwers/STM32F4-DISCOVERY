@@ -24,7 +24,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/SPI/SPI.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 #include "stm32f4xx_hal_spi.h"
 
 
@@ -94,20 +94,22 @@ SPI::~SPI()
  * \param   config  The configuration for the SPI instance to use.
  * \returns True if the configuration could be applied, else false.
  */
-bool SPI::Init(const Config& config)
+bool SPI::Init(const IConfig& config)
 {
     CheckAndEnableAHBPeripheralClock(mInstance);
 
-    if (config.mBusSpeed < 1) { return false; }                         // If BusSpeed too low then return.
-    if (config.mBusSpeed > HAL_RCC_GetPCLK1Freq()) { return false; }    // If BusSpeed higher than peripheral clock then return.
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
+    if (cfg.mBusSpeed < 1) { return false; }                         // If BusSpeed too low then return.
+    if (cfg.mBusSpeed > HAL_RCC_GetPCLK1Freq()) { return false; }    // If BusSpeed higher than peripheral clock then return.
 
     mHandle.Init.Mode              = SPI_MODE_MASTER;
     mHandle.Init.Direction         = SPI_DIRECTION_2LINES;
     mHandle.Init.DataSize          = SPI_DATASIZE_8BIT;
-    mHandle.Init.CLKPolarity       = GetPolarity(config.mMode);
-    mHandle.Init.CLKPhase          = GetPhase(config.mMode);
+    mHandle.Init.CLKPolarity       = GetPolarity(cfg.mMode);
+    mHandle.Init.CLKPhase          = GetPhase(cfg.mMode);
     mHandle.Init.NSS               = SPI_NSS_SOFT;
-    mHandle.Init.BaudRatePrescaler = CalculatePrescaler(config.mBusSpeed);
+    mHandle.Init.BaudRatePrescaler = CalculatePrescaler(cfg.mBusSpeed);
     mHandle.Init.FirstBit          = SPI_FIRSTBIT_MSB;
     mHandle.Init.TIMode            = SPI_TIMODE_DISABLE;
     mHandle.Init.CRCCalculation    = SPI_CRCCALCULATION_DISABLE;
@@ -116,7 +118,7 @@ bool SPI::Init(const Config& config)
     if (HAL_SPI_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt
-        SetIRQn(GetIRQn(mInstance), config.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
         mInitialized = true;
         return true;
@@ -194,8 +196,8 @@ DMA_HandleTypeDef*& SPI::GetDmaRxHandle()
  */
 bool SPI::WriteDMA(const uint8_t* src, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
@@ -222,9 +224,9 @@ bool SPI::WriteDMA(const uint8_t* src, uint16_t length, const std::function<void
  */
 bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(src);
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr)  { return false; }
@@ -250,8 +252,8 @@ bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const
  */
 bool SPI::ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }
@@ -274,8 +276,8 @@ bool SPI::ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& h
  */
 bool SPI::WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
@@ -300,9 +302,9 @@ bool SPI::WriteInterrupt(const uint8_t* src, uint16_t length, const std::functio
  */
 bool SPI::WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(src);
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr)  { return false; }
@@ -325,8 +327,8 @@ bool SPI::WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length,
  */
 bool SPI::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }
@@ -347,8 +349,8 @@ bool SPI::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void
  */
 bool SPI::WriteBlocking(const uint8_t* src, uint16_t length)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
@@ -370,9 +372,9 @@ bool SPI::WriteBlocking(const uint8_t* src, uint16_t length)
  */
 bool SPI::WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length)
 {
-    ASSERT(src);
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr)  { return false; }
@@ -392,8 +394,8 @@ bool SPI::WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length)
  */
 bool SPI::ReadBlocking(uint8_t* dest, uint16_t length)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }

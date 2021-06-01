@@ -197,4 +197,4 @@ private:
 };
 
 
-#endif	// PIN_HPP_
+#endif  // PIN_HPP_
