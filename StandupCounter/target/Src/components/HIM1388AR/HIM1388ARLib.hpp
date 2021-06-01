@@ -18,8 +18,8 @@
  * \date    05-2021
  */
 
-#ifndef HI_M1388AR_LIB_HPP_
-#define HI_M1388AR_LIB_HPP_
+#ifndef HIM1388AR_LIB_HPP_
+#define HIM1388AR_LIB_HPP_
 
 /************************************************************************/
 /* Includes                                                             */

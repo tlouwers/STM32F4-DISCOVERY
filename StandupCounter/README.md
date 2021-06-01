@@ -11,11 +11,12 @@ Note: this intended as a fun experiment, please make proper agreements within yo
 # Requirements
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 * C++14 is assumed
-* MingW-W64 as GCC compiler for Windows (https://sourceforge.net/projects/mingw-w64/)
+* MingW-W64 as GCC compiler for Windows (https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/installer/mingw-w64-install.exe)
 * ARM Embedded as GCC compiler for Target (STM32F4) (https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads). Note: remember to add these to PATH variable. No, really: something like: 'C:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\binC:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\bin'. And log off, then on again, or reboot to make these active.
 * Git. Have Git installed as wel to be able to retrieve the Google Test framework (https://git-scm.com/download/win)
 * Ninja as build system (https://ninja-build.org/)
 * The Cortex-Debug extension together with the proper device support pack to be able to debug and view registers of the target (https://marketplace.visualstudio.com/items?itemName=marus25.cortex-debug)
+* For unit testing the extensions 'Test Explorer UI' and 'C++ TestMate' are used.
 * OpenOCD to to connect with the target (https://gnutoolchains.com/arm-eabi/openocd/)
 * Doxygen (https://www.doxygen.nl/download.html) and GraphViz (https://graphviz.org/download/) (Windows, stable) for generating documentation (optional)
 

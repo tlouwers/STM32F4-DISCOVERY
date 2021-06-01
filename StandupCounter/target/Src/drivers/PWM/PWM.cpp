@@ -21,7 +21,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/PWM/PWM.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 #include "stm32f4xx_hal_tim.h"
 
 
@@ -52,14 +52,16 @@ PWM::~PWM()
  * \param   config  The configuration for the PWM instance to use.
  * \returns True if the configuration could be applied, else false.
  */
-bool PWM::Init(const Config& config)
+bool PWM::Init(const IConfig& config)
 {
     CheckAndEnableAHB1PeripheralClock(mInstance);
+
+    const Config& cfg = reinterpret_cast<const Config&>(config);
 
     // Start the timer as clock for PWM. No channels are configured yet.
     mHandle.Init.Prescaler         = 0;
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
-    mHandle.Init.Period            = CalculatePeriod(config.mFrequency);    // (Freq. desired) = (Freq. CK_CNT) / (TIMx_ARR + 1)
+    mHandle.Init.Period            = CalculatePeriod(cfg.mFrequency);    // (Freq. desired) = (Freq. CK_CNT) / (TIMx_ARR + 1)
     mHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
     mHandle.Init.RepetitionCounter = 0;
     mHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
@@ -89,7 +91,7 @@ bool PWM::IsInit() const
 bool PWM::Sleep()
 {
     bool result = StopAllChannels();
-    ASSERT(result);
+    EXPECT(result);
 
     mInitialized = false;
 
@@ -222,7 +224,7 @@ void PWM::CheckAndDisbleAHB1PeripheralClock(const PwmTimerInstance& instance)
  */
 uint16_t PWM::CalculatePeriod(uint16_t desiredFrequency)
 {
-    ASSERT(desiredFrequency > 0);
+    EXPECT(desiredFrequency > 0);
     if (desiredFrequency == 0) { desiredFrequency = 1; }        // Prevent divide by 0
 
     // The timer tick frequency is set with: timer_tick_frequency = timer_default_frequency / (prescaler + 1)
@@ -240,7 +242,7 @@ uint16_t PWM::CalculatePeriod(uint16_t desiredFrequency)
     if ((timer_period == 0) || (timer_period > UINT16_MAX))
     {
         timer_period = UINT16_MAX;
-        ASSERT(false);
+        EXPECT(false);
     }
 
     return static_cast<uint16_t>(timer_period);
@@ -254,7 +256,7 @@ uint16_t PWM::CalculatePeriod(uint16_t desiredFrequency)
  */
 uint32_t PWM::CalculatePulse(uint8_t desiredDutyCycle, uint32_t period)
 {
-    ASSERT(desiredDutyCycle <= 100);
+    EXPECT(desiredDutyCycle <= 100);
     if (desiredDutyCycle > 100) { desiredDutyCycle = 100; }     // Clip to maximum
 
     // We calculate the pulse_length by using the given duty cycle - which here is in percent [0..100%]
@@ -297,13 +299,13 @@ bool PWM::StopAllChannels()
     bool result = true;
 
     result &= Stop(Channel::Channel_1);
-    ASSERT(result);
+    EXPECT(result);
     result &= Stop(Channel::Channel_2);
-    ASSERT(result);
+    EXPECT(result);
     result &= Stop(Channel::Channel_3);
-    ASSERT(result);
+    EXPECT(result);
     result &= Stop(Channel::Channel_4);
-    ASSERT(result);
+    EXPECT(result);
 
     return result;
 }

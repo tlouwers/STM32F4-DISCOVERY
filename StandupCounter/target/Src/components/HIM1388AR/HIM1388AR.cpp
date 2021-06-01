@@ -21,8 +21,8 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "components/HI-M1388AR/HI-M1388AR.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "components/HIM1388AR/HIM1388AR.hpp"
+#include "utility/Assert/Assert.h"
 
 
 /************************************************************************/
@@ -53,7 +53,7 @@ static constexpr uint8_t SHUTDOWN     = 0x0C;
  * \param   chipSelect  Pin ChipSelect, needed for SPI communication, toggled
  *                      within this class.
  */
-HI_M1388AR::HI_M1388AR(SPI& spi, PinIdPort chipSelect) :
+HIM1388AR::HIM1388AR(ISPI& spi, PinIdPort chipSelect) :
     mSpi(spi),
     mChipSelect(chipSelect, Level::HIGH)
 { }
@@ -61,7 +61,7 @@ HI_M1388AR::HI_M1388AR(SPI& spi, PinIdPort chipSelect) :
 /**
  * \brief   Destructor, configures pins to HIGHZ.
  */
-HI_M1388AR::~HI_M1388AR()
+HIM1388AR::~HIM1388AR()
 {
     Sleep();
 }
@@ -71,12 +71,12 @@ HI_M1388AR::~HI_M1388AR()
  * \param   config  Configuration struct for HI-M1388AR module.
  * \returns True if the HI-M1388AR module could be initialized, else false.
  */
-bool HI_M1388AR::Init(const Config& config)
+bool HIM1388AR::Init(const IConfig& config)
 {
     mChipSelect.Configure(Level::HIGH);
 
     bool result = Configure(config);
-    ASSERT(result);
+    EXPECT(result);
 
     if (result)
     {
@@ -90,7 +90,7 @@ bool HI_M1388AR::Init(const Config& config)
  * \brief   Indicate if HI-M1388AR is initialized.
  * \returns True if HI-M1388AR is initialized, else false.
  */
-bool HI_M1388AR::IsInit() const
+bool HIM1388AR::IsInit() const
 {
     return mInitialized;
 }
@@ -100,7 +100,7 @@ bool HI_M1388AR::IsInit() const
  * \details Configures CS pin to HIGHZ.
  * \returns True if HI-M1388AR module could be put in sleep mode, else false.
  */
-bool HI_M1388AR::Sleep()
+bool HIM1388AR::Sleep()
 {
     bool result = ClearDisplay();
 
@@ -117,7 +117,7 @@ bool HI_M1388AR::Sleep()
  * \brief   Clear the display by writing all 0's to it.
  * \returns True if display could be cleared, else false.
  */
-bool HI_M1388AR::ClearDisplay()
+bool HIM1388AR::ClearDisplay()
 {
     bool result = false;
 
@@ -126,7 +126,7 @@ bool HI_M1388AR::ClearDisplay()
         // All leds off
         uint8_t buffer[8] = {};
         result = WriteDigits(buffer);
-        ASSERT(result);
+        EXPECT(result);
     }
 
     return result;
@@ -138,14 +138,16 @@ bool HI_M1388AR::ClearDisplay()
  * \param   src     Pointer to 8 byte long buffer with digit values.
  * \returns True if lines could be written, else false.
  */
-bool HI_M1388AR::WriteDigits(const uint8_t* src)
+bool HIM1388AR::WriteDigits(const uint8_t* src)
 {
-    ASSERT(src);
+    EXPECT(src);
 
-    bool result = false;
+    if (src == nullptr) { return false; }
 
     if (mInitialized)
     {
+        bool result = false;
+
         result  = WriteRegister(DIGIT_0, *src++);
         result &= WriteRegister(DIGIT_1, *src++);
         result &= WriteRegister(DIGIT_2, *src++);
@@ -153,10 +155,11 @@ bool HI_M1388AR::WriteDigits(const uint8_t* src)
         result &= WriteRegister(DIGIT_4, *src++);
         result &= WriteRegister(DIGIT_5, *src++);
         result &= WriteRegister(DIGIT_6, *src++);
-        result &= WriteRegister(DIGIT_7, *src);
-    }
+        result &= WriteRegister(DIGIT_7, *src  );
 
-    return result;
+        return result;
+    }
+    return false;
 }
 
 
@@ -169,27 +172,35 @@ bool HI_M1388AR::WriteDigits(const uint8_t* src)
  * \param   config  Configuration struct for HI-M1388AR module.
  * \returns True if the HI-M1388AR module could be configured, else false.
  */
-bool HI_M1388AR::Configure(const Config& config)
+bool HIM1388AR::Configure(const IConfig& config)
 {
-    if (config.mBrightness > 0x0F) { return false; }
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
+    if (cfg.mBrightness > 0x0F) { return false; }
 
     // Enable
     bool result = WriteRegister(SHUTDOWN, 0x01);
+    EXPECT(result);
 
     // Intensity to 0x00
     result &= WriteRegister(INTENSITY, 0x00);
+    EXPECT(result);
 
     // Decode mode to 0x00
     result &= WriteRegister(DECODE_MODE, 0x00);
+    EXPECT(result);
 
     // Scan limit to 0x07 (all digits)
     result &= WriteRegister(SCAN_LIMIT, 0x07);
+    EXPECT(result);
 
     // Initial value = all leds off
     result &= ClearDisplay();
+    EXPECT(result);
 
     // Intensity to set value
-    result &= WriteRegister(INTENSITY, config.mBrightness);
+    result &= WriteRegister(INTENSITY, cfg.mBrightness);
+    EXPECT(result);
 
     return result;
 }
@@ -200,13 +211,13 @@ bool HI_M1388AR::Configure(const Config& config)
  * \param   value   The value to write to the register.
  * \returns True if the value could be written to the register, else false.
  */
-bool HI_M1388AR::WriteRegister(uint8_t reg, uint8_t value)
+bool HIM1388AR::WriteRegister(uint8_t reg, uint8_t value)
 {
     uint8_t buffer[2] = { reg, value };
 
     mChipSelect.Set(Level::LOW);
     bool result = mSpi.WriteBlocking(buffer, 2);
-    ASSERT(result);
+    EXPECT(result);
     mChipSelect.Set(Level::HIGH);
 
     return result;

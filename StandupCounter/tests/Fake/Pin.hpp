@@ -1,26 +1,6 @@
-/**
- * \file    Pin.hpp
- *
- * \licence "THE BEER-WARE LICENSE" (Revision 42):
- *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
- *          this notice you can do whatever you want with this stuff. If we
- *          meet some day, and you think this stuff is worth it, you can buy me
- *          a beer in return.
- *                                                                Terry Louwers
- * \class   Pin
- *
- * \brief   Helper class intended as 'set & forget' for pin  configurations.
- *          State is preserved (partly) within the hardware.
- *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Pin
- *
- * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    03-2019
- */
-
 #ifndef PIN_HPP_
 #define PIN_HPP_
+
 
 /************************************************************************/
 /* Includes                                                             */
@@ -158,7 +138,7 @@ enum class Mode : bool
 class Pin
 {
 public:
-    Pin(Pin&& other);
+//    Pin(Pin&& other);
 
     explicit Pin(PinIdPort idAndPort);
     Pin(PinIdPort idAndPort, Level level, Drive drive = Drive::PUSH_PULL);
@@ -178,17 +158,12 @@ public:
     void Set(Level level);
     Level Get() const;
 
-    Pin& operator= (Pin&& other);
+//    Pin& operator= (Pin&& other);
 
 private:
     uint16_t      mId        = UINT16_MAX;
     GPIO_TypeDef* mPort      = nullptr;
     Direction     mDirection = Direction::UNDEFINED;
-
-    void CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port);
-    void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port);
-    bool IsIRQSharedWithOtherPin(uint16_t id);
-    IRQn_Type GetIRQn(uint16_t id);
 
     // Explicit disabled constructors/operators
     Pin() = delete;

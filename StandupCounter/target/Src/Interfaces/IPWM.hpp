@@ -1,5 +1,5 @@
 /**
- * \file     Application.hpp
+ * \file    IPWM.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,64 +7,47 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \brief   Generic interface for PWM peripheral driver.
  *
- * \brief   Main application file for StandupCounter.
- *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/StandupCounter/target/Src
- *
- * \details StandupCounter with 8x8 LED display and buzzer.
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/interfaces
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
- * \date    05-2021
+ * \date    06-2021
  */
 
-#ifndef APPLICATION_HPP_
-#define APPLICATION_HPP_
+#ifndef IPWM_HPP_
+#define IPWM_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include <atomic>
-#include "components/HIM1388AR/HIM1388AR.hpp"
-#include "drivers/Pin/Pin.hpp"
-#include "drivers/PWM/PWM.hpp"
-#include "drivers/SPI/SPI.hpp"
+#include <cstdint>
+#include <functional>
 
 
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-/**
- * \brief   Main application class.
- */
-class Application
+class IPWM
 {
 public:
-    Application();
-    virtual ~Application() {};
+    /**
+     * \enum    Channel
+     * \brief   Available PWM channels.
+     */
+    enum class Channel : uint8_t
+    {
+        Channel_1 = 1,
+        Channel_2,
+        Channel_3,
+        Channel_4
+    };
 
-    bool Init();
-    void Process();
-    void Error();
 
-private:
-    Pin mButton;
-    Pin mLedGreen;
-    Pin mLedOrange;
-    Pin mLedRed;
-    Pin mLedBlue;
-    Pin mChipSelect;
-    Pin mPWMOut;
-
-    PWM       mPWM;
-    SPI       mSPI;
-    HIM1388AR mMatrix;
-
-    std::atomic<bool> mButtonPressed;
-
-    void ButtonPressedCallback();
+    virtual bool Start(Channel channel) = 0;
+    virtual bool Stop(Channel channel) = 0;
 };
 
 
-#endif  // APPLICATION_HPP_
+#endif  // IPWM_HPP_

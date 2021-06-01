@@ -22,7 +22,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/Pin/Pin.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 
 
 /************************************************************************/
@@ -70,89 +70,6 @@ static bool IsOnlyASingleBitSetInIdMask(uint16_t id)
 static int GetIndexById(uint16_t id)
 {
     return __builtin_ctz(id);
-}
-
-/**
- * \brief   Check to see if the IRQ is shared with another pin which is
- *          configured or not.
- * \param   id      Id of the pin for which the check is done.
- * \returns True if another pin is configured as interrupt on a shared
- *          EXT interrupt line, else false.
- */
-static bool IsIRQSharedWithOtherPin(uint16_t id)
-{
-    int index = GetIndexById(id);
-    uint8_t count = 0;
-
-    if (id < GPIO_PIN_5)
-    {
-        return false;
-    }
-    else if (id < GPIO_PIN_10)
-    {
-        if (pinInterruptList[5].callback != nullptr) { count++; }
-        if (pinInterruptList[6].callback != nullptr) { count++; }
-        if (pinInterruptList[7].callback != nullptr) { count++; }
-        if (pinInterruptList[8].callback != nullptr) { count++; }
-        if (pinInterruptList[9].callback != nullptr) { count++; }
-    }
-    else
-    {
-        if (pinInterruptList[10].callback != nullptr) { count++; }
-        if (pinInterruptList[11].callback != nullptr) { count++; }
-        if (pinInterruptList[12].callback != nullptr) { count++; }
-        if (pinInterruptList[13].callback != nullptr) { count++; }
-        if (pinInterruptList[14].callback != nullptr) { count++; }
-        if (pinInterruptList[15].callback != nullptr) { count++; }
-    }
-
-    if (pinInterruptList[index].callback != nullptr) { count--; }
-
-    return (count > 0);
-}
-
-/**
- * \brief   Check if the appropriate AHB1 peripheral clock for the port on
- *          which the pin resides is enabled, if not enable it.
- * \param   port    The port on which the pin resides.
- * \note    Might not be supported by the selected microcontroller, check the
- *          documentation.
- */
-static void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
-{
-    ASSERT(port != nullptr);        // Invalid variable for port passed, cannot be nullptr"
-
-         if (port == GPIOA) { if (__HAL_RCC_GPIOA_IS_CLK_DISABLED()) { __HAL_RCC_GPIOA_CLK_ENABLE(); } }
-    else if (port == GPIOB) { if (__HAL_RCC_GPIOB_IS_CLK_DISABLED()) { __HAL_RCC_GPIOB_CLK_ENABLE(); } }
-    else if (port == GPIOC) { if (__HAL_RCC_GPIOC_IS_CLK_DISABLED()) { __HAL_RCC_GPIOC_CLK_ENABLE(); } }
-    else if (port == GPIOD) { if (__HAL_RCC_GPIOD_IS_CLK_DISABLED()) { __HAL_RCC_GPIOD_CLK_ENABLE(); } }
-    else if (port == GPIOE) { if (__HAL_RCC_GPIOE_IS_CLK_DISABLED()) { __HAL_RCC_GPIOE_CLK_ENABLE(); } }
-    else if (port == GPIOF) { if (__HAL_RCC_GPIOF_IS_CLK_DISABLED()) { __HAL_RCC_GPIOF_CLK_ENABLE(); } }
-    else if (port == GPIOG) { if (__HAL_RCC_GPIOG_IS_CLK_DISABLED()) { __HAL_RCC_GPIOG_CLK_ENABLE(); } }
-    else if (port == GPIOH) { if (__HAL_RCC_GPIOH_IS_CLK_DISABLED()) { __HAL_RCC_GPIOH_CLK_ENABLE(); } }
-    else if (port == GPIOI) { if (__HAL_RCC_GPIOI_IS_CLK_DISABLED()) { __HAL_RCC_GPIOI_CLK_ENABLE(); } }
-    else
-    {
-        ASSERT(false);              // Port not known for given pin id
-    }
-}
-
-/**
- * \brief   Get the IRQ belonging to the pin.
- * \returns The EXT interrupt line IRQ to which the pin belongs.
- */
-static IRQn_Type GetIRQn(uint16_t id)
-{
-    ASSERT(IsOnlyASingleBitSetInIdMask(id) == true);
-
-         if (id & GPIO_PIN_0)  { return EXTI0_IRQn;     }
-    else if (id & GPIO_PIN_1)  { return EXTI1_IRQn;     }
-    else if (id & GPIO_PIN_2)  { return EXTI2_IRQn;     }
-    else if (id & GPIO_PIN_3)  { return EXTI3_IRQn;     }
-    else if (id & GPIO_PIN_4)  { return EXTI3_IRQn;     }
-    else if (id & GPIO_PIN_5)  { return EXTI4_IRQn;     }
-    else if (id < GPIO_PIN_10) { return EXTI9_5_IRQn;   }
-    else                       { return EXTI15_10_IRQn; }
 }
 
 
@@ -396,7 +313,7 @@ bool Pin::InterruptEnable()
     if (pinInterruptList[index].callback != nullptr)
     {
         // Enable NVIC for pin
-        HAL_NVIC_EnableIRQ( GetIRQn(mId) );
+        HAL_NVIC_EnableIRQ(GetIRQn(mId));
 
         pinInterruptList[index].enabled = true;
 
@@ -499,7 +416,7 @@ Level Pin::Get() const
             break;
         case Direction::UNDEFINED:      // Fall through
         default:
-        	ASSERT(false);              // Cannot get pin level if pin not defined as input or output
+            ASSERT(false);              // Cannot get pin level if pin not defined as input or output
             while (true) { __NOP(); }   // User must resolve this incorrect use of Get()
             break;
     }
@@ -534,10 +451,11 @@ Pin& Pin::operator= (Pin&& other)
  * \param   id      ID of the pin [0..15]. Should contain only a single
  *                  bit in the bitmask.
  * \param   port    GPIO port on which the pin resides.
+ * \note    Asserts if port is nullptr.
  */
 void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
 {
-    ASSERT(port != nullptr);        // Invalid variable for port passed, cannot be nullptr
+    ASSERT(port != nullptr);
 
     if (IsOnlyASingleBitSetInIdMask(id))
     {
@@ -546,8 +464,93 @@ void Pin::CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port)
     }
     else
     {
-    	ASSERT(false);              // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
+        ASSERT(false);  // Invalid id for pin: either GPIO_PIN_All or more than 1 bit in the mask provided
     }
+}
+
+/**
+ * \brief   Check if the appropriate AHB1 peripheral clock for the port on
+ *          which the pin resides is enabled, if not enable it.
+ * \param   port    The port on which the pin resides.
+ * \note    Might not be supported by the selected microcontroller, check the
+ *          documentation.
+ * \note    Asserts if port is nullptr.
+ */
+void Pin::CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port)
+{
+    ASSERT(port != nullptr);
+
+         if (port == GPIOA) { if (__HAL_RCC_GPIOA_IS_CLK_DISABLED()) { __HAL_RCC_GPIOA_CLK_ENABLE(); } }
+    else if (port == GPIOB) { if (__HAL_RCC_GPIOB_IS_CLK_DISABLED()) { __HAL_RCC_GPIOB_CLK_ENABLE(); } }
+    else if (port == GPIOC) { if (__HAL_RCC_GPIOC_IS_CLK_DISABLED()) { __HAL_RCC_GPIOC_CLK_ENABLE(); } }
+    else if (port == GPIOD) { if (__HAL_RCC_GPIOD_IS_CLK_DISABLED()) { __HAL_RCC_GPIOD_CLK_ENABLE(); } }
+    else if (port == GPIOE) { if (__HAL_RCC_GPIOE_IS_CLK_DISABLED()) { __HAL_RCC_GPIOE_CLK_ENABLE(); } }
+    else if (port == GPIOF) { if (__HAL_RCC_GPIOF_IS_CLK_DISABLED()) { __HAL_RCC_GPIOF_CLK_ENABLE(); } }
+    else if (port == GPIOG) { if (__HAL_RCC_GPIOG_IS_CLK_DISABLED()) { __HAL_RCC_GPIOG_CLK_ENABLE(); } }
+    else if (port == GPIOH) { if (__HAL_RCC_GPIOH_IS_CLK_DISABLED()) { __HAL_RCC_GPIOH_CLK_ENABLE(); } }
+    else if (port == GPIOI) { if (__HAL_RCC_GPIOI_IS_CLK_DISABLED()) { __HAL_RCC_GPIOI_CLK_ENABLE(); } }
+    else
+    {
+        ASSERT(false);  // Port not known
+    }
+}
+
+/**
+ * \brief   Check to see if the IRQ is shared with another pin which is
+ *          configured or not.
+ * \param   id      Id of the pin for which the check is done.
+ * \returns True if another pin is configured as interrupt on a shared
+ *          EXT interrupt line, else false.
+ */
+bool Pin::IsIRQSharedWithOtherPin(uint16_t id)
+{
+    int index = GetIndexById(id);
+    uint8_t count = 0;
+
+    if (id < GPIO_PIN_5)
+    {
+        return false;
+    }
+    else if (id < GPIO_PIN_10)
+    {
+        if (pinInterruptList[5].callback != nullptr) { count++; }
+        if (pinInterruptList[6].callback != nullptr) { count++; }
+        if (pinInterruptList[7].callback != nullptr) { count++; }
+        if (pinInterruptList[8].callback != nullptr) { count++; }
+        if (pinInterruptList[9].callback != nullptr) { count++; }
+    }
+    else
+    {
+        if (pinInterruptList[10].callback != nullptr) { count++; }
+        if (pinInterruptList[11].callback != nullptr) { count++; }
+        if (pinInterruptList[12].callback != nullptr) { count++; }
+        if (pinInterruptList[13].callback != nullptr) { count++; }
+        if (pinInterruptList[14].callback != nullptr) { count++; }
+        if (pinInterruptList[15].callback != nullptr) { count++; }
+    }
+
+    if (pinInterruptList[index].callback != nullptr) { count--; }
+
+    return (count > 0);
+}
+
+/**
+ * \brief   Get the IRQ belonging to the pin.
+ * \returns The EXT interrupt line IRQ to which the pin belongs.
+ * \note    Asserts when more than 1 bit is set in Id mask.
+ */
+IRQn_Type Pin::GetIRQn(uint16_t id)
+{
+    ASSERT(IsOnlyASingleBitSetInIdMask(id) == true);
+
+         if (id & GPIO_PIN_0)  { return EXTI0_IRQn;     }
+    else if (id & GPIO_PIN_1)  { return EXTI1_IRQn;     }
+    else if (id & GPIO_PIN_2)  { return EXTI2_IRQn;     }
+    else if (id & GPIO_PIN_3)  { return EXTI3_IRQn;     }
+    else if (id & GPIO_PIN_4)  { return EXTI3_IRQn;     }
+    else if (id & GPIO_PIN_5)  { return EXTI4_IRQn;     }
+    else if (id < GPIO_PIN_10) { return EXTI9_5_IRQn;   }
+    else                       { return EXTI15_10_IRQn; }
 }
 
 
@@ -636,4 +639,3 @@ extern "C" void EXTI15_10_IRQHandler(void)
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14);
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_15);
 }
-

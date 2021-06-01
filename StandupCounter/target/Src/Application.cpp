@@ -25,8 +25,8 @@
 #include <functional>
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
-#include "components/HI-M1388AR/HI-M1388AR_Lib.hpp"
+#include "components/HIM1388AR/HIM1388ARLib.hpp"
+#include "utility/Assert/Assert.h"
 
 
 /************************************************************************/
@@ -53,8 +53,6 @@ Application::Application() :
     mPWM(PwmTimerInstance::TIMER_2),
     mSPI(SPIInstance::SPI_2),
     mMatrix(mSPI, PIN_SPI2_CS),
-    mDMA_SPI_Tx(DMA::Stream::Dma1_Stream4),
-    mDMA_SPI_Rx(DMA::Stream::Dma1_Stream3),
     mButtonPressed(false)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
@@ -72,30 +70,18 @@ bool Application::Init()
     HAL_Delay(750);
 
     // Actual Init()
-    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel0, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    ASSERT(result);
+    bool result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+    EXPECT(result);
 
-    result &= mDMA_SPI_Rx.Configure(DMA::Channel::Channel0, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    ASSERT(result);
-
-    result &= mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
-    ASSERT(result);
-
-    result &= mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
-    ASSERT(result);
-
-    result &= mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
-    ASSERT(result);
-
-    result &= mMatrix.Init(HI_M1388AR::Config(8));
-    ASSERT(result);
+    result &= mMatrix.Init(HIM1388AR::Config(8));
+    EXPECT(result);
 
 
     result &= mPWM.Init(PWM::Config(500));
-    ASSERT(result);
+    EXPECT(result);
 
     result &= mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50, PWM::Polarity::High));
-    ASSERT(result);
+    EXPECT(result);
 
 
     mLedGreen.Set(Level::LOW);
@@ -146,14 +132,14 @@ void Application::Process()
                 case 9: { result = mMatrix.WriteDigits(digit_nine);  } break;
                 default: break;
             };
-            ASSERT(result);
+            EXPECT(result);
 
             // Short beep
             result = mPWM.Start(PWM::Channel::Channel_1);
-            ASSERT(result);
+            EXPECT(result);
             HAL_Delay(BEEP_SHORT_MS);
             result = mPWM.Stop(PWM::Channel::Channel_1);
-            ASSERT(result);
+            EXPECT(result);
 
             // Wait before next loop
             HAL_Delay(SHORT_DELAY_MS);
@@ -168,10 +154,10 @@ void Application::Process()
         mLedRed.Set(Level::HIGH);
         mMatrix.WriteDigits(symbol_sadface);
         result = mPWM.Start(PWM::Channel::Channel_1);
-        ASSERT(result);
+        EXPECT(result);
         HAL_Delay(BEEP_LONG_MS);
         result = mPWM.Stop(PWM::Channel::Channel_1);
-        ASSERT(result);
+        EXPECT(result);
 
         // Reset counters
         SHORT_DELAY_MS = 2000;

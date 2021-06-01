@@ -26,6 +26,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "Interfaces/IInitable.hpp"
+#include "Interfaces/IPWM.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -48,21 +50,9 @@ enum class PwmTimerInstance : uint8_t
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class PWM
+class PWM final : public IPWM, public IConfigInitable
 {
 public:
-    /**
-     * \enum    Channel
-     * \brief   Available PWM channels.
-     */
-    enum class Channel : uint8_t
-    {
-        Channel_1 = 1,
-        Channel_2,
-        Channel_3,
-        Channel_4
-    };
-
     /**
      * \enum    Polarity
      * \brief   Polarity of the ON time of the PWM signal.
@@ -100,7 +90,7 @@ public:
      * \struct  Config
      * \brief   Configuration struct for PWM.
      */
-    struct Config
+    struct Config : IConfig
     {
         /**
          * \brief   Constructor of the PWM configuration struct.
@@ -116,14 +106,14 @@ public:
     explicit PWM(const PwmTimerInstance& instance);
     virtual ~PWM();
 
-    bool Init(const Config& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
     bool ConfigureChannel(const ChannelConfig& channelConfig);
 
-    bool Start(Channel channel);
-    bool Stop(Channel channel);
+    bool Start(Channel channel) override;
+    bool Stop(Channel channel) override;
 
 private:
     PwmTimerInstance  mInstance;
