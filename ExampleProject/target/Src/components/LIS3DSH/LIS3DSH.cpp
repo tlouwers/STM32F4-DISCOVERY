@@ -159,12 +159,12 @@ bool LIS3DSH::Init(const IConfig& config)
 
     if (result)
     {
-        result = Configure(config);
+        result &= Configure(config);
         EXPECT(result);
 
         if (result)
         {
-            result = ClearFifo();
+            result &= ClearFifo();
             EXPECT(result);
 
             mInitialized = true;
