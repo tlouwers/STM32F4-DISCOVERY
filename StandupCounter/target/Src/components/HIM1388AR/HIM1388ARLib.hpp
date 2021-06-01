@@ -106,4 +106,4 @@ constexpr uint8_t symbol_sadface[MATRIX_SIZE]       = { 0x3C, 0x42, 0xA5, 0x99, 
 constexpr uint8_t symbol_question_mark[MATRIX_SIZE] = { 0x18, 0x00, 0x18, 0x38, 0x60, 0x66, 0x3C, 0x00 };
 
 
-#endif  // HI_M1388AR_LIB_HPP_
+#endif  // HIM1388AR_LIB_HPP_
