@@ -50,6 +50,14 @@ static const char versionString[] = "StandupCounter v0.1";
 #define ASSERT_MODE   HANDLE_BY_RESETTING
 
 
+// Available HI-M1388AR 8x8 LED matrix display settings
+#define REAL_HI_M1388AR        1
+#define SIMULATED_HI_M1388AR   2
+
+// Configuration of the HI-M1388AR 8x8 LED matrix display
+#define HI_M1388AR_DISPLAY   REAL_HI_M1388AR
+
+
 #ifdef __cplusplus
 }
 #endif
