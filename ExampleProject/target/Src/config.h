@@ -40,14 +40,30 @@ static const char versionString[] = "My Embedded Project v0.1";
 
 
 // Available Expect/Assert modes
-#define HANDLE_BY_IGNORING    1
-#define HANDLE_BY_LOGGING     2
-#define HANDLE_BY_BREAKPOINT  3
-#define HANDLE_BY_RESETTING   4
+#define HANDLE_BY_IGNORING     1
+#define HANDLE_BY_LOGGING      2
+#define HANDLE_BY_BREAKPOINT   3
+#define HANDLE_BY_RESETTING    4
 
 // Configuration of the EXPECT/ASSERT macros
-#define EXPECT_MODE   HANDLE_BY_LOGGING
-#define ASSERT_MODE   HANDLE_BY_RESETTING
+#define EXPECT_MODE            HANDLE_BY_LOGGING
+#define ASSERT_MODE            HANDLE_BY_RESETTING
+
+
+// Available LIS3DSH accelerometer settings
+#define REAL_LIS3DSH           1
+#define SIMULATED_LIS3DSH      2
+
+// Configuration of the LIS3DSH accelerometer
+#define LIS3DSH_ACCELEROMETER  REAL_LIS3DSH
+
+
+// Available simulated sensor output data
+#define SAWTOOTH_SIGNAL        1
+#define SEMI_REAL_SIGNAL       2
+
+// Configuration of the simulated sensor output data
+#define SIMULATED_SENSOR_OUTPUT_DATA    SAWTOOTH_SIGNAL
 
 
 #ifdef __cplusplus

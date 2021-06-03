@@ -26,7 +26,9 @@
 /* Includes                                                             */
 /************************************************************************/
 #include <atomic>
+#include "config.h"
 #include "components/LIS3DSH/LIS3DSH.hpp"
+#include "components/LIS3DSH/FakeLIS3DSH.hpp"
 #include "drivers/DMA/DMA.hpp"
 #include "drivers/Pin/Pin.hpp"
 #include "drivers/SPI/SPI.hpp"
@@ -63,7 +65,11 @@ private:
     DMA mDMA_SPI_Tx;
     DMA mDMA_SPI_Rx;
 
-    LIS3DSH mLIS3DSH;
+#if (LIS3DSH_ACCELEROMETER == REAL_LIS3DSH)
+    LIS3DSH        mLIS3DSH;
+#else
+    FakeLIS3DSH    mLIS3DSH;
+#endif
 
 //    std::atomic<bool> mButtonPressed;
     std::atomic<bool> mMotionDataAvailable;

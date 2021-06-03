@@ -185,6 +185,8 @@ void __NOP(void);
 
 void HAL_Delay(uint32_t Delay);
 
+#define UNUSED(X) (void)X      /* To avoid gcc/g++ warnings */
+
 
 #ifdef __cplusplus
 }
