@@ -956,7 +956,8 @@ EXCLUDE                = ../Src/board/BoardConfig.hpp \
                          ../Src/stm32f4xx_hal_conf.h \
                          ../Src/syscalls.c \
                          ../Src/Interfaces \
-                         ../Src/config.h
+                         ../Src/config.h \
+                         ../Src/components/LIS3DSH/FakeLIS3DSH.hpp
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
