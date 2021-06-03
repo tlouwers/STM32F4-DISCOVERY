@@ -25,7 +25,7 @@
 #include <functional>
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
-#include "components/HIM1388AR/HIM1388ARLib.hpp"
+#include "components/HI-M1388AR/HI-M1388AR_Lib.hpp"
 #include "utility/Assert/Assert.h"
 
 
@@ -73,7 +73,7 @@ bool Application::Init()
     bool result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
     EXPECT(result);
 
-    result &= mMatrix.Init(HIM1388AR::Config(8));
+    result &= mMatrix.Init(HI_M1388AR::Config(8));
     EXPECT(result);
 
 

@@ -11,13 +11,13 @@ target_sources(TestRunner
     PRIVATE
         # Unit test files
         TestRunner.cpp
-        TestHIM1388AR.cpp
+        TestHI-M1388AR.cpp
         # Mocks and Fakes
         Fake/utility/Assert/Assert.cpp
         Fake/Pin.cpp
         Fake/stm32f4xx_hal.c
         # Test subjects
-        ../target/Src/components/HIM1388AR/HIM1388AR.cpp
+        ../target/Src/components/HI-M1388AR/HI-M1388AR.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )

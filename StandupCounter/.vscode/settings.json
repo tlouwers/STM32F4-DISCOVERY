@@ -12,7 +12,8 @@
         "*.tcc": "cpp",
         "numeric": "cpp",
         "streambuf": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "functional": "cpp"
     },
     
 }

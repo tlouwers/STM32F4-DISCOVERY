@@ -9,7 +9,7 @@
  *                                                                Terry Louwers
  * \class   HI_M1388AR
  *
- * \brief   Driver for the HI_M1388AR 8x8 LED matrix display.
+ * \brief   Driver for the HI-M1388AR 8x8 LED matrix display.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/HI-M1388AR
  *
@@ -21,7 +21,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "components/HIM1388AR/HIM1388AR.hpp"
+#include "components/HI-M1388AR/HI-M1388AR.hpp"
 #include "utility/Assert/Assert.h"
 
 
@@ -53,7 +53,7 @@ static constexpr uint8_t SHUTDOWN     = 0x0C;
  * \param   chipSelect  Pin ChipSelect, needed for SPI communication, toggled
  *                      within this class.
  */
-HIM1388AR::HIM1388AR(ISPI& spi, PinIdPort chipSelect) :
+HI_M1388AR::HI_M1388AR(ISPI& spi, PinIdPort chipSelect) :
     mSpi(spi),
     mChipSelect(chipSelect, Level::HIGH),
     mInitialized(false)
@@ -62,7 +62,7 @@ HIM1388AR::HIM1388AR(ISPI& spi, PinIdPort chipSelect) :
 /**
  * \brief   Destructor, configures pins to HIGHZ.
  */
-HIM1388AR::~HIM1388AR()
+HI_M1388AR::~HI_M1388AR()
 {
     Sleep();
 }
@@ -72,7 +72,7 @@ HIM1388AR::~HIM1388AR()
  * \param   config  Configuration struct for HI-M1388AR module.
  * \returns True if the HI-M1388AR module could be initialized, else false.
  */
-bool HIM1388AR::Init(const IConfig& config)
+bool HI_M1388AR::Init(const IConfig& config)
 {
     mChipSelect.Configure(Level::HIGH);
 
@@ -95,7 +95,7 @@ bool HIM1388AR::Init(const IConfig& config)
  * \brief   Indicate if HI-M1388AR is initialized.
  * \returns True if HI-M1388AR is initialized, else false.
  */
-bool HIM1388AR::IsInit() const
+bool HI_M1388AR::IsInit() const
 {
     return mInitialized;
 }
@@ -105,7 +105,7 @@ bool HIM1388AR::IsInit() const
  * \details Configures CS pin to HIGHZ.
  * \returns True if HI-M1388AR module could be put in sleep mode, else false.
  */
-bool HIM1388AR::Sleep()
+bool HI_M1388AR::Sleep()
 {
     bool result = ClearDisplay();
 
@@ -122,7 +122,7 @@ bool HIM1388AR::Sleep()
  * \brief   Clear the display by writing all 0's to it.
  * \returns True if display could be cleared, else false.
  */
-bool HIM1388AR::ClearDisplay()
+bool HI_M1388AR::ClearDisplay()
 {
     if (mInitialized)
     {
@@ -142,7 +142,7 @@ bool HIM1388AR::ClearDisplay()
  * \param   src     Pointer to 8 byte long buffer with digit values.
  * \returns True if lines could be written, else false.
  */
-bool HIM1388AR::WriteDigits(const uint8_t* src)
+bool HI_M1388AR::WriteDigits(const uint8_t* src)
 {
     EXPECT(src);
 
@@ -176,7 +176,7 @@ bool HIM1388AR::WriteDigits(const uint8_t* src)
  * \param   config  Configuration struct for HI-M1388AR module.
  * \returns True if the HI-M1388AR module could be configured, else false.
  */
-bool HIM1388AR::Configure(const IConfig& config)
+bool HI_M1388AR::Configure(const IConfig& config)
 {
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
@@ -211,7 +211,7 @@ bool HIM1388AR::Configure(const IConfig& config)
  * \param   value   The value to write to the register.
  * \returns True if the value could be written to the register, else false.
  */
-bool HIM1388AR::WriteRegister(uint8_t reg, uint8_t value)
+bool HI_M1388AR::WriteRegister(uint8_t reg, uint8_t value)
 {
     uint8_t buffer[2] = { reg, value };
 

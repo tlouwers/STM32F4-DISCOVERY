@@ -26,7 +26,9 @@
 /* Includes                                                             */
 /************************************************************************/
 #include <atomic>
-#include "components/HIM1388AR/HIM1388AR.hpp"
+#include "config.h"
+#include "components/HI-M1388AR/HI-M1388AR.hpp"
+#include "components/HI-M1388AR/FakeHI-M1388AR.hpp"
 #include "drivers/Pin/Pin.hpp"
 #include "drivers/PWM/PWM.hpp"
 #include "drivers/SPI/SPI.hpp"
@@ -57,9 +59,13 @@ private:
     Pin mChipSelect;
     Pin mPWMOut;
 
-    PWM       mPWM;
-    SPI       mSPI;
-    HIM1388AR mMatrix;
+    PWM            mPWM;
+    SPI            mSPI;
+#if (HI_M1388AR_DISPLAY == REAL_HI_M1388AR)
+    HI_M1388AR     mMatrix;
+#else
+    FakeHI_M1388AR mMatrix;
+#endif
 
     std::atomic<bool> mButtonPressed;
 
