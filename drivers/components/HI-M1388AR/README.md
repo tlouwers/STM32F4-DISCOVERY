@@ -46,12 +46,12 @@ bool Application::Initialize()
 
 // To diplay something on the screen:
 {
-	// Display a '0'
-	mMatrix.WriteDigits(digit_zero);
-	
-	// Other stuff
-	
-	// Clear the display	
-	mMatrix.ClearDisplay();
+    // Display a '0'
+    mMatrix.WriteDigits(digit_zero);
+
+    // Other stuff
+
+    // Clear the display
+    mMatrix.ClearDisplay();
 }
 ```

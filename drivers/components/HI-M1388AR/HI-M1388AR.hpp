@@ -9,7 +9,7 @@
  *                                                                Terry Louwers
  * \class   HI_M1388AR
  *
- * \brief   Driver for the HI_M1388AR 8x8 LED matrix display.
+ * \brief   Driver for the HI-M1388AR 8x8 LED matrix display.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/HI-M1388AR
  *
@@ -18,8 +18,8 @@
  * \date    05-2021
  */
 
-#ifndef HIM1388AR_HPP_
-#define HIM1388AR_HPP_
+#ifndef HI_M1388AR_HPP_
+#define HI_M1388AR_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -34,7 +34,7 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class HIM1388AR final : public IConfigInitable
+class HI_M1388AR final : public IConfigInitable
 {
 public:
     /**
@@ -54,8 +54,8 @@ public:
         uint8_t mBrightness;    ///< Brightness of the LED display.
     };
 
-    HIM1388AR(ISPI& spi, PinIdPort chipSelect);
-    virtual ~HIM1388AR();
+    HI_M1388AR(ISPI& spi, PinIdPort chipSelect);
+    virtual ~HI_M1388AR();
 
     bool Init(const IConfig& config);
     bool IsInit() const;
@@ -75,4 +75,4 @@ private:
 };
 
 
-#endif  // HIM1388AR_HPP_
+#endif  // HI_M1388AR_HPP_
