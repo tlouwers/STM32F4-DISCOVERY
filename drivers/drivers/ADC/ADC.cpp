@@ -25,7 +25,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/ADC/ADC.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 #include "stm32f4xx_hal_adc.h"
 
 
@@ -94,12 +94,14 @@ Adc::~Adc()
  * \param   config  The configuration for the ADC instance to use.
  * \returns True if the configuration could be applied, else false.
  */
-bool Adc::Init(const Config& config)
+bool Adc::Init(const IConfig& config)
 {
     CheckAndEnableAHB2PeripheralClock(mInstance);
 
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
     mHandle.Init.ClockPrescaler        = ADC_CLOCK_SYNC_PCLK_DIV2;
-    mHandle.Init.Resolution            = GetResolution(config.mResolution);
+    mHandle.Init.Resolution            = GetResolution(cfg.mResolution);
     mHandle.Init.DataAlign             = ADC_DATAALIGN_RIGHT;
     mHandle.Init.ScanConvMode          = DISABLE;
     mHandle.Init.EOCSelection          = ADC_EOC_SINGLE_CONV;
@@ -113,11 +115,11 @@ bool Adc::Init(const Config& config)
 
     if (HAL_ADC_Init(&mHandle) == HAL_OK)
     {
-        SetIRQn(ADC_IRQn, config.mInterruptPriority, 0);
+        SetIRQn(ADC_IRQn, cfg.mInterruptPriority, 0);
 
         // Configure channel
         ADC_ChannelConfTypeDef adcChannelConfig = {};
-        adcChannelConfig.Channel      = GetChannel(config.mChannel);
+        adcChannelConfig.Channel      = GetChannel(cfg.mChannel);
         adcChannelConfig.Offset       = 0;
         adcChannelConfig.Rank         = 1;
         adcChannelConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;

@@ -1,5 +1,5 @@
 /**
- * \file    FakeHI_M1388AR.hpp
+ * \file    FakeHI-M1388AR.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -26,8 +26,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
-#include "Interfaces/IInitable.hpp"
-#include "Interfaces/ISPI.hpp"
+#include "interfaces/IInitable.hpp"
+#include "interfaces/ISPI.hpp"
 #include "drivers/Pin/Pin.hpp"
 
 

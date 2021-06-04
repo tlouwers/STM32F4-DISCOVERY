@@ -29,6 +29,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "interfaces/IInitable.hpp"
+#include "interfaces/IADC.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -63,7 +65,7 @@ struct ADCCallbacks {
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class Adc
+class Adc final : public IADC, public IConfigInitable
 {
 public:
     /**
@@ -106,7 +108,7 @@ public:
      * \struct  Config
      * \brief   Configuration struct for ADC.
      */
-    struct Config
+    struct Config : public IConfig
     {
         /**
          * \brief   Constructor of the ADC configuration struct.
@@ -129,12 +131,12 @@ public:
     explicit Adc(const ADCInstance& instance);
     virtual ~Adc();
 
-    bool Init(const Config& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
-    bool GetValue(uint16_t& value);
-    bool GetValueInterrupt(const std::function<void(uint16_t)>& handler);
+    bool GetValue(uint16_t& value) override;
+    bool GetValueInterrupt(const std::function<void(uint16_t)>& handler) override;
 
 private:
     ADCInstance       mInstance;

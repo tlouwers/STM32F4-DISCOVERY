@@ -26,6 +26,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "interfaces/IInitable.hpp"
+#include "interfaces/IBasicTimer.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -58,7 +60,7 @@ struct BasicTimerCallback {
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class BasicTimer
+class BasicTimer final : public IBasicTimer, public IConfigInitable
 {
 public:
     /**
@@ -66,7 +68,7 @@ public:
      * \brief   Configuration struct for BasicTimer.
      * \note    Can fine-tune frequency in the Init() and CalculatePeriod() methods.
      */
-    struct Config
+    struct Config : public IConfig
     {
         /**
          * \brief   Constructor of the BasicTimer configuration struct.
@@ -86,13 +88,13 @@ public:
     explicit BasicTimer(const BasicTimerInstance& instance);
     virtual ~BasicTimer();
 
-    bool Init(const Config& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
-    bool Start();
-    bool IsStarted() const;
-    bool Stop();
+    bool Start() override;
+    bool IsStarted() const override;
+    bool Stop() override;
 
 private:
     BasicTimerInstance  mInstance;

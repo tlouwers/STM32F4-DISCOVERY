@@ -21,7 +21,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/GenericTimer/GenericTimer.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 #include "stm32f4xx_hal_tim.h"
 
 
@@ -108,13 +108,15 @@ GenericTimer::~GenericTimer()
  * \returns True if the configuration could be applied, else false.
  * \note    APB1 and APB2 assumed to be 8 MHz.
  */
-bool GenericTimer::Init(const Config& config)
+bool GenericTimer::Init(const IConfig& config)
 {
     CheckAndEnableAHBPeripheralClock(mInstance);
 
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
     mHandle.Init.Prescaler         = 800 - 1;                            // (Freq. APB) / (Prescaler + 1) = (Freq. CK_CNT) --> Get from 8 MHz to 10 kHz as timer counter
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
-    mHandle.Init.Period            = CalculatePeriod(config.mFrequency); // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
+    mHandle.Init.Period            = CalculatePeriod(cfg.mFrequency);    // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     mHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
     mHandle.Init.RepetitionCounter = 0;
     mHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
@@ -122,7 +124,7 @@ bool GenericTimer::Init(const Config& config)
     if (HAL_TIM_Base_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt
-        SetIRQn(GetIRQn(mInstance), config.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
         mInitialized = true;
         return true;

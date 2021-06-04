@@ -21,8 +21,8 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/Usart/Usart.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
-#include "stm32f4xx_hal_uart.h"
+#include "utility/Assert/Assert.h"
+#include "stm32f4xx_hal_usart.h"
 
 
 /************************************************************************/
@@ -105,22 +105,24 @@ Usart::~Usart()
  * \param   config  The configuration for the USART instance to use.
  * \returns True if the configuration could be applied, else false.
  */
-bool Usart::Init(const Config& config)
+bool Usart::Init(const IConfig& config)
 {
     CheckAndEnableAHB1PeripheralClock(mInstance);
 
-    mHandle.Init.BaudRate     = static_cast<uint32_t>(config.mBaudrate);
-    mHandle.Init.WordLength   = (config.mWordLength == WordLength::_8_BIT) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;
-    mHandle.Init.Parity       = GetParity(config.mParity);
-    mHandle.Init.StopBits     = (config.mStopBits == StopBits::_1_BIT) ? UART_STOPBITS_1 : UART_STOPBITS_2;
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
+    mHandle.Init.BaudRate     = static_cast<uint32_t>(cfg.mBaudrate);
+    mHandle.Init.WordLength   = (cfg.mWordLength == WordLength::_8_BIT) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;
+    mHandle.Init.Parity       = GetParity(cfg.mParity);
+    mHandle.Init.StopBits     = (cfg.mStopBits == StopBits::_1_BIT) ? UART_STOPBITS_1 : UART_STOPBITS_2;
     mHandle.Init.Mode         = UART_MODE_TX_RX;
-    mHandle.Init.OverSampling = (config.mOverSampling == OverSampling::_8_TIMES) ? UART_OVERSAMPLING_8 : UART_OVERSAMPLING_16;
-    mHandle.Init.HwFlowCtl    = (config.mUseHardwareFlowControl) ? UART_HWCONTROL_RTS_CTS : UART_HWCONTROL_NONE;
+    mHandle.Init.OverSampling = (cfg.mOverSampling == OverSampling::_8_TIMES) ? UART_OVERSAMPLING_8 : UART_OVERSAMPLING_16;
+    mHandle.Init.HwFlowCtl    = (cfg.mUseHardwareFlowControl) ? UART_HWCONTROL_RTS_CTS : UART_HWCONTROL_NONE;
 
     if (HAL_UART_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt
-        SetIRQn(GetIRQn(mInstance), config.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
         __HAL_UART_CLEAR_FLAG(&mHandle, UART_FLAG_IDLE);
 
@@ -200,8 +202,8 @@ DMA_HandleTypeDef*& Usart::GetDmaRxHandle()
  */
 bool Usart::WriteDma(const uint8_t* src, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     if (!mInitialized) { return false; }
     if (mHandle.hdmatx == nullptr) { return false; }
@@ -227,8 +229,8 @@ bool Usart::WriteDma(const uint8_t* src, uint16_t length, const std::function<vo
  */
 bool Usart::ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection /* = true */)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     if (!mInitialized) { return false; }
     if (mHandle.hdmarx == nullptr) { return false; }
@@ -255,8 +257,8 @@ bool Usart::ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uin
  */
 bool Usart::WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     if (!mInitialized) { return false; }
 
@@ -278,8 +280,8 @@ bool Usart::WriteInterrupt(const uint8_t* src, uint16_t length, const std::funct
  */
 bool Usart::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection /* = true */)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     if (!mInitialized) { return false; }
 
@@ -304,8 +306,8 @@ bool Usart::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<vo
  */
 bool Usart::WriteBlocking(const uint8_t* src, uint16_t length)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     if (!mInitialized) { return false; }
 
@@ -323,8 +325,8 @@ bool Usart::WriteBlocking(const uint8_t* src, uint16_t length)
  */
 bool Usart::ReadBlocking(uint8_t* dest, uint16_t length)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     if (!mInitialized) { return false; }
 

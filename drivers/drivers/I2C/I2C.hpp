@@ -26,6 +26,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "interfaces/IInitable.hpp"
+#include "interfaces/II2C.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -65,7 +67,7 @@ struct I2CCallbacks {
 /**
  * \brief   I2C peripheral driver class.
  */
-class I2C
+class I2C final : public II2C, public IConfigInitable
 {
 public:
     /**
@@ -82,7 +84,7 @@ public:
      * \struct  Config
      * \brief   Configuration struct for I2C.
      */
-    struct Config
+    struct Config : public IConfig
     {
         /**
          * \brief   Constructor of the I2C configuration struct.
@@ -102,22 +104,22 @@ public:
     explicit I2C(const I2CInstance& instance);
     virtual ~I2C();
 
-    bool Init(const Config& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
     const I2C_HandleTypeDef* GetPeripheralHandle() const;
     DMA_HandleTypeDef*& GetDmaTxHandle();
     DMA_HandleTypeDef*& GetDmaRxHandle();
 
-    bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler);
-    bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler);
+    bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
+    bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;
 
-    bool WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler);
-    bool ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler);
+    bool WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
+    bool ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;
 
-    bool WriteBlocking(uint8_t slave, const uint8_t* src, uint16_t length);
-    bool ReadBlocking(uint8_t slave, uint8_t* dest, uint16_t length);
+    bool WriteBlocking(uint8_t slave, const uint8_t* src, uint16_t length) override;
+    bool ReadBlocking(uint8_t slave, uint8_t* dest, uint16_t length) override;
 
 private:
     /**

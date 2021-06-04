@@ -26,6 +26,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "interfaces/IInitable.hpp"
+#include "interfaces/IGenericTimer.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -67,7 +69,7 @@ struct GenericTimerCallbacks {
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class GenericTimer
+class GenericTimer final : public IGenericTimer, public IConfigInitable
 {
 public:
     /**
@@ -75,7 +77,7 @@ public:
      * \brief   Configuration struct for GenericTimer.
      * \note    Can fine-tune frequency in the Init() and CalculatePeriod() methods.
      */
-    struct Config
+    struct Config : public IConfig
     {
         /**
          * \brief   Constructor of the GenericTimer configuration struct.
@@ -95,13 +97,13 @@ public:
     explicit GenericTimer(const GenericTimerInstance& instance);
     virtual ~GenericTimer();
 
-    bool Init(const Config& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
-    bool Start(const std::function<void()>& handler);
-    bool IsStarted() const;
-    bool Stop();
+    bool Start(const std::function<void()>& handler) override;
+    bool IsStarted() const override;
+    bool Stop() override;
 
 private:
     GenericTimerInstance   mInstance;
