@@ -22,7 +22,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/I2C/I2C.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 #include "stm32f4xx_hal_i2c.h"
 
 
@@ -117,12 +117,14 @@ I2C::~I2C()
  * \param   config  The configuration for the I2C instance to use.
  * \returns True if the configuration could be applied, else false.
  */
-bool I2C::Init(const Config& config)
+bool I2C::Init(const IConfig& config)
 {
     CheckAndEnableAHB1PeripheralClock(mInstance);
 
-    mHandle.Init.ClockSpeed      = (config.mBusSpeed == BusSpeed::NORMAL) ? 100000 : 400000;
-    mHandle.Init.DutyCycle       = (config.mBusSpeed == BusSpeed::NORMAL) ? I2C_DUTYCYCLE_2 : I2C_DUTYCYCLE_16_9;
+    const Config& cfg = reinterpret_cast<const Config&>(config);
+
+    mHandle.Init.ClockSpeed      = (cfg.mBusSpeed == BusSpeed::NORMAL) ? 100000 : 400000;
+    mHandle.Init.DutyCycle       = (cfg.mBusSpeed == BusSpeed::NORMAL) ? I2C_DUTYCYCLE_2 : I2C_DUTYCYCLE_16_9;
     mHandle.Init.OwnAddress1     = 0;
     mHandle.Init.AddressingMode  = I2C_ADDRESSINGMODE_7BIT;
     mHandle.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -133,10 +135,10 @@ bool I2C::Init(const Config& config)
     if (HAL_I2C_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt on Event
-        SetIRQn(GetIRQn(mInstance, IRQType::Event), config.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance, IRQType::Event), cfg.mInterruptPriority, 0);
 
         // Configure NVIC to generate interrupt on Error
-        SetIRQn(GetIRQn(mInstance, IRQType::Error), config.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance, IRQType::Error), cfg.mInterruptPriority, 0);
 
         mInitialized = true;
         return true;
@@ -219,8 +221,8 @@ DMA_HandleTypeDef*& I2C::GetDmaRxHandle()
  */
 bool I2C::WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
@@ -245,8 +247,8 @@ bool I2C::WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std
  */
 bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }
@@ -270,8 +272,8 @@ bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::func
  */
 bool I2C::WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
@@ -294,8 +296,8 @@ bool I2C::WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, con
  */
 bool I2C::ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }
@@ -317,8 +319,8 @@ bool I2C::ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std
  */
 bool I2C::WriteBlocking(uint8_t slave, const uint8_t* src, uint16_t length)
 {
-    ASSERT(src);
-    ASSERT(length > 0);
+    EXPECT(src);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (src == nullptr) { return false; }
@@ -338,8 +340,8 @@ bool I2C::WriteBlocking(uint8_t slave, const uint8_t* src, uint16_t length)
  */
 bool I2C::ReadBlocking(uint8_t slave, uint8_t* dest, uint16_t length)
 {
-    ASSERT(dest);
-    ASSERT(length > 0);
+    EXPECT(dest);
+    EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
     if (dest == nullptr) { return false; }

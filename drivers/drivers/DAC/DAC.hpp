@@ -29,6 +29,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "interfaces/IInitable.hpp"
+#include "interfaces/IDAC.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -38,19 +40,9 @@
 /**
  * \brief   DAC peripheral driver class.
  */
-class Dac
+class Dac final : public IDAC, public IInitable
 {
 public:
-    /**
-     * \enum    Channel
-     * \brief   Available DAC channels.
-     */
-    enum class Channel : uint8_t
-    {
-        CHANNEL_1,
-        CHANNEL_2
-    };
-
     /**
      * \enum    Precision
      * \brief   Available DAC precision (in bits).
@@ -127,9 +119,9 @@ public:
     Dac();
     virtual ~Dac();
 
-    bool Init();
-    bool IsInit() const;
-    bool Sleep();
+    bool Init() override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
     const DAC_HandleTypeDef* GetPeripheralHandle() const;
     DMA_HandleTypeDef*& GetDmaChannel1Handle();
@@ -138,10 +130,10 @@ public:
     bool ConfigureChannel(const Channel& channel, const ChannelConfig& channelConfig);
     bool ConfigureWaveform(const Channel& channel, const uint16_t* values, uint16_t length);
 
-    bool SetValue(const Channel& channel, uint16_t value);
+    bool SetValue(const Channel& channel, uint16_t value) override;
 
-    bool StartWaveform(const Channel& channel);
-    bool StopWaveform(const Channel& channel);
+    bool StartWaveform(const Channel& channel) override;
+    bool StopWaveform(const Channel& channel) override;
 
 private:
     DAC_HandleTypeDef mHandle = {};

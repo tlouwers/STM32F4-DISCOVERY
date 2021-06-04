@@ -26,6 +26,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "interfaces/IInitable.hpp"
+#include "interfaces/IUSART.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -62,7 +64,7 @@ struct UsartCallbacks {
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class Usart
+class Usart final : public IUSART, public IConfigInitable
 {
 public:
     /**
@@ -126,7 +128,7 @@ public:
      * \struct  Config
      * \brief   Configuration struct for USART.
      */
-    struct Config
+    struct Config : public IConfig
     {
         /**
          * \brief   Constructor of the USART configuration struct.
@@ -167,22 +169,22 @@ public:
     explicit Usart(const UsartInstance& instance);
     virtual ~Usart();
 
-    bool Init(const Config& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
     const UART_HandleTypeDef* GetPeripheralHandle() const;
     DMA_HandleTypeDef*& GetDmaTxHandle();
     DMA_HandleTypeDef*& GetDmaRxHandle();
 
-    bool WriteDma(const uint8_t* src, uint16_t length, const std::function<void()>& handler);
-    bool ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
+    bool WriteDma(const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
+    bool ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true) override;
 
-    bool WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler);
-    bool ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true);
+    bool WriteInterrupt(const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
+    bool ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true) override;
 
-    bool WriteBlocking(const uint8_t* src, uint16_t length);
-    bool ReadBlocking(uint8_t* dest, uint16_t length);
+    bool WriteBlocking(const uint8_t* src, uint16_t length) override;
+    bool ReadBlocking(uint8_t* dest, uint16_t length) override;
 
 private:
     UsartInstance      mInstance;

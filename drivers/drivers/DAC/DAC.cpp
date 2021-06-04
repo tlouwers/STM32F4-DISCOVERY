@@ -28,7 +28,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include "drivers/DAC/DAC.hpp"
-#include "utility/SlimAssert/SlimAssert.h"
+#include "utility/Assert/Assert.h"
 #include "stm32f4xx_hal_dac.h"
 
 
