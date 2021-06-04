@@ -63,11 +63,13 @@ void Board::InitPins()
  */
 bool Board::InitClock()
 {
-    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+    RCC_OscInitTypeDef RCC_OscInitStruct = {};
 
     // Enable Power Control clock
     __HAL_RCC_PWR_CLK_ENABLE();
+
+    // Enable access to backup registers, required for RTC
+    HAL_PWR_EnableBkUpAccess();
 
     // The voltage scaling allows optimizing the power consumption when the
     // device is clocked below the maximum system frequency, to update the
@@ -75,14 +77,17 @@ bool Board::InitClock()
     // datasheet.
     __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-    // Enable HSE Oscillator and activate PLL with HSE as source
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    // Enable LSI and HSE Oscillator
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_HSE;
     RCC_OscInitStruct.HSEState       = RCC_HSE_ON;
+    RCC_OscInitStruct.LSIState       = RCC_LSI_ON;
     RCC_OscInitStruct.PLL.PLLState   = RCC_PLL_NONE;
     if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
     {
         return false;
     }
+
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
 
     // Select HSE as system clock source and configure the HCLK, PCLK1 and PCLK2
     // clocks dividers
