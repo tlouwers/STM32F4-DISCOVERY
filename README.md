@@ -16,6 +16,7 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | Drivers/drivers/I2C | I2C peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | Drivers/drivers/Pin | Helper class intended as 'set & forget' for pin  configurations. State is preserved (partly) within the hardware. |
 | Drivers/drivers/PWM | PWM peripheral driver class. Using Timer 2..4 as clock source. |
+| Drivers/drivers/RTC | RTC peripheral driver class. Provides easier handling of Date and Time. |
 | Drivers/drivers/SPI | SPI peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | Drivers/drivers/Usart | USART peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | Drivers/interfaces | Various interfaces for peripheral drivers. |
