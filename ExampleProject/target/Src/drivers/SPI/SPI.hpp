@@ -28,8 +28,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
-#include "Interfaces/IInitable.hpp"
-#include "Interfaces/ISPI.hpp"
+#include "interfaces/IInitable.hpp"
+#include "interfaces/ISPI.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -139,7 +139,7 @@ private:
     uint32_t CalculatePrescaler(uint32_t busSpeed);
     IRQn_Type GetIRQn(const SPIInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
-    void CallbackIRQ() const;
+    void CallbackIRQ();
 };
 
 #endif  // SPI_HPP_

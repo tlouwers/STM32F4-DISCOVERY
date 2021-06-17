@@ -10,6 +10,7 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | Drivers/components/LIS3DSH | LIS3DSH accelerometer class with HW fifo support. |
 | Drivers/drivers/ADC | ADC peripheral driver class. Simple and Interrupt based input capture for single channel. |
 | Drivers/drivers/BasicTimer | BasicTimer peripheral driver class. Intended for use with DAC. |
+| Drivers/drivers/CRC | Crc peripheral driver class. Uses hardware CRC module of the STM32F4. |
 | Drivers/drivers/DAC | DAC peripheral driver class. Simple and DMA based output for any waveform (uses BasicTimer). |
 | Drivers/drivers/DMA | DMA utility class, intended as plug-in functionality for peripherals. |
 | Drivers/drivers/GenericTimer | GenericTimer peripheral driver class. Provides period timer functionality. |

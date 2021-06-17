@@ -32,8 +32,8 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
-#include "Interfaces/IInitable.hpp"
-#include "Interfaces/ISPI.hpp"
+#include "interfaces/IInitable.hpp"
+#include "interfaces/ISPI.hpp"
 #include "drivers/Pin/Pin.hpp"
 #if (SIMULATED_SENSOR_OUTPUT_DATA == SAWTOOTH_SIGNAL)
 #   include "utility/Sawtooth/Sawtooth.hpp"
