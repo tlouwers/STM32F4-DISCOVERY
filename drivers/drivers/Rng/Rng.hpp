@@ -1,5 +1,5 @@
 /**
- * \file    CRC.hpp
+ * \file    Rng.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,50 +7,49 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Crc
+ * \class   Rng
  *
- * \brief   Crc peripheral driver class.
+ * \brief   Hardware random number generator class.
  *
- * \details STM32F4 uses the CRC-32 (Ethernet) polynomial '0x4C11DB7'.
- *          X32 + X26 + X23 + X22 + X16 + X12 + X11 + X10 +X8 + X7 + X5 + X4 + X2+ X + 1
- *          The calculation is for 32 bit only and done via the hardware peripheral.
+ * \details According to specification: RNG passed FIPS PUB 140-2 (2001 October 10)
+ *          tests with a success ratio of 99%.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/CRC
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Rng
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
  * \date    06-2021
  */
 
-#ifndef CRC_HPP_
-#define CRC_HPP_
+#ifndef RNG_HPP_
+#define RNG_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
 #include <cstdint>
-#include "Interfaces/IInitable.hpp"
-#include "Interfaces/ICRC.hpp"
+#include "interfaces/IInitable.hpp"
+#include "interfaces/IRng.hpp"
 #include "stm32f4xx_hal.h"
 
 
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class Crc final : public ICRC, public IInitable
+class Rng final : public IRng, public IInitable
 {
 public:
-    Crc();
-    virtual ~Crc();
+    Rng();
+    virtual ~Rng();
 
     bool Init() override;
     bool IsInit() const override;
     bool Sleep() override;
 
-    uint32_t Calculate(uint32_t* buffer, uint32_t length) override;
+    uint32_t GetRandom() override;
 
 private:
-    CRC_HandleTypeDef mHandle = {};
+    RNG_HandleTypeDef mHandle = {};
     bool              mInitialized;
 
     void CheckAndEnableAHBPeripheralClock();
@@ -58,4 +57,4 @@ private:
 };
 
 
-#endif  // CRC_HPP_
+#endif  // RNG_HPP_

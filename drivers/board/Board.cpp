@@ -77,11 +77,16 @@ bool Board::InitClock()
     // datasheet.
     __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-    // Enable LSI and HSE Oscillator
+    // Enable LSI and HSE Oscillator and activate PLL with HSE as source
     RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_HSE;
     RCC_OscInitStruct.HSEState       = RCC_HSE_ON;
     RCC_OscInitStruct.LSIState       = RCC_LSI_ON;
-    RCC_OscInitStruct.PLL.PLLState   = RCC_PLL_NONE;
+    RCC_OscInitStruct.PLL.PLLState   = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource  = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLM       = 4;
+    RCC_OscInitStruct.PLL.PLLN       = 72;
+    RCC_OscInitStruct.PLL.PLLP       = RCC_PLLP_DIV4;
+    RCC_OscInitStruct.PLL.PLLQ       = 3;
     if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
     {
         return false;
