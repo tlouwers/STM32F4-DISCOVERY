@@ -29,7 +29,6 @@
 /* Includes                                                             */
 /************************************************************************/
 #include <cstdint>
-#include <functional>
 #include "Interfaces/IInitable.hpp"
 #include "Interfaces/ICRC.hpp"
 #include "stm32f4xx_hal.h"
