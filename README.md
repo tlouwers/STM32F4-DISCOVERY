@@ -29,3 +29,4 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | ExampleProject | A Visual Studio Code, CMake, GCC, C++, Google Test, GCOV example project for STM32F407G-DISC1. Showcases the LEDs and Accelerometer. |
 | StandupCounter | A Visual Studio Code, CMake, GCC, C++, Google Test, GCOV example project for STM32F407G-DISC1. Example StandupCounter with Buzzer and HI-M1388AR 8x8 LED matrix display. |
 | tests | Folder with generic Fake and Mock content to assist unit testing. |
+| UnitTestExample | A Visual Studio Code, CMake, GCC, C++, Google Test, GCOV example project for STM32F407G-DISC1. Example how to work with unit tests. |
