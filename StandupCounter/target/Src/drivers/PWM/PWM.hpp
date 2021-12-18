@@ -26,8 +26,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
-#include "Interfaces/IInitable.hpp"
-#include "Interfaces/IPWM.hpp"
+#include "interfaces/IInitable.hpp"
+#include "interfaces/IPWM.hpp"
 #include "stm32f4xx_hal.h"
 
 

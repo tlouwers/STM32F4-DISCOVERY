@@ -5,7 +5,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "Interfaces/IPWM.hpp"
+#include "interfaces/IPWM.hpp"
 #include "gmock/gmock.h"
 #include <cstdint>
 #include <cstring>
