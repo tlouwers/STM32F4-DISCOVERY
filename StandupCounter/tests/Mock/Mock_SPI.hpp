@@ -5,7 +5,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "Interfaces/ISPI.hpp"
+#include "interfaces/ISPI.hpp"
 #include "gmock/gmock.h"
 #include <cstdint>
 #include <cstring>
