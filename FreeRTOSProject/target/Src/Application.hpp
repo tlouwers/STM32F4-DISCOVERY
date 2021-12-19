@@ -30,6 +30,7 @@
 #include "components/LIS3DSH/LIS3DSH.hpp"
 #include "components/LIS3DSH/FakeLIS3DSH.hpp"
 #include "drivers/DMA/DMA.hpp"
+#include "drivers/HalTimer/HalTimer.hpp"
 #include "drivers/Pin/Pin.hpp"
 #include "drivers/SPI/SPI.hpp"
 
@@ -59,6 +60,8 @@ private:
     Pin mChipSelect;
     Pin mMotionInt1;
     Pin mMotionInt2;
+
+    HalTimer mHalTimer;
 
     SPI mSPI;
 

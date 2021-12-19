@@ -1,5 +1,5 @@
 /**
- * \file    main.cpp
+ * \file    IGenericTimer.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,50 +7,35 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \brief   Generic interface for GenericTimer driver.
  *
- * \brief   Main entry point for Accelerometer demo.
- *
-* \note     https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/ExampleProject/target/Src
- *
- * \details Intended use is to provide an example how to read the accelerometer.
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/interfaces
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
- * \date    10-2019
+ * \date    06-2021
  */
+
+#ifndef IGENERIC_TIMER_HPP_
+#define IGENERIC_TIMER_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "stm32f4xx_hal.h"
-#include "board/Board.hpp"
-#include "Application.hpp"
+#include <cstdint>
+#include <functional>
 
 
 /************************************************************************/
-/* Main application entry point                                         */
+/* Class declaration                                                    */
 /************************************************************************/
-/**
- * \brief       Main application entry point.
- * \returns     Never returns.
- */
-int main()
+class IGenericTimer
 {
-    Board::InitPins();
-    Board::InitClock();     // ignore result?
+public:
+    virtual bool Start(const std::function<void()>& handler) = 0;
+    virtual bool IsStarted() const = 0;
+    virtual bool Stop() = 0;
+};
 
-    HAL_Init();
 
-
-    Application mApp;
-
-    if (!mApp.Init())
-    {
-        mApp.Error();
-    }
-
-    while (1)
-    {
-        mApp.Process();
-    }
-}
+#endif  // IGENERIC_TIMER_HPP_

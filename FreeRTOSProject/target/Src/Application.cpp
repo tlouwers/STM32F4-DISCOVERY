@@ -43,6 +43,7 @@ Application::Application() :
     mChipSelect(PIN_SPI1_CS, Level::HIGH),              // SPI ChipSelect for Motion
     mMotionInt1(PIN_MOTION_INT1, PullUpDown::HIGHZ),
     mMotionInt2(PIN_MOTION_INT2, PullUpDown::HIGHZ),
+    mHalTimer(GenericTimerInstance::TIMER_14),
     mSPI(SPIInstance::SPI_1),
     mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
@@ -65,7 +66,10 @@ bool Application::Init()
 {
     mLedGreen.Set(Level::HIGH);
 
-    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    bool result = mHalTimer.Init(HalTimer::Config(1000));   // 1000 Hz --> 1 ms
+    ASSERT(result);
+
+    result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
     result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
