@@ -16,7 +16,7 @@
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
- * \date    10-2019
+ * \date    12-2021
  */
 
 #ifndef APPLICATION_HPP_
@@ -27,12 +27,7 @@
 /************************************************************************/
 #include <atomic>
 #include "config.h"
-#include "components/LIS3DSH/LIS3DSH.hpp"
-#include "components/LIS3DSH/FakeLIS3DSH.hpp"
-#include "drivers/DMA/DMA.hpp"
-#include "drivers/HalTimer/HalTimer.hpp"
 #include "drivers/Pin/Pin.hpp"
-#include "drivers/SPI/SPI.hpp"
 
 
 /************************************************************************/
@@ -48,38 +43,26 @@ public:
     virtual ~Application() {};
 
     bool Init();
-    void Process();
     void Error();
 
+    bool CreateTasks();
+    void StartTasks();
+
 private:
-//    Pin mButton;
+    Pin mButton;
     Pin mLedGreen;
     Pin mLedOrange;
     Pin mLedRed;
     Pin mLedBlue;
-    Pin mChipSelect;
-    Pin mMotionInt1;
-    Pin mMotionInt2;
 
-    HalTimer mHalTimer;
+    std::atomic<bool> mShouldBlinkLeds;
 
-    SPI mSPI;
+    void CallbackButtonPressed();
 
-    DMA mDMA_SPI_Tx;
-    DMA mDMA_SPI_Rx;
-
-#if (LIS3DSH_ACCELEROMETER == REAL_LIS3DSH)
-    LIS3DSH        mLIS3DSH;
-#else
-    FakeLIS3DSH    mLIS3DSH;
-#endif
-
-//    std::atomic<bool> mButtonPressed;
-    std::atomic<bool> mMotionDataAvailable;
-    uint8_t mMotionLength;
-
-//    void ButtonPressedCallback();
-    void MotionDataReceived(uint8_t length);
+    void CallbackLedGreenToggle();
+    void CallbackLedOrangeToggle();
+    void CallbackLedRedToggle();
+    void CallbackLedBlueToggle();
 };
 
 

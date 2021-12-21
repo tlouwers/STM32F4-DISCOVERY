@@ -16,7 +16,7 @@
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
- * \date    10-2019
+ * \date    12-2021
  */
 
 /************************************************************************/
@@ -26,6 +26,47 @@
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
 #include "utility/Assert/Assert.h"
+#include "../FreeRTOS/source/include/FreeRTOS.h"
+#include "../FreeRTOS/source/include/task.h"
+
+
+/************************************************************************/
+/* Task - definitions                                                   */
+/************************************************************************/
+void vBlinkLedGreen(void* pvParam);
+void vBlinkLedOrange(void* pvParam);
+void vBlinkLedRed(void* pvParam);
+void vBlinkLedBlue(void* pvParam);
+
+static std::function<void()> callbackLedGreenToggle  = nullptr;
+static std::function<void()> callbackLedOrangeToggle = nullptr;
+static std::function<void()> callbackLedRedToggle    = nullptr;
+static std::function<void()> callbackLedBlueToggle   = nullptr;
+
+
+/************************************************************************/
+/* Static Functions                                                     */
+/************************************************************************/
+static void CallbackLedGreenToggle()
+{
+    if (callbackLedGreenToggle) { callbackLedGreenToggle(); }
+}
+
+static void CallbackLedOrangeToggle()
+{
+    if (callbackLedOrangeToggle) { callbackLedOrangeToggle(); }
+}
+
+static void CallbackLedRedToggle()
+{
+    if (callbackLedRedToggle) { callbackLedRedToggle(); }
+}
+
+static void CallbackLedBlueToggle()
+{
+    if (callbackLedBlueToggle) { callbackLedBlueToggle(); }
+}
+
 
 
 /************************************************************************/
@@ -35,26 +76,15 @@
  * \brief   Constructor, configures pins and callbacks.
  */
 Application::Application() :
-//    mButton(PIN_BUTTON, PullUpDown::HIGHZ),             // Externally pulled down
+    mButton(PIN_BUTTON, PullUpDown::HIGHZ),             // Externally pulled down
     mLedGreen(PIN_LED_GREEN, Level::LOW),               // Off
     mLedOrange(PIN_LED_ORANGE, Level::LOW),
     mLedRed(PIN_LED_RED, Level::LOW),
     mLedBlue(PIN_LED_BLUE, Level::LOW),
-    mChipSelect(PIN_SPI1_CS, Level::HIGH),              // SPI ChipSelect for Motion
-    mMotionInt1(PIN_MOTION_INT1, PullUpDown::HIGHZ),
-    mMotionInt2(PIN_MOTION_INT2, PullUpDown::HIGHZ),
-    mHalTimer(GenericTimerInstance::TIMER_14),
-    mSPI(SPIInstance::SPI_1),
-    mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
-    mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
-    mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-//    mButtonPressed(false),
-    mMotionDataAvailable(false),
-    mMotionLength(0)
+    mShouldBlinkLeds(false)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
-    //mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
-    mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
+    mButton.Interrupt(Trigger::RISING, [this]() { this->CallbackButtonPressed(); } );
 }
 
 /**
@@ -64,66 +94,22 @@ Application::Application() :
  */
 bool Application::Init()
 {
+    bool result = true;
+
     mLedGreen.Set(Level::HIGH);
 
-    bool result = mHalTimer.Init(HalTimer::Config(1000));   // 1000 Hz --> 1 ms
-    ASSERT(result);
+    // Connect callbacks (C to C++ bridge)
+    callbackLedGreenToggle  = [this]() { this->CallbackLedGreenToggle();  };
+    callbackLedOrangeToggle = [this]() { this->CallbackLedOrangeToggle(); };
+    callbackLedRedToggle    = [this]() { this->CallbackLedRedToggle();    };
+    callbackLedBlueToggle   = [this]() { this->CallbackLedBlueToggle();   };
 
-    result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    ASSERT(result);
-
-    result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    ASSERT(result);
-
-    result = mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
-    ASSERT(result);
-
-    result = mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
-    ASSERT(result);
-
-    result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
-    ASSERT(result);
-
-    result = mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
-    ASSERT(result);
-    mMotionDataAvailable = false;
-    mMotionLength = 0;
-
-    result = mLIS3DSH.Enable();
-    ASSERT(result);
+    // Simulate initialization by adding delay
+    HAL_Delay(750);
 
     mLedGreen.Set(Level::LOW);
 
     return result;
-}
-
-/**
- * \brief   Main process loop of the application. This method is to be called
- *          often and acts as the main processor of data of the application.
- */
-void Application::Process()
-{
-    static uint8_t motionArray[25 * 3 * 2] = {};
-
-/*
-    if (mButtonPressed)
-    {
-        mButtonPressed = false;
-
-        mLedGreen.Set(Level::LOW);
-    }
-*/
-
-    if (mMotionDataAvailable)
-    {
-        mMotionDataAvailable = false;
-
-        bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
-        EXPECT(retrieveResult);
-        (void)(retrieveResult);
-
-        // Deinterleave to X,Y,Z samples
-    }
 }
 
 /**
@@ -148,6 +134,34 @@ void Application::Error()
     }
 }
 
+/**
+ * \brief   Create the various FreeRTOS tasks to run the system with.
+ */
+bool Application::CreateTasks()
+{
+    bool result = false;
+
+    result = ( xTaskCreate( vBlinkLedGreen,  "Blink Green Task",  configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
+    ASSERT(result);
+    result = ( xTaskCreate( vBlinkLedOrange, "Blink Orange Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
+    ASSERT(result);
+    result = ( xTaskCreate( vBlinkLedRed,    "Blink Red Task",    configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
+    ASSERT(result);
+    result = ( xTaskCreate( vBlinkLedBlue,   "Blink Blue Task",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
+    ASSERT(result);
+
+    return result;
+}
+
+/**
+ * \brief   Start the FreeRTOS scheduler, start tasks.
+ * \note    This replaces the main loop.
+ */
+void Application::StartTasks()
+{
+    vTaskStartScheduler();
+}
+
 
 /************************************************************************/
 /* Private Methods                                                      */
@@ -155,22 +169,111 @@ void Application::Error()
 /**
  * \brief   Callback for the button pressed event.
  */
-/*
-void Application::ButtonPressedCallback()
+void Application::CallbackButtonPressed()
 {
-    mButtonPressed = true;
-    mLedGreen.Set(Level::HIGH);
+    mShouldBlinkLeds = !mShouldBlinkLeds;
+
+    if (!mShouldBlinkLeds)
+    {
+        mLedGreen.Set(Level::LOW);
+        mLedOrange.Set(Level::LOW);
+        mLedRed.Set(Level::LOW);
+        mLedBlue.Set(Level::LOW);
+    }
 }
-*/
 
 /**
- * \brief   Callback called for the motion data received callback.
+ * \brief   Callback for the green led toggle event.
  */
-void Application::MotionDataReceived(uint8_t length)
+void Application::CallbackLedGreenToggle()
 {
-    mLedOrange.Toggle();
-
-    mMotionDataAvailable = true;
-    mMotionLength = length;
+    if (mShouldBlinkLeds) { mLedGreen.Toggle(); }
 }
 
+/**
+ * \brief   Callback for the orange led toggle event.
+ */
+void Application::CallbackLedOrangeToggle()
+{
+    if (mShouldBlinkLeds) { mLedOrange.Toggle(); }
+}
+
+/**
+ * \brief   Callback for the red led toggle event.
+ */
+void Application::CallbackLedRedToggle()
+{
+    if (mShouldBlinkLeds) { mLedRed.Toggle(); }
+}
+
+/**
+ * \brief   Callback for the blue led toggle event.
+ */
+void Application::CallbackLedBlueToggle()
+{
+    if (mShouldBlinkLeds) { mLedBlue.Toggle(); }
+}
+
+
+/************************************************************************/
+/* Tasks                                                                */
+/************************************************************************/
+/**
+ * \brief   Blink led green task handler.
+ * \details Configured to be executed every 200 milliseconds.
+ */
+void vBlinkLedGreen(void *pvParameters)
+{
+    while (true)
+    {
+        CallbackLedGreenToggle();
+        vTaskDelay( 200 / portTICK_RATE_MS );
+    }
+
+    vTaskDelete( NULL );
+}
+
+/**
+ * \brief   Blink led orange task handler.
+ * \details Configured to be executed every 300 milliseconds.
+ */
+void vBlinkLedOrange(void *pvParameters)
+{
+    while (true)
+    {
+        CallbackLedOrangeToggle();
+        vTaskDelay( 300 / portTICK_RATE_MS );
+    }
+
+    vTaskDelete( NULL );
+}
+
+/**
+ * \brief   Blink led red task handler.
+ * \details Configured to be executed every 450 milliseconds.
+ */
+void vBlinkLedRed(void *pvParameters)
+{
+    while (true)
+    {
+        CallbackLedRedToggle();
+        vTaskDelay( 450 / portTICK_RATE_MS );
+    }
+
+    vTaskDelete( NULL );
+}
+
+/**
+ * \brief   Blink led blue task handler.
+ * \details Configured to be executed every 575 milliseconds.
+ */
+void vBlinkLedBlue(void *pvParameters)
+{
+    while (true)
+    {
+        CallbackLedBlueToggle();
+        vTaskDelay( 575 / portTICK_RATE_MS );
+    }
+
+    vTaskDelete( NULL );
+}

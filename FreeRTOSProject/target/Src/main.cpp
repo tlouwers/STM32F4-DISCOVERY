@@ -39,6 +39,7 @@ int main()
     Board::InitPins();
     Board::InitClock();     // ignore result?
 
+
     HAL_Init();
 
 
@@ -49,8 +50,12 @@ int main()
         mApp.Error();
     }
 
-    while (1)
+    if (mApp.CreateTasks())
     {
-        mApp.Process();
+        mApp.StartTasks();
+    }
+    else
+    {
+        mApp.Error();
     }
 }
