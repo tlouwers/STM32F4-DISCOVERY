@@ -8,6 +8,12 @@ StandupCounter/target/build/**
 UnitTestExample/build/**
 UnitTestExample/target/build/**
 
+# Ignore Cortex-Debug temporary files
+ExampleProject/.vscode/.cortex-debug*
+FreeRTOSProject/.vscode/.cortex-debug*
+StandupCounter/.vscode/.cortex-debug*
+UnitTestExample/.vscode/.cortex-debug*
+
 # Ignore doxygen folder
 ExampleProject/target/doxygen/docs/**
 FreeRTOSProject/target/doxygen/docs/**

@@ -26,8 +26,8 @@
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
 #include "utility/Assert/Assert.h"
-#include "../FreeRTOS/source/include/FreeRTOS.h"
-#include "../FreeRTOS/source/include/task.h"
+#include "../FreeRTOS/include/FreeRTOS.h"
+#include "../FreeRTOS/include/task.h"
 
 
 /************************************************************************/
@@ -68,7 +68,6 @@ static void CallbackLedBlueToggle()
 }
 
 
-
 /************************************************************************/
 /* Public Methods                                                       */
 /************************************************************************/
@@ -83,7 +82,6 @@ Application::Application() :
     mLedBlue(PIN_LED_BLUE, Level::LOW),
     mShouldBlinkLeds(false)
 {
-    // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
     mButton.Interrupt(Trigger::RISING, [this]() { this->CallbackButtonPressed(); } );
 }
 
@@ -97,12 +95,13 @@ bool Application::Init()
     bool result = true;
 
     mLedGreen.Set(Level::HIGH);
-
+    
     // Connect callbacks (C to C++ bridge)
     callbackLedGreenToggle  = [this]() { this->CallbackLedGreenToggle();  };
     callbackLedOrangeToggle = [this]() { this->CallbackLedOrangeToggle(); };
     callbackLedRedToggle    = [this]() { this->CallbackLedRedToggle();    };
     callbackLedBlueToggle   = [this]() { this->CallbackLedBlueToggle();   };
+
 
     // Simulate initialization by adding delay
     HAL_Delay(750);
@@ -114,7 +113,7 @@ bool Application::Init()
 
 /**
  * \brief   Error handler, acts as visual indicator to the user that the
- *          application entered an error state by toggling the red led.
+ *          application entered an error state by toggling the green led.
  */
 void Application::Error()
 {

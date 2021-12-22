@@ -2,13 +2,13 @@
 cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 
 # The project name (for the target)
-project(STM32F407-Discovery-FreeRTOS)
+project(freertos)
 
 # Source files
-add_library(freertos STATIC
+add_library(${PROJECT_NAME} STATIC
     source/croutine.c
     source/event_groups.c
-	source/heap_4.c
+    source/heap_4.c
     source/list.c
     source/queue.c
     source/stream_buffer.c
@@ -18,14 +18,14 @@ add_library(freertos STATIC
 )
 
 # Include directories
-target_include_directories(freertos PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/source/include
+target_include_directories(${PROJECT_NAME} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/config
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/portable
-	${CMAKE_CURRENT_SOURCE_DIR}/config
 )
 
-# Add compile options required by the target
-target_compile_options(freertos PRIVATE
+# Add compile options required by the library
+target_compile_options(${PROJECT_NAME} PRIVATE
     -mcpu=cortex-m4
     -mthumb
     -mfpu=fpv4-sp-d16

@@ -24,9 +24,7 @@ include_directories(Drivers/CMSIS/Include)
 include_directories(Drivers/CMSIS/Device/ST/STM32F4xx/Include)
 
 # Include directories - FreeRTOS
-include_directories(FreeRTOS/config)
-include_directories(FreeRTOS/portable)
-include_directories(FreeRTOS/source/include)
+include_directories(FreeRTOS/include)
 
 # Add other directories
 add_subdirectory(FreeRTOS)
