@@ -1,4 +1,3 @@
-/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    stm32f4xx_hal_timebase_TIM.c
@@ -14,80 +13,89 @@
   * License. You may obtain a copy of the License at:
   *                        opensource.org/licenses/BSD-3-Clause
   *
+  * @note This file is intended as a 'drop-in' functionality to provide HW
+  *       timer 14 as HAL clock tick. The timer is configured to run at
+  *       1000 Hz. It needs an implementation of function:
+  *       'void TIM8_TRG_COM_TIM14_IRQHandler(void);' in file:
+  *       'stm32f4xx_it.c'.
+  *
   ******************************************************************************
   */
-/* USER CODE END Header */
 
-/* Includes ------------------------------------------------------------------*/
+/************************************************************************/
+/* Includes                                                             */
+/************************************************************************/
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_tim.h"
 
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
+
+/************************************************************************/
+/* Variables                                                            */
+/************************************************************************/
 /**
  * \brief   Timer 14 variable, used as HAL timer ticks provider.
  */
 TIM_HandleTypeDef        htim14;
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
 
+
+/************************************************************************/
+/* Functions                                                            */
+/************************************************************************/
 /**
   * @brief  This function configures the TIM14 as a time base source.
   *         The time source is configured  to have 1ms time base with a dedicated
   *         Tick interrupt priority.
   * @note   This function is called  automatically at the beginning of program after
   *         reset by HAL_Init() or at any time when clock is configured, by HAL_RCC_ClockConfig().
-  * @param  TickPriority: Tick interrupt priority.
+  * @param  TickPriority  Tick interrupt priority.
   * @retval HAL status
   */
 HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 {
-  RCC_ClkInitTypeDef    clkconfig;
-  uint32_t              uwTimclock = 0;
-  uint32_t              uwPrescalerValue = 0;
-  uint32_t              pFLatency;
+    RCC_ClkInitTypeDef  clkconfig;
+    uint32_t            uwTimclock = 0;
+    uint32_t            uwPrescalerValue = 0;
+    uint32_t            pFLatency;
 
-  /*Configure the TIM14 IRQ priority */
-  HAL_NVIC_SetPriority(TIM8_TRG_COM_TIM14_IRQn, TickPriority ,0);
+    /*Configure the TIM14 IRQ priority */
+    HAL_NVIC_SetPriority(TIM8_TRG_COM_TIM14_IRQn, TickPriority ,0);
 
-  /* Enable the TIM14 global Interrupt */
-  HAL_NVIC_EnableIRQ(TIM8_TRG_COM_TIM14_IRQn);
+    /* Enable the TIM14 global Interrupt */
+    HAL_NVIC_EnableIRQ(TIM8_TRG_COM_TIM14_IRQn);
 
-  /* Enable TIM14 clock */
-  __HAL_RCC_TIM14_CLK_ENABLE();
+    /* Enable TIM14 clock */
+    __HAL_RCC_TIM14_CLK_ENABLE();
 
-  /* Get clock configuration */
-  HAL_RCC_GetClockConfig(&clkconfig, &pFLatency);
+    /* Get clock configuration */
+    HAL_RCC_GetClockConfig(&clkconfig, &pFLatency);
 
-  /* Compute TIM14 clock */
-  uwTimclock = HAL_RCC_GetPCLK1Freq();
+    /* Compute TIM14 clock */
+    uwTimclock = HAL_RCC_GetPCLK1Freq();
 
-  /* Compute the prescaler value to have TIM14 counter clock equal to 1MHz */
-  uwPrescalerValue = (uint32_t) ((uwTimclock / 1000000) - 1);
+    /* Compute the prescaler value to have TIM14 counter clock equal to 1MHz */
+    uwPrescalerValue = (uint32_t) ((uwTimclock / 1000000) - 1);
 
-  /* Initialize TIM14 */
-  htim14.Instance = TIM14;
+    /* Initialize TIM14 */
+    htim14.Instance = TIM14;
 
-  /* Initialize TIMx peripheral as follow:
-  + Period = [(TIM14CLK/1000) - 1]. to have a (1/1000) s time base.
-  + Prescaler = (uwTimclock/1000000 - 1) to have a 1MHz counter clock.
-  + ClockDivision = 0
-  + Counter direction = Up
-  */
-  htim14.Init.Period = (1000000 / 1000) - 1;
-  htim14.Init.Prescaler = uwPrescalerValue;
-  htim14.Init.ClockDivision = 0;
-  htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
-  if(HAL_TIM_Base_Init(&htim14) == HAL_OK)
-  {
-    /* Start the TIM time Base generation in interrupt mode */
-    return HAL_TIM_Base_Start_IT(&htim14);
-  }
+    /* Initialize TIMx peripheral as follows:
+       + Period = [(TIM14CLK/1000) - 1]. to have a (1/1000) s time base.
+       + Prescaler = (uwTimclock/1000000 - 1) to have a 1MHz counter clock.
+       + ClockDivision = 0
+       + Counter direction = Up
+    */
+    htim14.Init.Period = (1000000 / 1000) - 1;
+    htim14.Init.Prescaler = uwPrescalerValue;
+    htim14.Init.ClockDivision = 0;
+    htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
+    if(HAL_TIM_Base_Init(&htim14) == HAL_OK)
+    {
+        /* Start the TIM time Base generation in interrupt mode */
+        return HAL_TIM_Base_Start_IT(&htim14);
+    }
 
-  /* Return function status */
-  return HAL_ERROR;
+    /* Return function status */
+    return HAL_ERROR;
 }
 
 /**
@@ -96,8 +104,8 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
   */
 void HAL_SuspendTick(void)
 {
-  /* Disable TIM14 update Interrupt */
-  __HAL_TIM_DISABLE_IT(&htim14, TIM_IT_UPDATE);
+    /* Disable TIM14 update Interrupt */
+    __HAL_TIM_DISABLE_IT(&htim14, TIM_IT_UPDATE);
 }
 
 /**
@@ -106,8 +114,8 @@ void HAL_SuspendTick(void)
   */
 void HAL_ResumeTick(void)
 {
-  /* Enable TIM14 Update interrupt */
-  __HAL_TIM_ENABLE_IT(&htim14, TIM_IT_UPDATE);
+    /* Enable TIM14 Update interrupt */
+    __HAL_TIM_ENABLE_IT(&htim14, TIM_IT_UPDATE);
 }
 
 /**
@@ -119,9 +127,7 @@ void HAL_ResumeTick(void)
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  if (htim->Instance == TIM14) {
-    HAL_IncTick();
-  }
+    if (htim->Instance == TIM14) {
+        HAL_IncTick();
+    }
 }
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
