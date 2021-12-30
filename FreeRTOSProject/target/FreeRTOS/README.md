@@ -13,3 +13,7 @@ Files are reorganised for better maintainability:
 # Intent
 A library is made of FreeRTOS, which is to be included in the main project.
 It is configured for the STM32F4 board, with project specifics.
+
+# Port
+Be sure to choose the correct port, it is located in the:
+'FreeRTOS\Source\portable\GCC\ARM_CM4F' folder of the FreeRTOS sources.
