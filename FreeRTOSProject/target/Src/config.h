@@ -36,7 +36,7 @@
 
 
 // Version
-static const char versionString[] = "My Embedded Project v0.1";
+static const char versionString[] = "My Embedded FreeRTOS Project v0.1";
 
 
 // Available Expect/Assert modes

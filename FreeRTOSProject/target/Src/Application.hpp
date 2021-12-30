@@ -27,6 +27,10 @@
 /************************************************************************/
 #include <atomic>
 #include "config.h"
+#include "arbiters/SPI/SPI_arbiter.hpp"
+#include "components/LIS3DSH/LIS3DSH.hpp"
+#include "components/LIS3DSH/FakeLIS3DSH.hpp"
+#include "drivers/DMA/DMA.hpp"
 #include "drivers/Pin/Pin.hpp"
 
 
@@ -49,18 +53,35 @@ public:
     void StartTasks();
 
 private:
-    Pin mButton;
+//    Pin mButton;
     Pin mLedGreen;
     Pin mLedOrange;
     Pin mLedRed;
     Pin mLedBlue;
+    Pin mChipSelect;
+    Pin mMotionInt1;
+    Pin mMotionInt2;
 
+    SPI_arbiter mSPI;
+
+    DMA mDMA_SPI_Tx;
+    DMA mDMA_SPI_Rx;
+
+#if (LIS3DSH_ACCELEROMETER == REAL_LIS3DSH)
+    LIS3DSH        mLIS3DSH;
+#else
+    FakeLIS3DSH    mLIS3DSH;
+#endif
+
+//    std::atomic<bool> mButtonPressed;
+    std::atomic<bool> mMotionDataAvailable;
+    uint8_t mMotionLength;
     std::atomic<bool> mShouldBlinkLeds;
 
-    void CallbackButtonPressed();
+//    void ButtonPressedCallback();
+    void MotionDataReceived(uint8_t length);
 
     void CallbackLedGreenToggle();
-    void CallbackLedOrangeToggle();
     void CallbackLedRedToggle();
     void CallbackLedBlueToggle();
 };

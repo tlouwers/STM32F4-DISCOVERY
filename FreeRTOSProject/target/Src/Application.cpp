@@ -34,12 +34,10 @@
 /* Task - definitions                                                   */
 /************************************************************************/
 void vBlinkLedGreen(void* pvParam);
-void vBlinkLedOrange(void* pvParam);
 void vBlinkLedRed(void* pvParam);
 void vBlinkLedBlue(void* pvParam);
 
 static std::function<void()> callbackLedGreenToggle  = nullptr;
-static std::function<void()> callbackLedOrangeToggle = nullptr;
 static std::function<void()> callbackLedRedToggle    = nullptr;
 static std::function<void()> callbackLedBlueToggle   = nullptr;
 
@@ -50,11 +48,6 @@ static std::function<void()> callbackLedBlueToggle   = nullptr;
 static void CallbackLedGreenToggle()
 {
     if (callbackLedGreenToggle) { callbackLedGreenToggle(); }
-}
-
-static void CallbackLedOrangeToggle()
-{
-    if (callbackLedOrangeToggle) { callbackLedOrangeToggle(); }
 }
 
 static void CallbackLedRedToggle()
@@ -75,14 +68,26 @@ static void CallbackLedBlueToggle()
  * \brief   Constructor, configures pins and callbacks.
  */
 Application::Application() :
-    mButton(PIN_BUTTON, PullUpDown::HIGHZ),             // Externally pulled down
+//    mButton(PIN_BUTTON, PullUpDown::HIGHZ),             // Externally pulled down
     mLedGreen(PIN_LED_GREEN, Level::LOW),               // Off
     mLedOrange(PIN_LED_ORANGE, Level::LOW),
     mLedRed(PIN_LED_RED, Level::LOW),
     mLedBlue(PIN_LED_BLUE, Level::LOW),
-    mShouldBlinkLeds(false)
+    mChipSelect(PIN_SPI1_CS, Level::HIGH),              // SPI ChipSelect for Motion
+    mMotionInt1(PIN_MOTION_INT1, PullUpDown::HIGHZ),
+    mMotionInt2(PIN_MOTION_INT2, PullUpDown::HIGHZ),
+    mSPI(SPIInstance::SPI_1),
+    mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
+    mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
+    mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
+//    mButtonPressed(false),
+    mMotionDataAvailable(false),
+    mMotionLength(0),
+    mShouldBlinkLeds(true)
 {
-    mButton.Interrupt(Trigger::RISING, [this]() { this->CallbackButtonPressed(); } );
+    // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
+    //mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
+    mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
 }
 
 /**
@@ -92,19 +97,40 @@ Application::Application() :
  */
 bool Application::Init()
 {
-    bool result = true;
-
     mLedGreen.Set(Level::HIGH);
-    
+
     // Connect callbacks (C to C++ bridge)
     callbackLedGreenToggle  = [this]() { this->CallbackLedGreenToggle();  };
-    callbackLedOrangeToggle = [this]() { this->CallbackLedOrangeToggle(); };
     callbackLedRedToggle    = [this]() { this->CallbackLedRedToggle();    };
     callbackLedBlueToggle   = [this]() { this->CallbackLedBlueToggle();   };
 
 
     // Simulate initialization by adding delay
     HAL_Delay(750);
+
+    // Actual Init()
+    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    ASSERT(result);
+
+    result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    ASSERT(result);
+
+    result = mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
+    ASSERT(result);
+
+    result = mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
+    ASSERT(result);
+
+    result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+    ASSERT(result);
+
+    result = mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
+    ASSERT(result);
+    mMotionDataAvailable = false;
+    mMotionLength = 0;
+
+    result = mLIS3DSH.Enable();
+    ASSERT(result);
 
     mLedGreen.Set(Level::LOW);
 
@@ -113,7 +139,7 @@ bool Application::Init()
 
 /**
  * \brief   Error handler, acts as visual indicator to the user that the
- *          application entered an error state by toggling the green led.
+ *          application entered an error state by toggling the red led.
  */
 void Application::Error()
 {
@@ -142,8 +168,6 @@ bool Application::CreateTasks()
 
     result = ( xTaskCreate( vBlinkLedGreen,  "Blink Green Task",  configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
     ASSERT(result);
-    result = ( xTaskCreate( vBlinkLedOrange, "Blink Orange Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
-    ASSERT(result);
     result = ( xTaskCreate( vBlinkLedRed,    "Blink Red Task",    configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
     ASSERT(result);
     result = ( xTaskCreate( vBlinkLedBlue,   "Blink Blue Task",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
@@ -168,6 +192,7 @@ void Application::StartTasks()
 /**
  * \brief   Callback for the button pressed event.
  */
+/*
 void Application::CallbackButtonPressed()
 {
     mShouldBlinkLeds = !mShouldBlinkLeds;
@@ -180,6 +205,18 @@ void Application::CallbackButtonPressed()
         mLedBlue.Set(Level::LOW);
     }
 }
+*/
+
+/**
+ * \brief   Callback called for the motion data received callback.
+ */
+void Application::MotionDataReceived(uint8_t length)
+{
+    mLedOrange.Toggle();
+
+    mMotionDataAvailable = true;
+    mMotionLength = length;
+}
 
 /**
  * \brief   Callback for the green led toggle event.
@@ -187,14 +224,6 @@ void Application::CallbackButtonPressed()
 void Application::CallbackLedGreenToggle()
 {
     if (mShouldBlinkLeds) { mLedGreen.Toggle(); }
-}
-
-/**
- * \brief   Callback for the orange led toggle event.
- */
-void Application::CallbackLedOrangeToggle()
-{
-    if (mShouldBlinkLeds) { mLedOrange.Toggle(); }
 }
 
 /**
@@ -227,21 +256,6 @@ void vBlinkLedGreen(void *pvParameters)
     {
         CallbackLedGreenToggle();
         vTaskDelay( 200 / portTICK_RATE_MS );
-    }
-
-    vTaskDelete( NULL );
-}
-
-/**
- * \brief   Blink led orange task handler.
- * \details Configured to be executed every 300 milliseconds.
- */
-void vBlinkLedOrange(void *pvParameters)
-{
-    while (true)
-    {
-        CallbackLedOrangeToggle();
-        vTaskDelay( 300 / portTICK_RATE_MS );
     }
 
     vTaskDelete( NULL );
