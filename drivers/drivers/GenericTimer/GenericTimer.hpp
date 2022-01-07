@@ -82,16 +82,16 @@ public:
         /**
          * \brief   Constructor of the GenericTimer configuration struct.
          * \param   interruptPriority   Priority of the interrupt.
-         * \param   frequency           Frequency of the timer in Hz. Range [1..10000] Hz.
+         * \param   frequency           Frequency of the timer in Hz. Range [0.0 .. 10000.0] Hz (excluding max values).
          */
         Config(uint8_t interruptPriority,
-               uint16_t frequency) :
+               float frequency) :
             mInterruptPriority(interruptPriority),
             mFrequency(frequency)
         { }
 
-        uint8_t  mInterruptPriority;    ///< Interrupt priority.
-        uint16_t mFrequency;            ///< Frequency in Hz.
+        uint8_t mInterruptPriority;    ///< Interrupt priority.
+        float   mFrequency;            ///< Frequency in Hz.
     };
 
     explicit GenericTimer(const GenericTimerInstance& instance);
@@ -115,7 +115,7 @@ private:
     void SetInstance(const GenericTimerInstance& instance);
     void CheckAndEnableAHBPeripheralClock(const GenericTimerInstance& instance);
     void CheckAndDisableAHBPeripheralClock(const GenericTimerInstance& instance);
-    uint16_t CalculatePeriod(uint16_t desiredFrequency);
+    uint16_t CalculatePeriod(float desiredFrequency);
     IRQn_Type GetIRQn(const GenericTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
