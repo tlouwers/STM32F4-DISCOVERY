@@ -35,7 +35,6 @@
  * \brief   Constructor, configures pins and callbacks.
  */
 Application::Application() :
-//    mButton(PIN_BUTTON, PullUpDown::HIGHZ),             // Externally pulled down
     mLedGreen(PIN_LED_GREEN, Level::LOW),               // Off
     mLedOrange(PIN_LED_ORANGE, Level::LOW),
     mLedRed(PIN_LED_RED, Level::LOW),
@@ -43,16 +42,17 @@ Application::Application() :
     mChipSelect(PIN_SPI1_CS, Level::HIGH),              // SPI ChipSelect for Motion
     mMotionInt1(PIN_MOTION_INT1, PullUpDown::HIGHZ),
     mMotionInt2(PIN_MOTION_INT2, PullUpDown::HIGHZ),
+    mTim1(GenericTimerInstance::TIMER_10),
+    mTim2(GenericTimerInstance::TIMER_11),
+    mTim3(GenericTimerInstance::TIMER_12),
     mSPI(SPIInstance::SPI_1),
     mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
     mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-//    mButtonPressed(false),
     mMotionDataAvailable(false),
     mMotionLength(0)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
-    //mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
     mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
 }
 
@@ -64,10 +64,24 @@ Application::Application() :
 bool Application::Init()
 {
     mLedGreen.Set(Level::HIGH);
+
+    // Simulate initialization by adding delay
     HAL_Delay(750);
 
     // Actual Init()
-    bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    bool result = mCpuWakeCounter.Init();
+    ASSERT(result);
+
+    result = mTim1.Init(GenericTimer::Config(15, 5.00));   // 5.00 Hz --> 200 ms
+    ASSERT(result);
+
+    result = mTim2.Init(GenericTimer::Config(16, 2.22));        // 2.22 Hz --> 450 ms
+    ASSERT(result);
+
+    result = mTim3.Init(GenericTimer::Config(17, 1.74));        // 1.74 Hz --> 575 ms
+    ASSERT(result);
+
+    result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
     result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
@@ -84,8 +98,13 @@ bool Application::Init()
 
     result = mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
+
     mMotionDataAvailable = false;
     mMotionLength = 0;
+
+    mTim1.Start([this]() { this->CallbackLedGreenToggle(); });
+    mTim2.Start([this]() { this->CallbackLedRedToggle(); });
+    mTim3.Start([this]() { this->CallbackLedBlueToggle(); });
 
     result = mLIS3DSH.Enable();
     ASSERT(result);
@@ -103,15 +122,6 @@ void Application::Process()
 {
     static uint8_t motionArray[25 * 3 * 2] = {};
 
-/*
-    if (mButtonPressed)
-    {
-        mButtonPressed = false;
-
-        mLedGreen.Set(Level::LOW);
-    }
-*/
-
     if (mMotionDataAvailable)
     {
         mMotionDataAvailable = false;
@@ -122,6 +132,22 @@ void Application::Process()
 
         // Deinterleave to X,Y,Z samples
     }
+
+    // Handle an update (if available)
+    if (mCpuWakeCounter.IsUpdated())    // Will update once per second
+    {
+        // Get the updated statistics
+        CpuStats cpuStats = mCpuWakeCounter.GetStatistics();
+
+        // Handle the statistics, like log or assert if the wake percentage is above 80%
+        if (cpuStats.wakePercentage > 80.0f)
+        {
+            EXPECT(false);
+        }
+    }
+
+    // At the end of the main process loop enter the desired sleep mode
+    mCpuWakeCounter.EnterSleepMode(SleepMode::WaitForInterrupt);
 }
 
 /**
@@ -151,17 +177,6 @@ void Application::Error()
 /* Private Methods                                                      */
 /************************************************************************/
 /**
- * \brief   Callback for the button pressed event.
- */
-/*
-void Application::ButtonPressedCallback()
-{
-    mButtonPressed = true;
-    mLedGreen.Set(Level::HIGH);
-}
-*/
-
-/**
  * \brief   Callback called for the motion data received callback.
  */
 void Application::MotionDataReceived(uint8_t length)
@@ -170,4 +185,28 @@ void Application::MotionDataReceived(uint8_t length)
 
     mMotionDataAvailable = true;
     mMotionLength = length;
+}
+
+/**
+ * \brief   Callback for the green led toggle event.
+ */
+void Application::CallbackLedGreenToggle()
+{
+    mLedGreen.Toggle();
+}
+
+/**
+ * \brief   Callback for the red led toggle event.
+ */
+void Application::CallbackLedRedToggle()
+{
+    mLedRed.Toggle();
+}
+
+/**
+ * \brief   Callback for the blue led toggle event.
+ */
+void Application::CallbackLedBlueToggle()
+{
+    mLedBlue.Toggle();
 }

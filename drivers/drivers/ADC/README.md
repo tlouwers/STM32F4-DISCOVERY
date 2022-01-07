@@ -14,7 +14,7 @@ It has 2 modes implemented: either use only GetValue() as blocking method to get
 ## Notes
 All data is right aligned. No DMA methods are implemented as the ADC class is envisioned to be used to retrieve a value sporadically.
 Also no multichannel is implemented.
- 
+
 ## Example 1 (Polling/Blocking)
 ```cpp
 // Declare the class (in Application.hpp for example):

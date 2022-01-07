@@ -14,7 +14,7 @@ Intended use is to provide an easier means to work with the USART peripheral. Th
 When using the IDLE line feature during an Rx transmission, there will be an Rx and an IDLE line interrupt. Only 1 callback to Rx is called with the correct number of bytes.
 The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
- 
+
 ## Example
 ```cpp
 // Declare the class (in Application.hpp for example):

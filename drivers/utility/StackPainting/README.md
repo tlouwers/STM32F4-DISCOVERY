@@ -30,7 +30,7 @@ void main(void)
     Board::Init();
     Board::InitClock();
 
-    // Remainder of the application	
+    // Remainder of the application
     while(1)
     {
         // ...

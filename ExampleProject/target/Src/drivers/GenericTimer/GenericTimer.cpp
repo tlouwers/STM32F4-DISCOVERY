@@ -297,8 +297,8 @@ uint16_t GenericTimer::CalculatePeriod(float desiredFrequency)
     // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     // (10000 / desiredFrequency) - 1 = TIM_ARR
 
-    EXPECT(desiredFrequency > 0.0);
-    EXPECT(desiredFrequency <= 10000.0);
+    ASSERT(desiredFrequency > 0.0);
+    ASSERT(desiredFrequency <= 10000.0);
 
     uint32_t period = (10000 / desiredFrequency) - 1;
 

@@ -94,13 +94,13 @@ public:
     {
         /**
          * \brief   Constructor of the PWM configuration struct.
-         * \param   frequency   Clock frequency in Hz [1..65535].
+         * \param   frequency   Clock frequency in Hz [0.1 .. 8000000.0].
          */
-        explicit Config(uint16_t frequency) :
+        explicit Config(float frequency) :
             mFrequency(frequency)
         { }
 
-        uint16_t mFrequency;    ///< The frequency in Hz to use.
+        float mFrequency;   ///< The frequency in Hz to use.
     };
 
     explicit PWM(const PwmTimerInstance& instance);
@@ -123,7 +123,7 @@ private:
     void SetInstance(const PwmTimerInstance& instance);
     void CheckAndEnableAHB1PeripheralClock(const PwmTimerInstance& instance);
     void CheckAndDisbleAHB1PeripheralClock(const PwmTimerInstance& instance);
-    uint16_t CalculatePeriod(uint16_t desiredFrequency);
+    uint16_t CalculatePeriod(float desiredFrequency);
     uint32_t CalculatePulse(uint8_t desiredDutyCycle, uint32_t period);
     uint32_t GetChannel(Channel channel);
     bool StopAllChannels();

@@ -14,7 +14,7 @@ The latter requires a buffer filled with values of the precision configured (8 o
 
 ## Notes
 To provide more flexibility the BasicTimer is kept outside this class (allowing other timer triggers as well). DMA configuration is kept in line with peripherals as the USART and SPI.
- 
+
 ## Example 1 (no DMA)
 ```cpp
 // Declare the class (in Application.hpp for example):
@@ -23,19 +23,19 @@ Dac mDAC;
 // Initialize the class:
 bool Application::Initialize()
 {
-	// Initialize the DAC
-	bool result = mDAC.Init();
-	ASSERT(result);
+    // Initialize the DAC
+    bool result = mDAC.Init();
+    ASSERT(result);
 
-	// Configure channel 1: using defaults
-	result &= mDAC.ConfigureChannel(Dac::Channel::CHANNEL_1, Dac::ChannelConfig());
-	ASSERT(result);
+    // Configure channel 1: using defaults
+    result &= mDAC.ConfigureChannel(Dac::Channel::CHANNEL_1, Dac::ChannelConfig());
+    ASSERT(result);
 
     // Other stuff...
 
-	// Output a value: in DAC counts (in this case 12-bit)
-	result &= mDAC.SetValue(Dac::Channel::CHANNEL_1, 4500);
-	ASSERT(result);
+    // Output a value: in DAC counts (in this case 12-bit)
+    result &= mDAC.SetValue(Dac::Channel::CHANNEL_1, 4500);
+    ASSERT(result);
 
     return result;
 }
@@ -51,46 +51,46 @@ DMA        mDMA_DAC_Ch1;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
-	mBasicTimer(BasicTimerInstance::TIMER_6),
-	mDMA_DAC_Ch1(DMA::Stream::Dma1_Stream5),
+    mBasicTimer(BasicTimerInstance::TIMER_6),
+    mDMA_DAC_Ch1(DMA::Stream::Dma1_Stream5),
 {}
 
 // Initialize the class:
 bool Application::Initialize()
 {
-	// Initialize DMA for DAC channel 1
-	bool result = mDMA_DAC_Ch1.Configure(DMA::Channel::Channel7, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Circular, DMA::DataWidth::HalfWord, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-	ASSERT(result);
-	
-	// Link DMA with the DAC
-	result &= mDMA_DAC_Ch1.Link(mDAC.GetPeripheralHandle(), mDAC.GetDmaChannel1Handle());
-	ASSERT(result);
-
-	// Initialize the BasicTimer
-	result &= mBasicTimer.Init(BasicTimer::Config(12, 20));    // 20 Hz
-	ASSERT(result);
-
-	// Initialize the DAC
-	result &= mDAC.Init();
-	ASSERT(result);
-
-	// Configure the waveform which is later output on the DAC
-	result &= mDAC.ConfigureWaveform(Dac::Channel::CHANNEL_1, sine_table, SINE_TABLE_LEN);
+    // Initialize DMA for DAC channel 1
+    bool result = mDMA_DAC_Ch1.Configure(DMA::Channel::Channel7, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Circular, DMA::DataWidth::HalfWord, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
-	// Configure channel 1: using BasicTimer6, configured before
-	result &= mDAC.ConfigureChannel(Dac::Channel::CHANNEL_1, Dac::ChannelConfig(Dac::Precision::_12_BIT_R, Dac::Trigger::TIMER_6));
+    // Link DMA with the DAC
+    result &= mDMA_DAC_Ch1.Link(mDAC.GetPeripheralHandle(), mDAC.GetDmaChannel1Handle());
     ASSERT(result);
 
-	// Start the 'heartbeat' timer for the DAC DMA
-	result &= mBasicTimer.Start();
-	ASSERT(result);
+    // Initialize the BasicTimer
+    result &= mBasicTimer.Init(BasicTimer::Config(12, 20));    // 20 Hz
+    ASSERT(result);
+
+    // Initialize the DAC
+    result &= mDAC.Init();
+    ASSERT(result);
+
+    // Configure the waveform which is later output on the DAC
+    result &= mDAC.ConfigureWaveform(Dac::Channel::CHANNEL_1, sine_table, SINE_TABLE_LEN);
+    ASSERT(result);
+
+    // Configure channel 1: using BasicTimer6, configured before
+    result &= mDAC.ConfigureChannel(Dac::Channel::CHANNEL_1, Dac::ChannelConfig(Dac::Precision::_12_BIT_R, Dac::Trigger::TIMER_6));
+    ASSERT(result);
+
+    // Start the 'heartbeat' timer for the DAC DMA
+    result &= mBasicTimer.Start();
+    ASSERT(result);
 
     // Other stuff...
 
-	// Start the waveform output loop on DAC channel 1
-	result &= mDAC.StartWaveform(Dac::Channel::CHANNEL_1);
-	ASSERT(result);
+    // Start the waveform output loop on DAC channel 1
+    result &= mDAC.StartWaveform(Dac::Channel::CHANNEL_1);
+    ASSERT(result);
 
     return result;
 }

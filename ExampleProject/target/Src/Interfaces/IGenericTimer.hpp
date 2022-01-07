@@ -1,5 +1,5 @@
 /**
- * \file    IADC.hpp
+ * \file    IGenericTimer.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,7 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \brief   Generic interface for ADC peripheral driver.
+ * \brief   Generic interface for GenericTimer driver.
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/interfaces
  *
@@ -16,8 +16,8 @@
  * \date    06-2021
  */
 
-#ifndef IADC_HPP_
-#define IADC_HPP_
+#ifndef IGENERIC_TIMER_HPP_
+#define IGENERIC_TIMER_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -29,12 +29,13 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class IADC
+class IGenericTimer
 {
 public:
-    virtual bool GetValue(uint16_t& value) = 0;
-    virtual bool GetValueInterrupt(const std::function<void(uint16_t)>& handler) = 0;
+    virtual bool Start(const std::function<void()>& handler) = 0;
+    virtual bool IsStarted() const = 0;
+    virtual bool Stop() = 0;
 };
 
 
-#endif  // IADC_HPP_
+#endif  // IGENERIC_TIMER_HPP_

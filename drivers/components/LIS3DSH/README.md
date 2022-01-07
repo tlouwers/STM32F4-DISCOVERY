@@ -17,7 +17,7 @@ To be able to decouple from the ISR as much as possible, data is read to interna
 ## Notes
 This is configured to read samples (X,Y,Z) - 16-bit each, at 52 Hz from the LIS3DSH. The hardware FIFO is used, the threshold (or watermark level) is set to 25 samples.
 If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.
- 
+
 ## Example
 ```cpp
 // Declare the required classes (in Application.hpp for example):

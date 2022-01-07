@@ -10,10 +10,10 @@ By replacing the default enter/exit sleep mode call, some functionality is added
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 - C++11
 - DWT block as present on an ARM Cortex-M3, M4 or M7
- 
+
 ## Notes
 This code replaces the WaitForInterrupt / WaitForEvent functionality and assumes the main process loop iterates at least once per second. Since it uses a sleep mode, the CPU must wake up by using an interrupt or event respectively.
- 
+
 ## Example
 ```cpp
 // Include the header
@@ -21,6 +21,17 @@ This code replaces the WaitForInterrupt / WaitForEvent functionality and assumes
 
 // Declare the object
 CpuWakeCounter cpuWakeCounter;
+
+// Initialize the class
+bool Application::Initialize()
+{
+    bool result = cpuWakeCounter.Init();
+    assert(result);
+
+    // Other stuff...
+
+    return result;
+}
 
 // In the main process loop
 void Application::Process()

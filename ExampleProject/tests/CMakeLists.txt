@@ -13,8 +13,8 @@ target_sources(TestRunner
         TestRunner.cpp
         TestLIS3DSH.cpp
         # Mocks and Fakes
+        Fake/drivers/Pin/Pin.cpp
         Fake/utility/Assert/Assert.cpp
-        Fake/Pin.cpp
         Fake/stm32f4xx_hal.c
         # Test subjects
         ../target/Src/components/LIS3DSH/LIS3DSH.cpp

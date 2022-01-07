@@ -14,8 +14,8 @@
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/CpuWakeCounter
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.1
- * \date    01-2022
+ * \version 1.0
+ * \date    02-2019
  */
 
 #ifndef CPU_WAKE_COUNTER_HPP_

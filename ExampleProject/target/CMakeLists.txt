@@ -13,9 +13,9 @@ project(STM32F407-Discovery)
 enable_language(ASM)
 
 # Source files - user, HAL and CMSIS
-file(GLOB_RECURSE USER_SOURCES  "Src/*.c" "Src/*.cpp")
-file(GLOB_RECURSE HAL_SOURCES   "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
-file(GLOB_RECURSE CMSIS_SOURCES "Drivers/CMSIS/Device/ST/STM32F4xx/Source/*.c")
+file(GLOB_RECURSE USER_SOURCES     "Src/*.c" "Src/*.cpp")
+file(GLOB_RECURSE HAL_SOURCES      "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
+file(GLOB_RECURSE CMSIS_SOURCES    "Drivers/CMSIS/Device/ST/STM32F4xx/Source/*.c")
 
 # Include directories - user, HAL and CMSIS
 include_directories(Src)

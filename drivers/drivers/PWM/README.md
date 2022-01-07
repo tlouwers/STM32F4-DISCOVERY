@@ -14,7 +14,7 @@ Intended use is to provide an easier means to work with PWM channels. For this d
 Inspiration from: <https://stm32f4-discovery.net/2014/05/stm32f4-stm32f429-discovery-pwm-tutorial/>
 The use of Timer2..5 is hard-coded, as well as the assumption the APB1 timer clock source is set to 8 MHz. Future updates may lift these restrictions.
  If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.
- 
+
 ## Example
 ```cpp
 // Declare the class (in Application.hpp for example):
@@ -26,7 +26,7 @@ Application::Application() :
 {}
 
 // Initialize the class to setup the PWM frequency:
-bool result = mPwm.Init(PWM::Config(500));      // 500 Hz
+bool result = mPwm.Init(PWM::Config(500.0));    // 500.0 Hz
 
 // Configure a channel, here channel 1 using 50% duty cycle:
 bool result = mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50, PWM::Polarity::High));

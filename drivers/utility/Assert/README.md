@@ -15,10 +15,10 @@ The header is implemented as classic '.h' file to allow it to be used in C code 
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 * C++11 is assumed
 * A 'config.h' file in which the defines 'EXPECT_MODE' and 'ASSERT_MODE' are set.
- 
+
 # Notes
 This code replaces the classic assert logic with more fine-grained logic, be sure to configure it properly.
- 
+
 # Example
 ```cpp
 // Add the include file
