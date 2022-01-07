@@ -2,8 +2,8 @@
 A basic example or project structure for C++ development with the STM32F407G-DISC1 kit.
 
 Intended use is to be a starting point for developing, debugging and unit testing the STM32F407G-DISC1.
-This example read the accelerometer via DMA (and then discards the read samples). Data is stored in accelerometer FIFO until a threshold is reached, then ISR flags data is available. Data then is read via SPI/DMA. Orange led is used to signal data available.
-A light sleep mode is used to conserve power. 
+This example reads the accelerometer via DMA (and then discards the read samples). Data is stored in accelerometer FIFO until a threshold is reached, then ISR flags RTOS task data is available. Data is read via SPI/DMA. Orange led is used to signal data available.
+A light sleep mode is used to conserve power.
 Note: the button pin conflicts with the accelerometer Int1 pin, a board layout issue - they cannot be used at the same time. For now the accelerometer gets preference in this example.
 
 # Requirements
@@ -28,6 +28,7 @@ Note: the button pin conflicts with the accelerometer Int1 pin, a board layout i
 * Configuration of the cross-compile settings in a seperate CMake file
 * All C++ compiler flags in a seperate configuration file
 * Doxygen documentation (for target)
+* FreeRTOS as library, configuration in separate folder.
 
 # Notes
 * In 'Extensions', click the 'CMake Tools'extension. Then click the cog ('manage'), then 'Extension Settings'. This opens the settings of the extension. Scroll down to 'CMake: Generator', in the textbox below enter: 'Ninja'. This is the generator used per default for our project.
@@ -39,6 +40,7 @@ Note: the button pin conflicts with the accelerometer Int1 pin, a board layout i
 # Overview
 * 3rd-party\googletest - This folder contains the Google Test framework. It will be downloaded and updated automatically if Git is installed.
 * target - This folder contains the Cortex-M4 (ARM) project to be build (Cross-Compiled). The 'build' folder contains the artifacts created, the 'Drivers' folder contains the CMSIS and STM32 HAL code. The 'Src' folder contains the user code, drivers and application logic. The 'Startup' folder contains the startup assembly file. The 'arm-none-eabi-gcc.cmake' file contains setting to Cross-Compile for ARM. The file 'gcc-options-cxx.txt' contains specific GCC flags. They are present here as not to clutter the CMake file.
+* target/FreeRTOS - This folder contains the FreeRTOS code, configured for the Cortex-M4.
 * tests - This folder contains the unit tests as available for the project. It is build for PC (not ARM) and uses code from the 'target' to test.
 
 # Usage
@@ -68,8 +70,9 @@ There will be a time components are updates, meaning this example and environmen
 - launch.json - contains the settings to start debugging, either the target (using OpenOCD) or the unit test executable.
 - settings.json - contains the settings which make IntelliSense happy, compiler and folder dependent.
 - tasks.json - contains the settings for configuration and building the project, both the target and unit tests.
+* In folder 'target/FreeRTOS/config' is the FreeRTOS configuration file for the Cortex-M4 board.
 * In folder 'target/Drivers/STM32F4xx_HAL_Driver' is the STM32F4 HAL code.
-* The file 'arm-none-eabi-gg.cmake' contains the settings required for cross compiling for ARM.
+* The file 'arm-none-eabi-gcc.cmake' contains the settings required for cross compiling for ARM.
 
 # Upgrading the STM32 HAL
 Start by downloading the 'STM32CubeF4' package, along with any patch available (https://my.st.com/content/my_st_com/en/products/embedded-software/mcu-mpu-embedded-software/stm32-embedded-software/stm32cube-mcu-mpu-packages/stm32cubef4.html#). Then perform a manual compare of the 'target/Drivers/CMSIS' and 'target/Drivers/STM32F4xx_HAL_Driver' directory with the new HAL folders. Take note that this example project only uses the HAL, not the low level drivers (using the 'll_' prefix). It requires some manual compares, but overall relatively few files will have changed. The 'Legacy' part is not used.

@@ -320,3 +320,11 @@ void vMotionData(void *pvParameters)
 
     vTaskDelete( NULL );
 }
+
+/**
+ * \brief   Application Idle Hook, implements a light sleep mode.
+ */
+extern "C" void vApplicationIdleHook(void)
+{
+    __WFI();
+}
