@@ -15,7 +15,7 @@ Via the HI-M1388AR_Lib header file various digits, letters and symbols are provi
 ## Notes
 If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.
 To easily design more items to display, have a look at: https://xantorohara.github.io/led-matrix-editor/#
- 
+
 ## Example
 ```cpp
 // Declare the required classes (in Application.hpp for example):

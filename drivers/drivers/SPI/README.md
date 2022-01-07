@@ -15,7 +15,7 @@ Master only.
 The ChipSelect is to be toggled manually (outside the class).
 The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
- 
+
 ## Example
 ```cpp
 // Declare the class (in Application.hpp for example):

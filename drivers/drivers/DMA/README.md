@@ -14,7 +14,7 @@ Intended use is to provide a plug-n-play DMA object to 'Link' with a peripheral.
 The callbacks are called withing ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
 If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.
- 
+
 ## Example
 ```cpp
 // Declare the class (in Application.hpp for example):

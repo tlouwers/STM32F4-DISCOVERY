@@ -1,5 +1,5 @@
 /**
- * \file 	heap_check.c
+ * \file    heap_check.c
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain

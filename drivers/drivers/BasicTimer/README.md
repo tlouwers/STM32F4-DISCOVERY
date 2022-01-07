@@ -1,5 +1,4 @@
 
-
 # BasicTimer
 BasicTimer peripheral driver class.
 
@@ -14,7 +13,7 @@ Envisioned is to create and enable a 'heartbeat' tick of a certain frequency, wh
 ## Notes
 The timer is assumed to be used as trigger for the DMA for the DAC.
 Assumed is AHB1 is set to 8 MHz.
- 
+
 ## Example
 ```cpp
 // Declare the class (in Application.hpp for example):
@@ -24,26 +23,26 @@ BasicTimer  mBasicTimer;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
-	mBasicTimer(BasicTimerInstance::TIMER_7),
+    mBasicTimer(BasicTimerInstance::TIMER_7),
 {}
 
 // Initialize the class:
 bool Application::Initialize()
 {
-	// Initialize the BasicTimer.
-	bool result = mBasicTimer.Init(BasicTimer::Config(12, 10000)); // 10 kHz
-	ASSERT(result);
+    // Initialize the BasicTimer.
+    bool result = mBasicTimer.Init(BasicTimer::Config(12, 10000)); // 10 kHz
+    ASSERT(result);
 
     // DAC and its DMA configuration here.
     // DAC should configure a waveform to output (loop over)
 
-	// Start the 'heartbeat' tick. Use the DAC to start/stop the waveform.
-	result &= mBasicTimer.Start();
-	ASSERT(result);
+    // Start the 'heartbeat' tick. Use the DAC to start/stop the waveform.
+    result &= mBasicTimer.Start();
+    ASSERT(result);
 
-	// Start the DAC waveform.
+    // Start the DAC waveform.
 
-	// Other stuff...
+    // Other stuff...
 
     return result;
 }

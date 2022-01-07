@@ -32,7 +32,7 @@
 class IADC
 {
 public:
-    virtual bool GetValue(uint16_t& value) =0;
+    virtual bool GetValue(uint16_t& value) = 0;
     virtual bool GetValueInterrupt(const std::function<void(uint16_t)>& handler) = 0;
 };
 
