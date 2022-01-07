@@ -2,8 +2,8 @@
 A basic example or project structure for C++ development with the STM32F407G-DISC1 kit.
 
 Intended use is to be a starting point for developing, debugging and unit testing the STM32F407G-DISC1.
-This example read the accelerometer via DMA (and then discards the read samples). Data is stored in accelerometer FIFO until a threshold is reached, then ISR flags data is available. Data then is read via SPI/DMA. Orange led is used to signal data available.
-A light sleep mode is used to conserve power. 
+This example reads the accelerometer via DMA (and then discards the read samples). Data is stored in accelerometer FIFO until a threshold is reached, then ISR flags data is available. Data is read via SPI/DMA. Orange led is used to signal data available.
+A light sleep mode is used to conserve power.
 Note: the button pin conflicts with the accelerometer Int1 pin, a board layout issue - they cannot be used at the same time. For now the accelerometer gets preference in this example.
 
 # Requirements
@@ -69,7 +69,7 @@ There will be a time components are updates, meaning this example and environmen
 - settings.json - contains the settings which make IntelliSense happy, compiler and folder dependent.
 - tasks.json - contains the settings for configuration and building the project, both the target and unit tests.
 * In folder 'target/Drivers/STM32F4xx_HAL_Driver' is the STM32F4 HAL code.
-* The file 'arm-none-eabi-gg.cmake' contains the settings required for cross compiling for ARM.
+* The file 'arm-none-eabi-gcc.cmake' contains the settings required for cross compiling for ARM.
 
 # Upgrading the STM32 HAL
 Start by downloading the 'STM32CubeF4' package, along with any patch available (https://my.st.com/content/my_st_com/en/products/embedded-software/mcu-mpu-embedded-software/stm32-embedded-software/stm32cube-mcu-mpu-packages/stm32cubef4.html#). Then perform a manual compare of the 'target/Drivers/CMSIS' and 'target/Drivers/STM32F4xx_HAL_Driver' directory with the new HAL folders. Take note that this example project only uses the HAL, not the low level drivers (using the 'll_' prefix). It requires some manual compares, but overall relatively few files will have changed. The 'Legacy' part is not used.

@@ -31,7 +31,9 @@
 #include "components/LIS3DSH/LIS3DSH.hpp"
 #include "components/LIS3DSH/FakeLIS3DSH.hpp"
 #include "drivers/DMA/DMA.hpp"
+#include "drivers/GenericTimer/GenericTimer.hpp"
 #include "drivers/Pin/Pin.hpp"
+#include "utility/CpuWakeCounter/CpuWakeCounter.hpp"
 
 
 /************************************************************************/
@@ -51,7 +53,6 @@ public:
     void Error();
 
 private:
-//    Pin mButton;
     Pin mLedGreen;
     Pin mLedOrange;
     Pin mLedRed;
@@ -59,6 +60,12 @@ private:
     Pin mChipSelect;
     Pin mMotionInt1;
     Pin mMotionInt2;
+
+    CpuWakeCounter mCpuWakeCounter;
+
+    GenericTimer mTim1;
+    GenericTimer mTim2;
+    GenericTimer mTim3;
 
     SPI_arbiter mSPI;
 
@@ -71,12 +78,14 @@ private:
     FakeLIS3DSH    mLIS3DSH;
 #endif
 
-//    std::atomic<bool> mButtonPressed;
     std::atomic<bool> mMotionDataAvailable;
     uint8_t mMotionLength;
 
-//    void ButtonPressedCallback();
     void MotionDataReceived(uint8_t length);
+
+    void CallbackLedGreenToggle();
+    void CallbackLedRedToggle();
+    void CallbackLedBlueToggle();
 };
 
 
