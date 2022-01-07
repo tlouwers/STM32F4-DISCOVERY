@@ -36,10 +36,13 @@
 void vBlinkLedGreen(void* pvParam);
 void vBlinkLedRed(void* pvParam);
 void vBlinkLedBlue(void* pvParam);
+void vMotionData(void* pvParam);
+static TaskHandle_t xMotionData = NULL;
 
-static std::function<void()> callbackLedGreenToggle  = nullptr;
-static std::function<void()> callbackLedRedToggle    = nullptr;
-static std::function<void()> callbackLedBlueToggle   = nullptr;
+static std::function<void()> callbackLedGreenToggle     = nullptr;
+static std::function<void()> callbackLedRedToggle       = nullptr;
+static std::function<void()> callbackLedBlueToggle      = nullptr;
+static std::function<void()> callbackMotionDataReceived = nullptr;
 
 
 /************************************************************************/
@@ -60,6 +63,11 @@ static void CallbackLedBlueToggle()
     if (callbackLedBlueToggle) { callbackLedBlueToggle(); }
 }
 
+static void CallbackMotionDataReceived()
+{
+    if (callbackMotionDataReceived) { callbackMotionDataReceived(); }
+}
+
 
 /************************************************************************/
 /* Public Methods                                                       */
@@ -68,7 +76,6 @@ static void CallbackLedBlueToggle()
  * \brief   Constructor, configures pins and callbacks.
  */
 Application::Application() :
-//    mButton(PIN_BUTTON, PullUpDown::HIGHZ),             // Externally pulled down
     mLedGreen(PIN_LED_GREEN, Level::LOW),               // Off
     mLedOrange(PIN_LED_ORANGE, Level::LOW),
     mLedRed(PIN_LED_RED, Level::LOW),
@@ -80,13 +87,9 @@ Application::Application() :
     mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
     mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-//    mButtonPressed(false),
-    mMotionDataAvailable(false),
-    mMotionLength(0),
-    mShouldBlinkLeds(true)
+    mMotionLength(0)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
-    //mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
     mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
 }
 
@@ -100,9 +103,10 @@ bool Application::Init()
     mLedGreen.Set(Level::HIGH);
 
     // Connect callbacks (C to C++ bridge)
-    callbackLedGreenToggle  = [this]() { this->CallbackLedGreenToggle();  };
-    callbackLedRedToggle    = [this]() { this->CallbackLedRedToggle();    };
-    callbackLedBlueToggle   = [this]() { this->CallbackLedBlueToggle();   };
+    callbackLedGreenToggle     = [this]() { this->CallbackLedGreenToggle();     };
+    callbackLedRedToggle       = [this]() { this->CallbackLedRedToggle();       };
+    callbackLedBlueToggle      = [this]() { this->CallbackLedBlueToggle();      };
+    callbackMotionDataReceived = [this]() { this->CallbackMotionDataReceived(); };
 
 
     // Simulate initialization by adding delay
@@ -126,7 +130,6 @@ bool Application::Init()
 
     result = mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
-    mMotionDataAvailable = false;
     mMotionLength = 0;
 
     result = mLIS3DSH.Enable();
@@ -172,6 +175,8 @@ bool Application::CreateTasks()
     ASSERT(result);
     result = ( xTaskCreate( vBlinkLedBlue,   "Blink Blue Task",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
     ASSERT(result);
+    result = ( xTaskCreate( vMotionData,     "Motion Data Task",  configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xMotionData) == pdPASS ) ? true : false;
+    ASSERT(result);
 
     return result;
 }
@@ -190,32 +195,17 @@ void Application::StartTasks()
 /* Private Methods                                                      */
 /************************************************************************/
 /**
- * \brief   Callback for the button pressed event.
- */
-/*
-void Application::CallbackButtonPressed()
-{
-    mShouldBlinkLeds = !mShouldBlinkLeds;
-
-    if (!mShouldBlinkLeds)
-    {
-        mLedGreen.Set(Level::LOW);
-        mLedOrange.Set(Level::LOW);
-        mLedRed.Set(Level::LOW);
-        mLedBlue.Set(Level::LOW);
-    }
-}
-*/
-
-/**
  * \brief   Callback called for the motion data received callback.
  */
 void Application::MotionDataReceived(uint8_t length)
 {
-    mLedOrange.Toggle();
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    mMotionDataAvailable = true;
     mMotionLength = length;
+
+    vTaskNotifyGiveFromISR( xMotionData, &xHigherPriorityTaskWoken );
+
+    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 /**
@@ -223,7 +213,7 @@ void Application::MotionDataReceived(uint8_t length)
  */
 void Application::CallbackLedGreenToggle()
 {
-    if (mShouldBlinkLeds) { mLedGreen.Toggle(); }
+    mLedGreen.Toggle();
 }
 
 /**
@@ -231,7 +221,7 @@ void Application::CallbackLedGreenToggle()
  */
 void Application::CallbackLedRedToggle()
 {
-    if (mShouldBlinkLeds) { mLedRed.Toggle(); }
+    mLedRed.Toggle();
 }
 
 /**
@@ -239,7 +229,26 @@ void Application::CallbackLedRedToggle()
  */
 void Application::CallbackLedBlueToggle()
 {
-    if (mShouldBlinkLeds) { mLedBlue.Toggle(); }
+    mLedBlue.Toggle();
+}
+
+/**
+ * \brief   Callback for the motion data received event.
+ */
+void Application::CallbackMotionDataReceived()
+{
+    static uint8_t motionArray[25 * 3 * 2] = {};
+
+    if (mMotionLength > 0)
+    {
+        mLedOrange.Toggle();
+
+        bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
+        EXPECT(retrieveResult);
+        (void)(retrieveResult);
+
+        // Deinterleave to X,Y,Z samples
+    }
 }
 
 
@@ -286,6 +295,27 @@ void vBlinkLedBlue(void *pvParameters)
     {
         CallbackLedBlueToggle();
         vTaskDelay( 575 / portTICK_RATE_MS );
+    }
+
+    vTaskDelete( NULL );
+}
+
+/**
+ * \brief   Handle motion data as it arrives per callback (via ISR context).
+ */
+void vMotionData(void *pvParameters)
+{
+    const TickType_t xBlockTime = pdMS_TO_TICKS( 500 );
+    uint32_t ulNotifiedValue;
+
+    while (true)
+    {
+        ulNotifiedValue = ulTaskNotifyTake( pdFALSE, xBlockTime );
+
+        if (ulNotifiedValue > 0)
+        {
+            CallbackMotionDataReceived();
+        }
     }
 
     vTaskDelete( NULL );

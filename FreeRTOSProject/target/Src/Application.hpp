@@ -53,7 +53,6 @@ public:
     void StartTasks();
 
 private:
-//    Pin mButton;
     Pin mLedGreen;
     Pin mLedOrange;
     Pin mLedRed;
@@ -73,17 +72,14 @@ private:
     FakeLIS3DSH    mLIS3DSH;
 #endif
 
-//    std::atomic<bool> mButtonPressed;
-    std::atomic<bool> mMotionDataAvailable;
-    uint8_t mMotionLength;
-    std::atomic<bool> mShouldBlinkLeds;
+    std::atomic<uint8_t> mMotionLength;
 
-//    void ButtonPressedCallback();
     void MotionDataReceived(uint8_t length);
 
     void CallbackLedGreenToggle();
     void CallbackLedRedToggle();
     void CallbackLedBlueToggle();
+    void CallbackMotionDataReceived();
 };
 
 

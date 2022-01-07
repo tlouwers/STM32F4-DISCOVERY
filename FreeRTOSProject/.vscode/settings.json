@@ -13,5 +13,5 @@
         "numeric": "cpp",
         "streambuf": "cpp",
         "algorithm": "cpp"
-    },    
+    },
 }
