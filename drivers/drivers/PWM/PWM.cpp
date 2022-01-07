@@ -220,12 +220,12 @@ void PWM::CheckAndDisbleAHB1PeripheralClock(const PwmTimerInstance& instance)
  * \brief   Calculate the PWM period value.
  * \param   desiredFrequency    The desired frequency in Hz to use.
  * \returns Period value (TIMx_ARR).
- * \note    The CK_CNT is assumed to be 10 kHz.
+ * \note    The CK_CNT is assumed to be 8 MHz.
  */
-uint16_t PWM::CalculatePeriod(uint16_t desiredFrequency)
+uint16_t PWM::CalculatePeriod(float desiredFrequency)
 {
-    EXPECT(desiredFrequency > 0);
-    if (desiredFrequency == 0) { desiredFrequency = 1; }        // Prevent divide by 0
+    EXPECT(desiredFrequency > 0.1);
+    EXPECT(desiredFrequency <= 8000000.0);
 
     // The timer tick frequency is set with: timer_tick_frequency = timer_default_frequency / (prescaler + 1)
     // We use the max frequency for the timer: set prescaler to 0 and the timer will have the max tick frequency.
