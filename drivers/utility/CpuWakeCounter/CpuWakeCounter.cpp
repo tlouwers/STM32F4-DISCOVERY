@@ -14,8 +14,8 @@
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/CpuWakeCounter
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    02-2019
+ * \version 1.1
+ * \date    01-2022
  */
 
 /************************************************************************/
@@ -27,6 +27,31 @@
 /************************************************************************/
 /* Public Methods                                                       */
 /************************************************************************/
+/**
+ * \brief   Initialize the DWT (Data Watchpoint and Trace) unit on the
+ *          microcontroller.
+ * \returns True if the unit could be initialized, else false.
+ */
+bool CpuWakeCounter::Init() {
+    // Enable TRC
+    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk;    // ~0x01000000 -- Disable TRC
+    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk;    //  0x01000000 -- Enable  TRC
+
+    // Enable counter
+    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk;               // ~0x00000001 -- Disable clock cycle counter
+    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk;               //  0x00000001 -- Enable  clock cycle counter
+
+    // Reset the clock cycle counter value
+    DWT->CYCCNT = 0;
+
+    __NOP();    // 3 NO OPERATION instructions
+    __NOP();
+    __NOP();
+
+    // Check if DWT has started
+    return (DWT->CYCCNT == 0) ? false : true;
+}
+
 /**
  * \brief   Enter sleep mode with native WaitForInterrupt or WaitForEvent
  *          configured. Will keep track of the CPU wake percentage and

@@ -14,8 +14,8 @@
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/CpuWakeCounter
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    02-2019
+ * \version 1.1
+ * \date    01-2022
  */
 
 #ifndef CPU_WAKE_COUNTER_HPP_
@@ -70,6 +70,8 @@ enum class SleepMode : bool
 class CpuWakeCounter
 {
 public:
+    bool Init();
+
     void EnterSleepMode(SleepMode mode, bool suspend_systick = true);
 
     bool IsUpdated() const;
