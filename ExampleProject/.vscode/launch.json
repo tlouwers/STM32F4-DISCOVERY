@@ -17,7 +17,7 @@
             "configFiles": [
                 "board/stm32f4discovery.cfg"
             ],
-            "runToMain": true,
+            "runToEntryPoint": "main",
         },
         {
             "name": "Debug Unit Tests",
