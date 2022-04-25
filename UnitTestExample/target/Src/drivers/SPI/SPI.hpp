@@ -139,7 +139,7 @@ private:
     uint32_t CalculatePrescaler(uint32_t busSpeed);
     IRQn_Type GetIRQn(const SPIInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
-    void CallbackIRQ();
+    void CallbackIRQ() const;
 };
 
 #endif  // SPI_HPP_
