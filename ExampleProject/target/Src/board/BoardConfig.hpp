@@ -54,6 +54,15 @@ constexpr PinIdPort PIN_SPI1_CS     = { GPIO_PIN_3,  GPIOE };
 constexpr PinIdPort PIN_MOTION_INT1 = { GPIO_PIN_0,  GPIOE };
 constexpr PinIdPort PIN_MOTION_INT2 = { GPIO_PIN_1,  GPIOE };
 
+// 8x8 LED Display - SPI2
+constexpr PinIdPort PIN_SPI2_SCK    = { GPIO_PIN_13, GPIOB };
+constexpr PinIdPort PIN_SPI2_MISO   = { GPIO_PIN_14, GPIOB };   // Not used
+constexpr PinIdPort PIN_SPI2_MOSI   = { GPIO_PIN_15, GPIOB };
+constexpr PinIdPort PIN_SPI2_CS     = { GPIO_PIN_12, GPIOB };
+
+// PWM
+constexpr PinIdPort PIN_PWM_CH1     = { GPIO_PIN_15, GPIOA };
+
 // DAC
 constexpr PinIdPort PIN_DAC_CHANNEL1 = { GPIO_PIN_4,  GPIOA };
 constexpr PinIdPort PIN_DAC_CHANNEL2 = { GPIO_PIN_5,  GPIOA };

@@ -289,12 +289,16 @@ void GenericTimer::CheckAndDisableAHBPeripheralClock(const GenericTimerInstance&
  * \param   desiredFrequency    The desired frequency in Hz to use.
  * \returns Period value (TIM_ARR).
  * \note    The CK_CNT is assumed to be 10 kHz.
+ *          Asserts if desiredFrequency not within valid range.
  */
-uint16_t GenericTimer::CalculatePeriod(uint16_t desiredFrequency)
+uint16_t GenericTimer::CalculatePeriod(float desiredFrequency)
 {
     // Freq. CK_CNT is 10 kHz
     // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     // (10000 / desiredFrequency) - 1 = TIM_ARR
+
+    ASSERT(desiredFrequency > 0.0);
+    ASSERT(desiredFrequency <= 10000.0);
 
     uint32_t period = (10000 / desiredFrequency) - 1;
 

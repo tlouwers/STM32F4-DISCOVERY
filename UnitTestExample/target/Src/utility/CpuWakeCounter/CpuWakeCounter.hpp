@@ -70,6 +70,8 @@ enum class SleepMode : bool
 class CpuWakeCounter
 {
 public:
+    bool Init();
+
     void EnterSleepMode(SleepMode mode, bool suspend_systick = true);
 
     bool IsUpdated() const;

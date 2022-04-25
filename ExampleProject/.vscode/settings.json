@@ -1,10 +1,6 @@
 {
     "C_Cpp.default.defines": ["USE_HAL_DRIVER",
                               "STM32F407xx"],
-    "C_Cpp.default.compilerPath": "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2021.10/bin/arm-none-eabi-g++.exe",
-    "C_Cpp.default.includePath": ["C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2021.10/lib/gcc/arm-none-eabi/10.3.1/include",
-                                  "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2021.10/lib/gcc/arm-none-eabi/10.3.1/include-fixed",
-                                  "${workspaceFolder}/**"],
     "C_Cpp.default.intelliSenseMode": "gcc-arm",
     "C_Cpp.default.cStandard": "gnu11",
     "C_Cpp.default.cppStandard": "gnu++14",
@@ -12,7 +8,7 @@
         "*.tcc": "cpp",
         "numeric": "cpp",
         "streambuf": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "functional": "cpp"
     },
-    
 }

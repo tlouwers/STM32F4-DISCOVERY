@@ -31,8 +31,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
-#include "Interfaces/IInitable.hpp"
-#include "Interfaces/IRTC.hpp"
+#include "interfaces/IInitable.hpp"
+#include "interfaces/IRTC.hpp"
 #include "stm32f4xx_hal.h"
 
 

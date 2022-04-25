@@ -559,9 +559,9 @@ void SPI::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
 /**
  * \brief   Generic SPI IRQ callback. Will propagate other interrupts.
  */
-void SPI::CallbackIRQ()
+void SPI::CallbackIRQ() const
 {
-    HAL_SPI_IRQHandler(&mHandle);
+    HAL_SPI_IRQHandler(const_cast<SPI_HandleTypeDef*>(&mHandle));
 }
 
 

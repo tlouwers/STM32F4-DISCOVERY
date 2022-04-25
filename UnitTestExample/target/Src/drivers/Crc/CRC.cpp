@@ -21,7 +21,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include "drivers/CRC/CRC.hpp"
+#include "drivers/Crc/CRC.hpp"
 #include "utility/Assert/Assert.h"
 #include "stm32f4xx_hal_crc.h"
 
@@ -34,7 +34,7 @@
  */
 Crc::Crc() :
     mInitialized(false)
-{ 
+{
     mHandle.Instance = CRC;
 }
 
@@ -115,7 +115,7 @@ uint32_t Crc::Calculate(uint32_t* buffer, uint32_t length)
  *          instance is enabled, if not enable it.
  */
 void Crc::CheckAndEnableAHBPeripheralClock()
-{ 
+{
     if (__HAL_RCC_CRC_IS_CLK_DISABLED()) { __HAL_RCC_CRC_CLK_ENABLE(); }
 }
 
