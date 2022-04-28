@@ -72,13 +72,16 @@ bool Application::Init()
     bool result = mCpuWakeCounter.Init();
     ASSERT(result);
 
-    result = mTim1.Init(GenericTimer::Config(15, 5.00));   // 5.00 Hz --> 200 ms
+    result = mWatchdog.Init(Watchdog::Config(Watchdog::Timeout::_4_S));     // 4 seconds
     ASSERT(result);
 
-    result = mTim2.Init(GenericTimer::Config(16, 2.22));        // 2.22 Hz --> 450 ms
+    result = mTim1.Init(GenericTimer::Config(15, 5.00));                    // 5.00 Hz --> 200 ms
     ASSERT(result);
 
-    result = mTim3.Init(GenericTimer::Config(17, 1.74));        // 1.74 Hz --> 575 ms
+    result = mTim2.Init(GenericTimer::Config(16, 2.22));                    // 2.22 Hz --> 450 ms
+    ASSERT(result);
+
+    result = mTim3.Init(GenericTimer::Config(17, 1.74));                    // 1.74 Hz --> 575 ms
     ASSERT(result);
 
     result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
@@ -103,8 +106,8 @@ bool Application::Init()
     mMotionLength = 0;
 
     mTim1.Start([this]() { this->CallbackLedGreenToggle(); });
-    mTim2.Start([this]() { this->CallbackLedRedToggle(); });
-    mTim3.Start([this]() { this->CallbackLedBlueToggle(); });
+    mTim2.Start([this]() { this->CallbackLedRedToggle();   });
+    mTim3.Start([this]() { this->CallbackLedBlueToggle();  });
 
     result = mLIS3DSH.Enable();
     ASSERT(result);
@@ -144,6 +147,9 @@ void Application::Process()
         {
             EXPECT(false);
         }
+
+        // Refresh watchdog every once in a while - before the 4 second timeout
+        mWatchdog.Refresh();
     }
 
     // At the end of the main process loop enter the desired sleep mode

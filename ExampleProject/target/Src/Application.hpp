@@ -33,6 +33,7 @@
 #include "drivers/DMA/DMA.hpp"
 #include "drivers/GenericTimer/GenericTimer.hpp"
 #include "drivers/Pin/Pin.hpp"
+#include "drivers/Watchdog/Watchdog.hpp"
 #include "utility/CpuWakeCounter/CpuWakeCounter.hpp"
 
 
@@ -62,6 +63,7 @@ private:
     Pin mMotionInt2;
 
     CpuWakeCounter mCpuWakeCounter;
+    Watchdog       mWatchdog;
 
     GenericTimer mTim1;
     GenericTimer mTim2;
