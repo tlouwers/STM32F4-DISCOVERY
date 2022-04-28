@@ -505,7 +505,7 @@ uint32_t SPI::GetPhase(const Mode& mode)
  * \brief   Calculate the SPI bus prescale value.
  * \param   busSpeed    The desired bus speed to use.
  * \returns Prescaler which takes the peripheral clock into account and tries
- *          to get the closes prescaler value to meet that speed.
+ *          to get the closest prescaler value to meet that speed.
  */
 uint32_t SPI::CalculatePrescaler(uint32_t busSpeed)
 {
