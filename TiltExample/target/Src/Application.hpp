@@ -38,6 +38,17 @@
 
 
 /************************************************************************/
+/* Structs                                                              */
+/************************************************************************/
+struct MotionSample
+{
+    int16_t X;
+    int16_t Y;
+    int16_t Z;
+};
+
+
+/************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
 /**
@@ -92,6 +103,7 @@ private:
     void CallbackLedRedToggle();
     void CallbackLedBlueToggle();
     void CallbackMotionDataReceived();
+    void CallbackSendSampleViaUsart(const MotionSample &sample);
 };
 
 

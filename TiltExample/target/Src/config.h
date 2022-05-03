@@ -12,9 +12,6 @@
  *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/TiltExample/target/Src
  *
- * \details Intended use is to provide an example how to configure the ASSERT
- *          and EXPECT macros.
- *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
  * \date    05-2021
@@ -62,6 +59,13 @@ static const char versionString[] = "Tilt Example v0.1";
 
 // Configuration of the LIS3DSH accelerometer
 #define LIS3DSH_ACCELEROMETER  REAL_LIS3DSH
+
+// Available simulated sensor output data
+#define SAWTOOTH_SIGNAL        1
+#define SEMI_REAL_SIGNAL       2
+
+// Configuration of the simulated sensor output data
+#define SIMULATED_SENSOR_OUTPUT_DATA    SAWTOOTH_SIGNAL
 
 
 #ifdef __cplusplus

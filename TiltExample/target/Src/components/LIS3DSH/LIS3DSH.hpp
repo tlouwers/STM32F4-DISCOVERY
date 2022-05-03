@@ -152,7 +152,7 @@ private:
     bool PrepareReadBuffer(SampleFrequency sampleFrequency);
     bool ClearFifo();
     uint8_t GetSampleFrequencyAsODR(SampleFrequency sampleFrequency);
-    uint8_t GetScaleAsFCALE(Scale scale);
+    uint8_t GetScaleAsFSCALE(Scale scale);
     uint8_t GetAntiAliasingFilterAsBW(AntiAliasingFilter antiAliasingFilter);
     uint8_t GetFifoModeAsFMODE(FifoMode fifoMode);
 

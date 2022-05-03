@@ -337,7 +337,7 @@ bool LIS3DSH::Configure(const IConfig& config)
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
     uint8_t ODR    = GetSampleFrequencyAsODR(cfg.mSampleFrequency);
-    uint8_t FSCALE = GetScaleAsFCALE(cfg.mScale);
+    uint8_t FSCALE = GetScaleAsFSCALE(cfg.mScale);
     uint8_t BW     = GetAntiAliasingFilterAsBW(cfg.mAntiAliasingFilter);
 
     uint8_t src = (ODR | (BDU << 3) | AXES_ENABLED);    // Set sample frequency, all axes enabled, not using BDU
@@ -460,7 +460,7 @@ uint8_t LIS3DSH::GetSampleFrequencyAsODR(SampleFrequency sampleFrequency)
  * \param   scale   Scale of the accelerometer data.
  * \returns The FSCALE setting with the scale for CTRL_REG5 register.
  */
-uint8_t LIS3DSH::GetScaleAsFCALE(Scale scale)
+uint8_t LIS3DSH::GetScaleAsFSCALE(Scale scale)
 {
     uint8_t fscaleVal = 0;
 

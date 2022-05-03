@@ -44,7 +44,7 @@ static constexpr uint8_t MAX_LOG_LINE_SIZE = 128;   ///< In bytes, including clo
 /************************************************************************/
 /**
  * \brief   Handler for expect_log().
- * \details Add log entry of the EXPECT() occurance with some details.
+ * \details Add log entry of the EXPECT() occurrence with some details.
  * \param   expr    The failing expression, as string.
  * \param   line    The line number at which the expect occurred.
  * \param   file    The file in which the expect occurred.

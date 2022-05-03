@@ -8,11 +8,13 @@
  *          a beer in return.
  *                                                                Terry Louwers
  *
- * \brief   Main entry point for Accelerometer demo.
+ * \brief   Main entry point for TiltExample demo.
  *
-* \note     https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/TiltExample/target/Src
+ * \note     https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/TiltExample/target/Src
  *
- * \details Intended use is to provide an example how to read the accelerometer.
+ * \details Intended use is to provide an example how to read the accelerometer
+ *          and make use of this data by displaying tilt of the device on a 8x8
+ *          led matrix display. Optionally view raw X,Y,Z data via Uart.
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
