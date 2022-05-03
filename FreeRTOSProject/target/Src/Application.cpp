@@ -196,6 +196,7 @@ void Application::StartTasks()
 /************************************************************************/
 /**
  * \brief   Callback called for the motion data received callback.
+ * \note    This is from ISR context.
  */
 void Application::MotionDataReceived(uint8_t length)
 {
@@ -203,7 +204,7 @@ void Application::MotionDataReceived(uint8_t length)
 
     mMotionLength = length;
 
-    vTaskNotifyGiveFromISR( xMotionData, &xHigherPriorityTaskWoken );
+    vTaskNotifyGiveIndexedFromISR( xMotionData, 0, &xHigherPriorityTaskWoken );
 
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
@@ -264,7 +265,7 @@ void vBlinkLedGreen(void *pvParameters)
     while (true)
     {
         CallbackLedGreenToggle();
-        vTaskDelay( 200 / portTICK_RATE_MS );
+        vTaskDelay( 200 / portTICK_PERIOD_MS );
     }
 
     vTaskDelete( NULL );
@@ -279,7 +280,7 @@ void vBlinkLedRed(void *pvParameters)
     while (true)
     {
         CallbackLedRedToggle();
-        vTaskDelay( 450 / portTICK_RATE_MS );
+        vTaskDelay( 450 / portTICK_PERIOD_MS );
     }
 
     vTaskDelete( NULL );
@@ -294,25 +295,25 @@ void vBlinkLedBlue(void *pvParameters)
     while (true)
     {
         CallbackLedBlueToggle();
-        vTaskDelay( 575 / portTICK_RATE_MS );
+        vTaskDelay( 575 / portTICK_PERIOD_MS );
     }
 
     vTaskDelete( NULL );
 }
 
 /**
- * \brief   Handle motion data as it arrives per callback (via ISR context).
+ * \brief   Handle motion data in task after being notified from ISR (callback).
  */
 void vMotionData(void *pvParameters)
 {
-    const TickType_t xBlockTime = pdMS_TO_TICKS( 500 );
-    uint32_t ulNotifiedValue;
+    const TickType_t xMaxBlockTime = pdMS_TO_TICKS( 500 );
+    uint32_t ulNotificationValue;
 
     while (true)
     {
-        ulNotifiedValue = ulTaskNotifyTake( pdFALSE, xBlockTime );
+        ulNotificationValue = ulTaskNotifyTakeIndexed( 0, pdFALSE, xMaxBlockTime );
 
-        if (ulNotifiedValue > 0)
+        if (ulNotificationValue == 1)
         {
             CallbackMotionDataReceived();
         }
@@ -327,4 +328,11 @@ void vMotionData(void *pvParameters)
 extern "C" void vApplicationIdleHook(void)
 {
     __WFI();
+}
+
+/**
+ * \brief
+ */
+extern "C" void vApplicationStackOverflowHook( TaskHandle_t xTask, char *pcTaskName ) {
+    ASSERT(false);
 }
