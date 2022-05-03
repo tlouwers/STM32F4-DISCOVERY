@@ -10,8 +10,9 @@ Note: the button pin conflicts with the accelerometer Int1 pin, a board layout i
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 * C++14 is assumed
 * MingW-W64 as GCC compiler for Windows (https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/installer/mingw-w64-install.exe)
-* ARM Embedded as GCC compiler for Target (STM32F4) (https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads). Note: remember to add these to PATH variable. No, really: something like: 'C:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\binC:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\bin'. And log off, then on again, or reboot to make these active.
+* ARM Embedded as GCC compiler for Target (STM32F4) (https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads). Note: remember to add these to PATH variable. No, really: something like: 'C:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\binC:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\bin'. And log off, then on again, or reboot to make these active. Also note that recent versions of this GDB require Python 2.7 (the 32-bit version!) to be installed.
 * Git. Have Git installed as wel to be able to retrieve the Google Test framework (https://git-scm.com/download/win)
+* CMake as configuration system (https://cmake.org/)
 * Ninja as build system (https://ninja-build.org/)
 * The Cortex-Debug extension together with the proper device support pack to be able to debug and view registers of the target (https://marketplace.visualstudio.com/items?itemName=marus25.cortex-debug)
 * For unit testing the extensions 'Test Explorer UI' and 'C++ TestMate' are used.
@@ -22,11 +23,11 @@ Note: the button pin conflicts with the accelerometer Int1 pin, a board layout i
 * CMake setup for building STM32F4 code
 * Can configure and build, even startup assembler code
 * Can build, run and debug unit tests on Windows (example available)
-* Can build, deplay and debug on target using OpenOCD and Cortex-Debug
+* Can build, deploy and debug on target using OpenOCD and Cortex-Debug
 * Release builds always have Link Time Optimization enabled, as well as including debug symbols
 * Some statistics for the generated target binary are displayed after each build
-* Configuration of the cross-compile settings in a seperate CMake file
-* All C++ compiler flags in a seperate configuration file
+* Configuration of the cross-compile settings in a separate CMake file
+* All C++ compiler flags in a separate configuration file
 * Doxygen documentation (for target)
 
 # Notes
