@@ -1,0 +1,8 @@
+-fno-exceptions
+-fno-non-call-exceptions
+-fno-unwind-tables
+-fno-rtti
+-fno-threadsafe-statics
+-fno-use-cxa-atexit
+-fno-common
+-fmessage-length=0

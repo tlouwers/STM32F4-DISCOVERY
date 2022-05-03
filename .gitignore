@@ -5,6 +5,8 @@ FreeRTOSProject/build/**
 FreeRTOSProject/target/build/**
 StandupCounter/build/**
 StandupCounter/target/build/**
+TiltExample/build/**
+TiltExample/target/build/**
 UnitTestExample/build/**
 UnitTestExample/target/build/**
 
@@ -12,10 +14,12 @@ UnitTestExample/target/build/**
 ExampleProject/.vscode/.cortex-debug*
 FreeRTOSProject/.vscode/.cortex-debug*
 StandupCounter/.vscode/.cortex-debug*
+TiltExample/.vscode/.cortex-debug*
 UnitTestExample/.vscode/.cortex-debug*
 
 # Ignore doxygen folder
 ExampleProject/target/doxygen/docs/**
 FreeRTOSProject/target/doxygen/docs/**
 StandupCounter/target/doxygen/docs/**
+TiltExample/target/doxygen/docs/**
 UnitTestExample/target/doxygen/docs/**
