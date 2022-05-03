@@ -12,8 +12,9 @@ Note: this intended as a fun experiment, please make proper agreements within yo
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 * C++14 is assumed
 * MingW-W64 as GCC compiler for Windows (https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/installer/mingw-w64-install.exe)
-* ARM Embedded as GCC compiler for Target (STM32F4) (https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads). Note: remember to add these to PATH variable. No, really: something like: 'C:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\binC:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\bin'. And log off, then on again, or reboot to make these active.
+* ARM Embedded as GCC compiler for Target (STM32F4) (https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads). Note: remember to add these to PATH variable. No, really: something like: 'C:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\binC:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major\bin'. And log off, then on again, or reboot to make these active. Also note that recent versions of this GDB require Python 2.7 (the 32-bit version!) to be installed.
 * Git. Have Git installed as wel to be able to retrieve the Google Test framework (https://git-scm.com/download/win)
+* CMake as configuration system (https://cmake.org/)
 * Ninja as build system (https://ninja-build.org/)
 * The Cortex-Debug extension together with the proper device support pack to be able to debug and view registers of the target (https://marketplace.visualstudio.com/items?itemName=marus25.cortex-debug)
 * For unit testing the extensions 'Test Explorer UI' and 'C++ TestMate' are used.
@@ -24,11 +25,11 @@ Note: this intended as a fun experiment, please make proper agreements within yo
 * CMake setup for building STM32F4 code
 * Can configure and build, even startup assembler code
 * Can build, run and debug unit tests on Windows (example available)
-* Can build, deplay and debug on target using OpenOCD and Cortex-Debug
+* Can build, deploy and debug on target using OpenOCD and Cortex-Debug
 * Release builds always have Link Time Optimization enabled, as well as including debug symbols
 * Some statistics for the generated target binary are displayed after each build
-* Configuration of the cross-compile settings in a seperate CMake file
-* All C++ compiler flags in a seperate configuration file
+* Configuration of the cross-compile settings in a separate CMake file
+* All C++ compiler flags in a separate configuration file
 * Doxygen documentation (for target)
 
 # Notes
@@ -71,7 +72,7 @@ There will be a time components are updates, meaning this example and environmen
 - settings.json - contains the settings which make IntelliSense happy, compiler and folder dependent.
 - tasks.json - contains the settings for configuration and building the project, both the target and unit tests.
 * In folder 'target/Drivers/STM32F4xx_HAL_Driver' is the STM32F4 HAL code.
-* The file 'arm-none-eabi-gg.cmake' contains the settings required for cross compiling for ARM.
+* The file 'arm-none-eabi-gcc.cmake' contains the settings required for cross compiling for ARM.
 
 # Upgrading the STM32 HAL
 Start by downloading the 'STM32CubeF4' package, along with any patch available (https://my.st.com/content/my_st_com/en/products/embedded-software/mcu-mpu-embedded-software/stm32-embedded-software/stm32cube-mcu-mpu-packages/stm32cubef4.html#). Then perform a manual compare of the 'target/Drivers/CMSIS' and 'target/Drivers/STM32F4xx_HAL_Driver' directory with the new HAL folders. Take note that this example project only uses the HAL, not the low level drivers (using the 'll_' prefix). It requires some manual compares, but overall relatively few files will have changed. The 'Legacy' part is not used.
