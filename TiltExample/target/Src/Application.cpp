@@ -22,6 +22,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
+#include <math.h>
 #include <functional>
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
@@ -38,24 +39,21 @@
 static const uint16_t MOTION_QUEUE_SIZE  = 25;      // Number of samples in HW FIFO
 static const uint16_t MOTION_SAMPLE_SIZE = 3 * 2;   // X,Y,Z, each 16 bit signed int
 
+// Perform scaling --> (4000/65535) milli-G per digit for +/-2g full scale when using the 16-bit output
+static constexpr float K = 4.0 / UINT16_MAX;        // K expressed in G (m/s2), not milli-G
+
 
 /************************************************************************/
 /* Task - definitions                                                   */
 /************************************************************************/
-void vBlinkLedGreen(void* pvParam);
-void vBlinkLedRed(void* pvParam);
-void vBlinkLedBlue(void* pvParam);
 void vMotionData(void* pvParam);
 void vMatrix(void* pvParam);
 void vUsart(void* pvParam);
 
 static TaskHandle_t xMotionData = NULL;
 
-static std::function<void()> callbackLedGreenToggle                               = nullptr;
-static std::function<void()> callbackLedRedToggle                                 = nullptr;
-static std::function<void()> callbackLedBlueToggle                                = nullptr;
 static std::function<void()> callbackMotionDataReceived                           = nullptr;
-static std::function<void(const MotionSample &sample)> callbackSendSampleViaUsart = nullptr;
+static std::function<void(const MotionSampleRaw &sample)> callbackSendSampleViaUsart = nullptr;
 
 static QueueHandle_t displayQueue = nullptr;
 static QueueHandle_t usartQueue   = nullptr;
@@ -64,27 +62,12 @@ static QueueHandle_t usartQueue   = nullptr;
 /************************************************************************/
 /* Static Functions                                                     */
 /************************************************************************/
-static void CallbackLedGreenToggle()
-{
-    if (callbackLedGreenToggle) { callbackLedGreenToggle(); }
-}
-
-static void CallbackLedRedToggle()
-{
-    if (callbackLedRedToggle) { callbackLedRedToggle(); }
-}
-
-static void CallbackLedBlueToggle()
-{
-    if (callbackLedBlueToggle) { callbackLedBlueToggle(); }
-}
-
 static void CallbackMotionDataReceived()
 {
     if (callbackMotionDataReceived) { callbackMotionDataReceived(); }
 }
 
-static void CallbackSendSampleViaUsart(const MotionSample &sample)
+static void CallbackSendSampleViaUsart(const MotionSampleRaw &sample)
 {
     if (callbackSendSampleViaUsart) { callbackSendSampleViaUsart(sample); }
 }
@@ -128,11 +111,8 @@ bool Application::Init()
     mLedGreen.Set(Level::HIGH);
 
     // Connect callbacks (C to C++ bridge)
-    callbackLedGreenToggle     = [this]()                           { this->CallbackLedGreenToggle();           };
-    callbackLedRedToggle       = [this]()                           { this->CallbackLedRedToggle();             };
-    callbackLedBlueToggle      = [this]()                           { this->CallbackLedBlueToggle();            };
     callbackMotionDataReceived = [this]()                           { this->CallbackMotionDataReceived();       };
-    callbackSendSampleViaUsart = [this](const MotionSample &sample) { this->CallbackSendSampleViaUsart(sample); };
+    callbackSendSampleViaUsart = [this](const MotionSampleRaw &sample) { this->CallbackSendSampleViaUsart(sample); };
 
     // Actual Init()
     bool result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
@@ -156,10 +136,14 @@ bool Application::Init()
 
 
     result = mSPIMatrix.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
-    EXPECT(result);
+    ASSERT(result);
 
     result &= mMatrix.Init(HI_M1388AR::Config(8));
-    EXPECT(result);
+    ASSERT(result);
+
+
+    result = mUsart.Init(Usart::Config(10, false, Usart::Baudrate::_115K2));
+    ASSERT(result);
 
 
     result = mLIS3DSH.Enable();
@@ -201,22 +185,16 @@ bool Application::CreateTasks()
 {
     bool result = false;
 
-    result = ( xTaskCreate( vBlinkLedGreen,  "Blink Green Task",  configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
-    ASSERT(result);
-    result = ( xTaskCreate( vBlinkLedRed,    "Blink Red Task",    configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
-    ASSERT(result);
-    result = ( xTaskCreate( vBlinkLedBlue,   "Blink Blue Task",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
-    ASSERT(result);
     result = ( xTaskCreate( vMotionData,     "Motion Data Task",  300, NULL, tskIDLE_PRIORITY + 1, &xMotionData) == pdPASS ) ? true : false;
     ASSERT(result);
-    result = ( xTaskCreate( vMatrix,         "Matrix Task",       configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
+    result = ( xTaskCreate( vMatrix,         "Matrix Task",       configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS ) ? true : false;
     ASSERT(result);
-    result = ( xTaskCreate( vUsart,          "Usart Task",        configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ) ? true : false;
+    result = ( xTaskCreate( vUsart,          "Usart Task",        configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS ) ? true : false;
     ASSERT(result);
 
     displayQueue = xQueueCreate( MOTION_QUEUE_SIZE, sizeof(MotionSample) );
     ASSERT(displayQueue);
-    usartQueue   = xQueueCreate( MOTION_QUEUE_SIZE, sizeof(MotionSample) );
+    usartQueue   = xQueueCreate( MOTION_QUEUE_SIZE, sizeof(MotionSampleRaw) );
     ASSERT(usartQueue);
 
     return result;
@@ -251,27 +229,24 @@ void Application::MotionDataReceived(uint8_t length)
 }
 
 /**
- * \brief   Callback for the green led toggle event.
+ * \brief   Convert to G (m/s2) and calculate the pith and roll.
+ * \param   sampleRaw   The motion sample to convert.
+ * \returns Converted motion sample.
  */
-void Application::CallbackLedGreenToggle()
+MotionSample Application::CalculateMotionSample(const MotionSampleRaw &sampleRaw)
 {
-    mLedGreen.Toggle();
-}
+    MotionSample sample;
 
-/**
- * \brief   Callback for the red led toggle event.
- */
-void Application::CallbackLedRedToggle()
-{
-    mLedRed.Toggle();
-}
+    // Convert to G (m/s2)
+    sample.X = sampleRaw.X * K;
+    sample.Y = sampleRaw.Y * K;
+    sample.Z = sampleRaw.Z * K;
 
-/**
- * \brief   Callback for the blue led toggle event.
- */
-void Application::CallbackLedBlueToggle()
-{
-    mLedBlue.Toggle();
+    // Calculate the pith and roll in degrees
+    sample.pitch = 180 * atan2(sample.Y, sample.Z) / M_PI;
+    sample.roll  = 180 * atan2(sample.X, sample.Z) / M_PI;
+
+    return sample;
 }
 
 /**
@@ -292,15 +267,17 @@ void Application::CallbackMotionDataReceived()
         // Deinterleave to X,Y,Z samples
         for (size_t i = 0; ((i < sizeof(motionArray)) && (i + MOTION_SAMPLE_SIZE <= mMotionLength)); i += MOTION_SAMPLE_SIZE)
         {
-            MotionSample sample;
-            sample.X = (motionArray[i + 1] << 8) | motionArray[i + 0];
-            sample.Y = (motionArray[i + 3] << 8) | motionArray[i + 2];
-            sample.Z = (motionArray[i + 5] << 8) | motionArray[i + 4];
+            MotionSampleRaw sampleRaw;
+            sampleRaw.X = (motionArray[i + 1] << 8) | motionArray[i + 0];
+            sampleRaw.Y = (motionArray[i + 3] << 8) | motionArray[i + 2];
+            sampleRaw.Z = (motionArray[i + 5] << 8) | motionArray[i + 4];
+
+            MotionSample sample = CalculateMotionSample(sampleRaw);
 
             // Put converted samples to queue(s)
             BaseType_t result = xQueueSend(displayQueue, &sample, 0);
             EXPECT(result == pdPASS);
-            result = xQueueSend(usartQueue, &sample, 0);
+            result = xQueueSend(usartQueue, &sampleRaw, 0);
             EXPECT(result == pdPASS);
         }
     }
@@ -309,61 +286,26 @@ void Application::CallbackMotionDataReceived()
 /**
  * \brief   Callback for the send via Usart event.
  */
-void Application::CallbackSendSampleViaUsart(const MotionSample &sample)
+void Application::CallbackSendSampleViaUsart(const MotionSampleRaw &sample)
 {
-    bool result = mUsart.WriteBlocking(reinterpret_cast<const uint8_t*>(&sample), MOTION_SAMPLE_SIZE);
+    mLedBlue.Set(Level::HIGH);
+
+    // Wrap the sample in '<' SAMPLE '>' packet format to allow receiving side
+    // to unpack it properly.
+    uint8_t packet[8] = {};
+    packet[0] = '<';
+    packet[7] = '>';
+    std::memcpy(&packet[1], reinterpret_cast<const uint8_t*>(&sample), MOTION_SAMPLE_SIZE);
+    bool result = mUsart.WriteBlocking(packet, sizeof(packet));
     EXPECT(result);
+
+    mLedBlue.Set(Level::LOW);
 }
 
 
 /************************************************************************/
 /* Tasks                                                                */
 /************************************************************************/
-/**
- * \brief   Blink led green task handler.
- * \details Configured to be executed every 200 milliseconds.
- */
-void vBlinkLedGreen(void *pvParameters)
-{
-    while (true)
-    {
-        CallbackLedGreenToggle();
-        vTaskDelay( 200 / portTICK_PERIOD_MS );
-    }
-
-    vTaskDelete( NULL );
-}
-
-/**
- * \brief   Blink led red task handler.
- * \details Configured to be executed every 450 milliseconds.
- */
-void vBlinkLedRed(void *pvParameters)
-{
-    while (true)
-    {
-        CallbackLedRedToggle();
-        vTaskDelay( 450 / portTICK_PERIOD_MS );
-    }
-
-    vTaskDelete( NULL );
-}
-
-/**
- * \brief   Blink led blue task handler.
- * \details Configured to be executed every 575 milliseconds.
- */
-void vBlinkLedBlue(void *pvParameters)
-{
-    while (true)
-    {
-        CallbackLedBlueToggle();
-        vTaskDelay( 575 / portTICK_PERIOD_MS );
-    }
-
-    vTaskDelete( NULL );
-}
-
 /**
  * \brief   Handle motion data in task after being notified from ISR (callback).
  */
@@ -397,9 +339,10 @@ void vMatrix(void *pvParameters)
     while (true)
     {
         MotionSample sample;
-        if ( xQueueReceive(usartQueue, &sample, portMAX_DELAY) == pdPASS )
+        if ( xQueueReceive(displayQueue, &sample, portMAX_DELAY) == pdPASS )
         {
             // Do something meaningful here
+            __NOP();
         }
     }
 
@@ -415,7 +358,7 @@ void vUsart(void *pvParameters)
     while (true)
     {
         // While data in queue: send to Usart (towards PC)
-        MotionSample sample;
+        MotionSampleRaw sample;
         if ( xQueueReceive(usartQueue, &sample, portMAX_DELAY) == pdPASS )
         {
             CallbackSendSampleViaUsart(sample);
