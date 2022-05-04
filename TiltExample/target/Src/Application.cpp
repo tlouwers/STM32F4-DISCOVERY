@@ -26,7 +26,6 @@
 #include <functional>
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
-#include "components/HI-M1388AR/HI-M1388AR_Lib.hpp"
 #include "utility/Assert/Assert.h"
 #include "../FreeRTOS/include/FreeRTOS.h"
 #include "../FreeRTOS/include/queue.h"
@@ -42,6 +41,10 @@ static const uint16_t MOTION_SAMPLE_SIZE = 3 * 2;   // X,Y,Z, each 16 bit signed
 // Perform scaling --> (4000/65535) milli-G per digit for +/-2g full scale when using the 16-bit output
 static constexpr float K = 4.0 / UINT16_MAX;        // K expressed in G (m/s2), not milli-G
 
+// 8x8 Led Matrix display
+static constexpr uint8_t MATRIX_NR_COLUMNS = 8;
+static constexpr uint8_t MATRIX_NR_ROWS    = 8;
+
 
 /************************************************************************/
 /* Task - definitions                                                   */
@@ -52,7 +55,8 @@ void vUsart(void* pvParam);
 
 static TaskHandle_t xMotionData = NULL;
 
-static std::function<void()> callbackMotionDataReceived                           = nullptr;
+static std::function<void()> callbackMotionDataReceived                              = nullptr;
+static std::function<void(const MotionSample &sample)> callbackUpdateDisplay         = nullptr;
 static std::function<void(const MotionSampleRaw &sample)> callbackSendSampleViaUsart = nullptr;
 
 static QueueHandle_t displayQueue = nullptr;
@@ -67,9 +71,31 @@ static void CallbackMotionDataReceived()
     if (callbackMotionDataReceived) { callbackMotionDataReceived(); }
 }
 
+static void CallbackUpdateDisplay(const MotionSample &sample)
+{
+    if (callbackUpdateDisplay) { callbackUpdateDisplay(sample); }
+}
+
 static void CallbackSendSampleViaUsart(const MotionSampleRaw &sample)
 {
     if (callbackSendSampleViaUsart) { callbackSendSampleViaUsart(sample); }
+}
+
+/**
+ * \brief   Reverse a byte array.
+ */
+static void ReverseBytes(uint8_t *start, size_t size) {
+    if (start != nullptr)
+    {
+        uint8_t *lo = start;
+        uint8_t *hi = start + size - 1;
+        uint8_t swap;
+        while (lo < hi) {
+            swap = *lo;
+            *lo++ = *hi;
+            *hi-- = swap;
+        }
+    }
 }
 
 
@@ -111,7 +137,8 @@ bool Application::Init()
     mLedGreen.Set(Level::HIGH);
 
     // Connect callbacks (C to C++ bridge)
-    callbackMotionDataReceived = [this]()                           { this->CallbackMotionDataReceived();       };
+    callbackMotionDataReceived = [this]()                              { this->CallbackMotionDataReceived();       };
+    callbackUpdateDisplay      = [this](const MotionSample &sample)    { this->CallbackUpdateDisplay(sample);      };
     callbackSendSampleViaUsart = [this](const MotionSampleRaw &sample) { this->CallbackSendSampleViaUsart(sample); };
 
     // Actual Init()
@@ -149,6 +176,7 @@ bool Application::Init()
     result = mLIS3DSH.Enable();
     ASSERT(result);
 
+
     mLedGreen.Set(Level::LOW);
 
     return result;
@@ -185,9 +213,9 @@ bool Application::CreateTasks()
 {
     bool result = false;
 
-    result = ( xTaskCreate( vMotionData,     "Motion Data Task",  300, NULL, tskIDLE_PRIORITY + 1, &xMotionData) == pdPASS ) ? true : false;
+    result = ( xTaskCreate( vMotionData,     "Motion Data Task",  300,                      NULL, tskIDLE_PRIORITY + 1, &xMotionData) == pdPASS ) ? true : false;
     ASSERT(result);
-    result = ( xTaskCreate( vMatrix,         "Matrix Task",       configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS ) ? true : false;
+    result = ( xTaskCreate( vMatrix,         "Matrix Task",       300,                      NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS ) ? true : false;
     ASSERT(result);
     result = ( xTaskCreate( vUsart,          "Usart Task",        configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS ) ? true : false;
     ASSERT(result);
@@ -250,6 +278,57 @@ MotionSample Application::CalculateMotionSample(const MotionSampleRaw &sampleRaw
 }
 
 /**
+ * \brief   Calculate the pixel to display on the matrix display based upon the
+ *          pitch and roll.
+ * \param   dest    The destination pixel array (8 bytes) to fill.
+ * \param   sample  Motion sample with pitch and roll in degrees.
+ * \param   invert  Flag, indicate if the display should be inverted or not.
+ */
+void Application::CalculatePixel(uint8_t *dest, const MotionSample &sample, bool invert /* = false */)
+{
+    if (dest != nullptr)
+    {
+        uint8_t columnPitch = 0;
+             if (sample.pitch >  40.0) { columnPitch = 0x0F; }     // Special case: row
+        else if (sample.pitch >  30.0) { columnPitch = 7;    }
+        else if (sample.pitch >  20.0) { columnPitch = 6;    }
+        else if (sample.pitch >  10.0) { columnPitch = 5;    }
+        else if (sample.pitch >=  0.0) { columnPitch = 4;    }
+        else if (sample.pitch > -10.0) { columnPitch = 3;    }
+        else if (sample.pitch > -20.0) { columnPitch = 2;    }
+        else if (sample.pitch > -30.0) { columnPitch = 1;    }
+        else if (sample.pitch > -40.0) { columnPitch = 0;    }
+        else                           { columnPitch = 0xF0; }     // Special case: row
+
+        uint8_t rowRoll = 0;
+             if (sample.roll >  40.0) { rowRoll = 0x0F; }          // Special case: column
+        else if (sample.roll >  30.0) { rowRoll = 7;    }
+        else if (sample.roll >  20.0) { rowRoll = 6;    }
+        else if (sample.roll >  10.0) { rowRoll = 5;    }
+        else if (sample.roll >=  0.0) { rowRoll = 4;    }
+        else if (sample.roll > -10.0) { rowRoll = 3;    }
+        else if (sample.roll > -20.0) { rowRoll = 2;    }
+        else if (sample.roll > -30.0) { rowRoll = 1;    }
+        else if (sample.roll > -40.0) { rowRoll = 0;    }
+        else                          { rowRoll = 0xF0; }          // Special case: column
+
+        uint8_t pixel = 0;
+             if (columnPitch == 0x0F) { for (uint8_t i = 0; i < MATRIX_NR_COLUMNS; i++ ) { dest[i] = 0x80; } }
+        else if (columnPitch == 0xF0) { for (uint8_t i = 0; i < MATRIX_NR_COLUMNS; i++ ) { dest[i] = 0x01; } }
+        else                          { pixel = (1 << columnPitch); }
+
+             if (rowRoll == 0x0F) { dest[7] = 0xFF; }
+        else if (rowRoll == 0xF0) { dest[0] = 0xFF; }
+        else if (columnPitch != 0x0F && columnPitch != 0xF0) { dest[rowRoll] = pixel; }
+
+        if (invert)
+        {
+            ReverseBytes(dest, MATRIX_NR_ROWS);
+        }
+    }
+}
+
+/**
  * \brief   Callback for the motion data received event.
  */
 void Application::CallbackMotionDataReceived()
@@ -281,6 +360,18 @@ void Application::CallbackMotionDataReceived()
             EXPECT(result == pdPASS);
         }
     }
+}
+
+/**
+ * \brief   Callback for the update display event.
+ */
+void Application::CallbackUpdateDisplay(const MotionSample &sample)
+{
+    uint8_t pixels[8] = {};
+
+    CalculatePixel(pixels, sample, true);
+
+    mMatrix.WriteDigits(pixels);
 }
 
 /**
@@ -328,21 +419,17 @@ void vMotionData(void *pvParameters)
 }
 
 /**
- * \brief   Matrix display handler.
- * \details ...
+ * \brief   Matrix display handler task.
+ * \details Calculates which pixel to light up and sets this on the matrix display.
  */
 void vMatrix(void *pvParameters)
 {
-    // ToDo: description
-    // ToDo: contents
-
     while (true)
     {
         MotionSample sample;
         if ( xQueueReceive(displayQueue, &sample, portMAX_DELAY) == pdPASS )
         {
-            // Do something meaningful here
-            __NOP();
+            CallbackUpdateDisplay(sample);
         }
     }
 

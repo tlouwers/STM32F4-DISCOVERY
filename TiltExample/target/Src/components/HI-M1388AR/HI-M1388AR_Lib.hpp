@@ -30,7 +30,12 @@
 /************************************************************************/
 /* Constants                                                            */
 /************************************************************************/
-constexpr uint8_t MATRIX_SIZE = 8;
+/**
+ * \brief   Helper constant indicating the rows of the 8x8 matrix display.
+ */
+static constexpr uint8_t MATRIX_SIZE = 8;
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 // Digits
 constexpr uint8_t digit_one[MATRIX_SIZE]   = { 0x7E, 0x18, 0x18, 0x18, 0x1C, 0x18, 0x18, 0x00 };
@@ -110,6 +115,8 @@ constexpr uint8_t edge_up[MATRIX_SIZE]    = { 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00
 constexpr uint8_t edge_down[MATRIX_SIZE]  = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF };
 constexpr uint8_t edge_left[MATRIX_SIZE]  = { 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80 };
 constexpr uint8_t edge_right[MATRIX_SIZE] = { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 };
+
+#endif DOXYGEN_SHOULD_SKIP_THIS
 
 
 #endif  // HI_M1388AR_LIB_HPP_
