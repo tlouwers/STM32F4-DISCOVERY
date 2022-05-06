@@ -2,7 +2,7 @@
 A basic example or project structure for C++ development with the STM32F407G-DISC1 kit.
 
 Intended use is to be a starting point for developing, debugging and unit testing the STM32F407G-DISC1.
-This example reads the accelerometer via DMA (and then discards the read samples). Data is stored in accelerometer FIFO until a threshold is reached, then ISR flags RTOS task data is available. Data is read via SPI/DMA. Orange led is used to signal data available. Data is interpreted and if the board is tilted this is displayed on a 8x8 dot matrix display (HI-M1388AR). When reaching a threshold (tilted too much) the outer line of the matrix display lights up. UART can be connected to monitor raw X,Y,Z sample output.
+This example reads the accelerometer via DMA. Data is read at 50 Hz, using Data Ready to flag RTOS task data is available (ISR). Data is read via SPI/DMA. Orange led is used to signal data available. Data is interpreted and if the board is tilted this is displayed on a 8x8 dot matrix display (HI-M1388AR). When reaching a threshold (tilted too much) the outer line of the matrix display lights up. UART can be connected to monitor raw X,Y,Z sample output. Accelerometer HW FIFO is not used to make data update rate more smooth for user.
 A light sleep mode is used to conserve power.
 Note: the button pin conflicts with the accelerometer Int1 pin, a board layout issue - they cannot be used at the same time. For now the accelerometer gets preference in this example.
 
