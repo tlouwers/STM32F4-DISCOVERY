@@ -11,11 +11,17 @@
  *
  * \brief   Driver for the LIS3DSH accelerometer.
  *
+ * \details Intended is to use the hardware FIFO, which is read via SPI + DMA
+ *          to minimize power consumption. If not using the hardware FIFO then
+ *          the Data Ready signal is used, meaning a sample (X,Y,Z) is
+ *          available at the configured sample frequency. Sample is read via
+ *          SPI + DMA as well.
+ *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    10-2019
+ * \version 1.1
+ * \date    05-2022
  */
 
 #ifndef LIS3DSH_HPP_
@@ -86,12 +92,13 @@ public:
      * \enum    FifoMode
      * \brief   FIFO mode selection.
      * \note    AN3393 - LIS3DSH - Application note - Table 37: FIFO_CTRL description.
+     * \note    Used internally only: either no HW fifo is used (Bypass) or Stream is used.
      */
     enum class FifoMode : uint8_t
     {
         Bypass,
-        Fifo,               ///< Default
-        Stream,
+        Fifo,
+        Stream,             ///< Default
         StreamThenFifo,
         BypassThenStream,
         BypassThenFifo
@@ -105,19 +112,23 @@ public:
     {
         /**
          * \brief   Constructor of the LIS3DSH configuration struct.
+         * \param   useHardwareFifo     Flag indicating hardware FIFO is to be used.
          * \param   sampleFrequency     Sample frequency for accelerometer data.
          * \param   scale               Scale of the accelerometer data. Default +/- 2G.
          * \param   antiAliasingFilter  Anti-aliasing filter bandwidth. Default 200 Hz.
          *
          */
-        explicit Config(SampleFrequency sampleFrequency,
+        explicit Config(bool useHardwareFifo,
+                        SampleFrequency sampleFrequency,
                         Scale scale = Scale::_2_G,
                         AntiAliasingFilter antiAliasingFilter = AntiAliasingFilter::_200_Hz) :
+            mUseHardwareFifo(useHardwareFifo),
             mSampleFrequency(sampleFrequency),
             mScale(scale),
             mAntiAliasingFilter(antiAliasingFilter)
         { }
 
+        bool               mUseHardwareFifo;        ///< Flag indicating hardware FIFO is to be used.
         SampleFrequency    mSampleFrequency;        ///< Sample frequency for accelerometer data.
         Scale              mScale;                  ///< Scale of the accelerometer data.
         AntiAliasingFilter mAntiAliasingFilter;     ///< Anti-aliasing filter bandwidth.
@@ -144,12 +155,13 @@ private:
     bool     mInitialized;
     uint8_t* mReadBuffer;
     uint8_t  mODR;
+    bool     mUseHardwareFifo;
 
     std::function<void(uint8_t length)> mHandler;
 
     bool SelfTest();
     bool Configure(const IConfig& config);
-    bool PrepareReadBuffer(SampleFrequency sampleFrequency);
+    bool PrepareReadBuffer(uint8_t bufferSize);
     bool ClearFifo();
     uint8_t GetSampleFrequencyAsODR(SampleFrequency sampleFrequency);
     uint8_t GetScaleAsFSCALE(Scale scale);

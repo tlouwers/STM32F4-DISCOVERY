@@ -83,6 +83,8 @@ static void CallbackSendSampleViaUsart(const MotionSampleRaw &sample)
 
 /**
  * \brief   Reverse a byte array.
+ * \param   start   Pointer to first element of the byte array to reverse.
+ * \param   size    Size of the array.
  */
 static void ReverseBytes(uint8_t *start, size_t size) {
     if (start != nullptr)
@@ -157,7 +159,7 @@ bool Application::Init()
     result = mSPIMotion.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
     ASSERT(result);
 
-    result = mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
+    result = mLIS3DSH.Init(LIS3DSH::Config(false, LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
     mMotionLength = 0;
 
@@ -333,7 +335,7 @@ void Application::CalculatePixel(uint8_t *dest, const MotionSample &sample, bool
  */
 void Application::CallbackMotionDataReceived()
 {
-    static uint8_t motionArray[MOTION_QUEUE_SIZE * MOTION_SAMPLE_SIZE] = {};
+    static uint8_t motionArray[MOTION_SAMPLE_SIZE] = {};
 
     if (mMotionLength > 0)
     {
