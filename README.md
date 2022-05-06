@@ -21,6 +21,7 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | Drivers/drivers/RTC | RTC peripheral driver class. Provides easier handling of Date and Time. |
 | Drivers/drivers/SPI | SPI peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | Drivers/drivers/Usart | USART peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
+| Drivers/drivers/Watchdog | Watchdog (IWDG) peripheral driver class. |
 | Drivers/interfaces | Various interfaces for peripheral drivers. |
 | Drivers/utility/Assert | Alternate 'assert' logic for embedded systems with more fine-grained control. |
 | Drivers/utility/CpuWakeCounter | Helper class intended to put the CPU into a 'light' sleep mode and measure the wake percentage in one go. |
@@ -30,4 +31,5 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | FreeRTOSProject | A Visual Studio Code, CMake, GCC, C++, Google Test, GCOV example project for STM32F407G-DISC1. Basic example to showcase use of FreeRTOS. |
 | StandupCounter | A Visual Studio Code, CMake, GCC, C++, Google Test, GCOV example project for STM32F407G-DISC1. Example StandupCounter with Buzzer and HI-M1388AR 8x8 LED matrix display. |
 | tests | Folder with generic Fake and Mock content to assist unit testing. |
+| TiltExample | A Visual Studio Code, CMake, GCC, C++, Google Test, GCOV example project for STM32F407G-DISC1. Example with FreeRTOS using the accelerometer and HI-M1388AR 8x8 LED matrix display to show if device is being tilted. |
 | UnitTestExample | A Visual Studio Code, CMake, GCC, C++, Google Test, GCOV example project for STM32F407G-DISC1. Example how to work with unit tests. |
