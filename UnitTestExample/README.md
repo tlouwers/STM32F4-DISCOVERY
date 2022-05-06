@@ -3,8 +3,12 @@ A basic example or project structure for C++ development with the STM32F407G-DIS
 
 This is intended for the unit tests only, use the ExampleProject for the STM32 part.
 Typically, the drivers like CRC, I2C, SPI, etc are tested manually. Components using them can use the Mocks which makes the component unit testable.
-In the Fake folder an example for Crc is given, but this is show how to bypass the hardware to test just the interface (not that usefull).
+In the Fake folder an example for Crc is given, but this is show how to bypass the hardware to test just the interface (not that useful).
 The components feature a Fake_<component> item as well, this can be used to bypass the entire component and write system tests or simulations.
+
+# Usage
+Install python, then use pip to install gcovr. Make sure gcovr can be called from the cmd prompt - correct path/environment variable to do so.
+In tasks.json a build target exists which runs gcovr and generates a report here: ${workspacefolder}/build/coverage.html
 
 # Requirements
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)

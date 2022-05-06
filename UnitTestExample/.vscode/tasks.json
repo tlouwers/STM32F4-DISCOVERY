@@ -68,6 +68,29 @@
             },
             "command": "ninja",
             "problemMatcher": []
+        },
+        {
+            // https://www.gcovr.com/en/stable/guide.html
+            // Note: this will complain about some files not found - ignore them:
+            // gtest.h, gtest-internal.h, gtest-printers.h, gtest-port.h
+            "label": "Run coverage",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/target/Src"                      // Where to start gcovr
+            },
+            "command": "gcovr",
+            "args": [
+                "-r",                                                       // Root directory of the source files
+                ".",                                                        // Take the current working dir: where gcovr is started
+                "--object-directory",                                       // Override normal working directory detection
+                "${workspaceFolder}/build/tests/CMakeFiles/TestRunner.dir", // Directory where the *.gcda filles are located
+                "--html-details",                                           // --html, or --xml-pretty
+                "-o",                                                       // Specify we want a particular output file
+                "${workspaceFolder}/build/coverage.html",                   // Full path and name of the output file to create
+                "-j",                                                       // Enable parallel threads to run gcovr
+                "4"                                                         // Number of threads
+            ],
+            "problemMatcher": [],
         }
     ]
 }
