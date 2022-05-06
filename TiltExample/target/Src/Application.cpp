@@ -35,7 +35,6 @@
 /************************************************************************/
 /* Constants                                                            */
 /************************************************************************/
-static const uint16_t MOTION_QUEUE_SIZE  = 25;      // Number of samples in HW FIFO
 static const uint16_t MOTION_SAMPLE_SIZE = 3 * 2;   // X,Y,Z, each 16 bit signed int
 
 // Perform scaling --> (4000/65535) milli-G per digit for +/-2g full scale when using the 16-bit output
@@ -222,9 +221,9 @@ bool Application::CreateTasks()
     result = ( xTaskCreate( vUsart,          "Usart Task",        configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS ) ? true : false;
     ASSERT(result);
 
-    displayQueue = xQueueCreate( MOTION_QUEUE_SIZE, sizeof(MotionSample) );
+    displayQueue = xQueueCreate( 1, sizeof(MotionSample) );
     ASSERT(displayQueue);
-    usartQueue   = xQueueCreate( MOTION_QUEUE_SIZE, sizeof(MotionSampleRaw) );
+    usartQueue   = xQueueCreate( 1, sizeof(MotionSampleRaw) );
     ASSERT(usartQueue);
 
     return result;
