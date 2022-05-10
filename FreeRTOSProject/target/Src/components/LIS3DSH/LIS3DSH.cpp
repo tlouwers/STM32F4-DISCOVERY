@@ -13,8 +13,8 @@
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    10-2019
+ * \version 1.1
+ * \date    05-2022
  */
 
 /************************************************************************/
@@ -104,9 +104,9 @@ static constexpr uint8_t OUTS2       = 0x7F;
 /************************************************************************/
 static constexpr uint8_t IDENTIFIER       = 0x3F;
 static constexpr uint8_t READ_MASK        = 0x80;
-static constexpr uint8_t WATERMARK_LEVEL  = 0x19;                       // 25 samples X,Y,Z default - fifo size max = 32
-static constexpr uint8_t READ_BUFFER_SIZE = 3 * 2 * WATERMARK_LEVEL;    // X,Y,Z * int16_t * 25 samples (in fifo)
-static constexpr uint8_t BDU              = 0;                          // 0: disabled (default if fifo is used), 1: enabled
+static constexpr uint8_t SAMPLE_LENGTH    = 0x06;                               // X,Y,Z * int16_t
+static constexpr uint8_t WATERMARK_LEVEL  = 0x19;                               // 25 samples X,Y,Z default - fifo size max = 32
+static constexpr uint8_t READ_BUFFER_SIZE = SAMPLE_LENGTH * WATERMARK_LEVEL;    // X,Y,Z * int16_t * 25 samples (in fifo)
 static constexpr uint8_t AXES_ENABLED     = 0x07;
 static constexpr uint8_t AXES_DISABLED    = 0x00;
 static constexpr uint8_t FIFO_EMPTY       = 0x20;
@@ -130,7 +130,8 @@ LIS3DSH::LIS3DSH(ISPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPor
     mMotionInt2(motionInt2, PullUpDown::HIGHZ),
     mInitialized(false),
     mReadBuffer(nullptr),
-    mODR(0)
+    mODR(0),
+    mUseHardwareFifo(false)
 {
     mMotionInt1.Interrupt(Trigger::RISING, [this]() { this-> CallbackInt1(); }, false );
     mMotionInt2.Interrupt(Trigger::RISING, [this]() { this-> CallbackInt2(); }, false );
@@ -222,17 +223,26 @@ bool LIS3DSH::Enable()
 {
     if (mInitialized)
     {
-        uint8_t val = 0;
-        if ( ReadRegister(FIFO_CTRL, &val, 1) )
+        if (mUseHardwareFifo)
         {
-            val = val & 0x1F;       // Clear mode: sets it to 'bypass'
-            uint8_t FMODE = GetFifoModeAsFMODE(FifoMode::Stream);
-            val = (val | FMODE);    // Now apply a mode again to start acquisition
+            uint8_t val = 0;
+            if ( ReadRegister(FIFO_CTRL, &val, 1) )
+            {
+                val = val & 0x1F;       // Clear mode: sets it to 'bypass'
+                uint8_t FMODE = GetFifoModeAsFMODE(FifoMode::Stream);
+                val = (val | FMODE);    // Now apply a mode again to start acquisition
 
+                mMotionInt1.InterruptEnable();
+                mMotionInt2.InterruptEnable();
+
+                return WriteRegister(FIFO_CTRL, &val, 1);
+            }
+        }
+        else
+        {
             mMotionInt1.InterruptEnable();
             mMotionInt2.InterruptEnable();
-
-            return WriteRegister(FIFO_CTRL, &val, 1);
+            return true;
         }
     }
     return false;
@@ -247,15 +257,24 @@ bool LIS3DSH::Disable()
 {
     if (mInitialized)
     {
-        uint8_t val = 0;
-        if ( ReadRegister(FIFO_CTRL, &val, 1) )
+        if (mUseHardwareFifo)
         {
-            val = val & 0x1F;       // Clear mode: sets it to 'bypass'
+            uint8_t val = 0;
+            if ( ReadRegister(FIFO_CTRL, &val, 1) )
+            {
+                val = val & 0x1F;       // Clear mode: sets it to 'bypass'
 
+                mMotionInt1.InterruptDisable();
+                mMotionInt2.InterruptDisable();
+
+                return WriteRegister(FIFO_CTRL, &val, 1);
+            }
+        }
+        else
+        {
             mMotionInt1.InterruptDisable();
             mMotionInt2.InterruptDisable();
-
-            return WriteRegister(FIFO_CTRL, &val, 1);
+            return true;
         }
     }
     return false;
@@ -279,13 +298,15 @@ void LIS3DSH::SetHandler(const std::function<void(uint8_t length)>& handler)
  */
 bool LIS3DSH::RetrieveAxesData(uint8_t* dest, uint8_t length)
 {
+    const uint8_t maxLength = (mUseHardwareFifo) ? READ_BUFFER_SIZE : SAMPLE_LENGTH;
+
     EXPECT(dest);
     EXPECT(length > 0);
-    EXPECT(length <= READ_BUFFER_SIZE);
+    EXPECT(length <= maxLength);
 
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
-    if (length > READ_BUFFER_SIZE) { return false; }
+    if (dest == nullptr)    { return false; }
+    if (length == 0)        { return false; }
+    if (length > maxLength) { return false; }
 
     std::memcpy(dest, mReadBuffer, length);
 
@@ -329,7 +350,9 @@ bool LIS3DSH::SelfTest()
  * \brief   Configure the LIS3DSH with the given configuration parameters.
  * \param   config  Configuration struct for LIS3DSH.
  * \returns True if the LIS3DSH could be configured successfully, else false.
- * \note    The intended use is fifo mode: stream.
+ * \note    Intended is to use the hardware FIFO (fifo mode: stream). Else
+ *          the Data Ready signal is used to indicate a sample is available
+ *          at the configured sample frequency.
  * \note    AN3393 - LIS3DSH - Application note - 10.3.1 Bypass mode - last few lines.
  */
 bool LIS3DSH::Configure(const IConfig& config)
@@ -337,31 +360,47 @@ bool LIS3DSH::Configure(const IConfig& config)
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
     uint8_t ODR    = GetSampleFrequencyAsODR(cfg.mSampleFrequency);
-    uint8_t FSCALE = GetScaleAsFCALE(cfg.mScale);
+    uint8_t FSCALE = GetScaleAsFSCALE(cfg.mScale);
     uint8_t BW     = GetAntiAliasingFilterAsBW(cfg.mAntiAliasingFilter);
+
+    mUseHardwareFifo = cfg.mUseHardwareFifo;
+
+    const uint8_t BDU = (mUseHardwareFifo) ? 0 : 1;     // 0: disabled (default if fifo is used), 1: enabled
 
     uint8_t src = (ODR | (BDU << 3) | AXES_ENABLED);    // Set sample frequency, all axes enabled, not using BDU
     bool result = WriteRegister(CTRL_REG4, &src, 1);
-    EXPECT(result);
-
-    result &= PrepareReadBuffer(cfg.mSampleFrequency);
-    EXPECT(result);
-
-    src = 0x68;                                         // INT1 enabled, active high, pulsed
-    result &= WriteRegister(CTRL_REG3, &src, 1);
     EXPECT(result);
 
     src = (BW | FSCALE);                                // Default: anti-aliasing 200 Hz, +/- 2g
     result &= WriteRegister(CTRL_REG5, &src, 1);
     EXPECT(result);
 
-    src = 0x54;                                         // FIFO enabled, watermark on INT1
-    result &= WriteRegister(CTRL_REG6, &src, 1);
-    EXPECT(result);
+    if (mUseHardwareFifo)
+    {
+        result &= PrepareReadBuffer(READ_BUFFER_SIZE);
+        EXPECT(result);
+
+        src = 0x68;                                     // INT1 enabled, active high, pulsed
+        result &= WriteRegister(CTRL_REG3, &src, 1);
+        EXPECT(result);
+
+        src = 0x54;                                     // FIFO enabled, watermark on INT1
+        result &= WriteRegister(CTRL_REG6, &src, 1);
+        EXPECT(result);
+    }
+    else
+    {
+        result &= PrepareReadBuffer(SAMPLE_LENGTH);     // X,Y,Z * int16_t
+        EXPECT(result);
+
+        src = 0xE8;                                     // DR enabled (on INT1), active high, pulsed
+        result &= WriteRegister(CTRL_REG3, &src, 1);
+        EXPECT(result);
+    }
 
     // Leave fifo in 'bypass' mode: setting another mode enables acquisition.
-    EXPECT(WATERMARK_LEVEL <= 32);                      // Fifo only 32 samples big
-    src = WATERMARK_LEVEL;                              // FIFO mode (disabled), watermark level (default 25 samples X,Y,Z)
+    EXPECT(WATERMARK_LEVEL <= 32);                  // Fifo only 32 samples big
+    src = WATERMARK_LEVEL;                          // FIFO mode (disabled), watermark level (default 25 samples X,Y,Z)
     result &= WriteRegister(FIFO_CTRL, &src, 1);
     EXPECT(result);
 
@@ -371,21 +410,21 @@ bool LIS3DSH::Configure(const IConfig& config)
 /**
  * \brief   Prepare the read buffer by claiming memory on the heap to store
  *          the read fifo data into.
- * \param   sampleFrequency     Sample frequency for accelerometer data.
+ * \param   bufferSize  Read buffer size.
  * \returns True if the read buffer could be prepared successfully, else false.
  */
-bool LIS3DSH::PrepareReadBuffer(SampleFrequency sampleFrequency)
+bool LIS3DSH::PrepareReadBuffer(uint8_t bufferSize)
 {
     // If we had claimed memory before: delete it
     if (mReadBuffer != nullptr) { delete [] mReadBuffer; }
 
     // Claim new segment in heap memory to retrieve sample data.
-    mReadBuffer = new(std::nothrow) uint8_t[READ_BUFFER_SIZE];
+    mReadBuffer = new(std::nothrow) uint8_t[bufferSize];
 
     // Clear buffer: fill with 0
     if (mReadBuffer != nullptr)
     {
-        std::fill_n(mReadBuffer, READ_BUFFER_SIZE, 0);
+        std::fill_n(mReadBuffer, bufferSize, 0);
         return true;
     }
     return false;
@@ -409,7 +448,7 @@ bool LIS3DSH::ClearFifo()
         uint8_t nrSamplesInFifo = dest & 0x1F;
         if (nrSamplesInFifo > 0)
         {
-            const uint8_t length = 3 * 2 * nrSamplesInFifo;   // X,Y,Z * int16_t * samples in fifo
+            const uint8_t length = SAMPLE_LENGTH * nrSamplesInFifo;     // X,Y,Z * int16_t * samples in fifo
             uint8_t samples[length] = {};
             result &= ReadRegister(OUT_X_L, samples, length);
             EXPECT(result);
@@ -421,7 +460,7 @@ bool LIS3DSH::ClearFifo()
 
         if ( ! (dest & FIFO_EMPTY) )
         {
-            const uint8_t length = 3 * 2;                       // X,Y,Z * int16_t * 1 sample in fifo
+            const uint8_t length = SAMPLE_LENGTH;                       // X,Y,Z * int16_t * 1 sample in fifo
             uint8_t samples[length] = {};
             result &= ReadRegister(OUT_X_L, samples, length);
             EXPECT(result);
@@ -460,7 +499,7 @@ uint8_t LIS3DSH::GetSampleFrequencyAsODR(SampleFrequency sampleFrequency)
  * \param   scale   Scale of the accelerometer data.
  * \returns The FSCALE setting with the scale for CTRL_REG5 register.
  */
-uint8_t LIS3DSH::GetScaleAsFCALE(Scale scale)
+uint8_t LIS3DSH::GetScaleAsFSCALE(Scale scale)
 {
     uint8_t fscaleVal = 0;
 
@@ -528,7 +567,14 @@ void LIS3DSH::ReadAxesCompleted()
 
     if (mHandler)
     {
-        mHandler(READ_BUFFER_SIZE);
+        if (mUseHardwareFifo)
+        {
+            mHandler(READ_BUFFER_SIZE);
+        }
+        else
+        {
+            mHandler(SAMPLE_LENGTH);
+        }
     }
 }
 
@@ -592,7 +638,9 @@ bool LIS3DSH::ReadRegister(uint8_t reg, uint8_t* dest, uint16_t length)
  */
 void LIS3DSH::CallbackInt1()
 {
-    if ((mReadBuffer != nullptr) && (READ_BUFFER_SIZE > 0))
+    const uint8_t bufferSize = (mUseHardwareFifo) ? READ_BUFFER_SIZE : SAMPLE_LENGTH;
+
+    if ((mReadBuffer != nullptr) && (bufferSize > 0))
     {
         uint8_t reg = (OUT_X_L | READ_MASK);
 
@@ -601,7 +649,7 @@ void LIS3DSH::CallbackInt1()
         EXPECT(result);
         if (result)
         {
-            result &= mSpi.ReadDMA(mReadBuffer, READ_BUFFER_SIZE, [this]() { this->ReadAxesCompleted(); } );
+            result &= mSpi.ReadDMA(mReadBuffer, bufferSize, [this]() { this->ReadAxesCompleted(); } );
             EXPECT(result);
         }
         else
@@ -616,5 +664,5 @@ void LIS3DSH::CallbackInt1()
  */
 void LIS3DSH::CallbackInt2()
 {
-    __NOP();    // Not used yet...
+    __NOP();    // Not used yet, enable in CTRL_REG3 with bit INT2_EN.
 }
