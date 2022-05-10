@@ -27,11 +27,11 @@
 /************************************************************************/
 #include <atomic>
 #include "config.h"
-#include "arbiters/SPI/SPI_arbiter.hpp"
 #include "components/LIS3DSH/LIS3DSH.hpp"
 #include "components/LIS3DSH/FakeLIS3DSH.hpp"
 #include "drivers/DMA/DMA.hpp"
 #include "drivers/Pin/Pin.hpp"
+#include "drivers/SPI/SPI.hpp"
 
 
 /************************************************************************/
@@ -61,7 +61,7 @@ private:
     Pin mMotionInt1;
     Pin mMotionInt2;
 
-    SPI_arbiter mSPI;
+    SPI mSPI;
 
     DMA mDMA_SPI_Tx;
     DMA mDMA_SPI_Rx;
