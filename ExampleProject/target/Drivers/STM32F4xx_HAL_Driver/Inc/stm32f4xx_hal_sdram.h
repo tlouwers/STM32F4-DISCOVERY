@@ -26,6 +26,9 @@ extern "C" {
 
 #if defined(FMC_Bank5_6)
 
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f4xx_ll_fmc.h"
+
 /** @addtogroup STM32F4xx_HAL_Driver
   * @{
   */

@@ -26,6 +26,13 @@ extern "C" {
 
 #if defined(FMC_Bank1) || defined(FSMC_Bank1)
 
+/* Includes ------------------------------------------------------------------*/
+#if defined(FSMC_Bank1)
+#include "stm32f4xx_ll_fsmc.h"
+#else
+#include "stm32f4xx_ll_fmc.h"
+#endif /* FMC_Bank1 */
+
 /** @addtogroup STM32F4xx_HAL_Driver
   * @{
   */
@@ -231,7 +238,7 @@ HAL_StatusTypeDef HAL_NOR_WriteOperation_Disable(NOR_HandleTypeDef *hnor);
   */
 
 /* NOR State functions ********************************************************/
-HAL_NOR_StateTypeDef  HAL_NOR_GetState(NOR_HandleTypeDef *hnor);
+HAL_NOR_StateTypeDef  HAL_NOR_GetState(const NOR_HandleTypeDef *hnor);
 HAL_NOR_StatusTypeDef HAL_NOR_GetStatus(NOR_HandleTypeDef *hnor, uint32_t Address, uint32_t Timeout);
 /**
   * @}

@@ -26,6 +26,13 @@ extern "C" {
 
 #if defined(FMC_Bank1) || defined(FSMC_Bank1)
 
+/* Includes ------------------------------------------------------------------*/
+#if defined(FSMC_Bank1)
+#include "stm32f4xx_ll_fsmc.h"
+#else
+#include "stm32f4xx_ll_fmc.h"
+#endif /* FSMC_Bank1 */
+
 /** @addtogroup STM32F4xx_HAL_Driver
   * @{
   */
@@ -202,7 +209,7 @@ HAL_StatusTypeDef HAL_SRAM_WriteOperation_Disable(SRAM_HandleTypeDef *hsram);
   */
 
 /* SRAM  State functions ******************************************************/
-HAL_SRAM_StateTypeDef HAL_SRAM_GetState(SRAM_HandleTypeDef *hsram);
+HAL_SRAM_StateTypeDef HAL_SRAM_GetState(const SRAM_HandleTypeDef *hsram);
 
 /**
   * @}

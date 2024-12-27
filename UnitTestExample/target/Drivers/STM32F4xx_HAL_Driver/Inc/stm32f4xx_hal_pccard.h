@@ -26,6 +26,13 @@ extern "C" {
 
 #if defined(FMC_Bank4) || defined(FSMC_Bank4)
 
+/* Includes ------------------------------------------------------------------*/
+#if defined(FSMC_Bank4)
+#include "stm32f4xx_ll_fsmc.h"
+#else
+#include "stm32f4xx_ll_fmc.h"
+#endif /* FSMC_Bank4 */
+
 /** @addtogroup STM32F4xx_HAL_Driver
   * @{
   */
