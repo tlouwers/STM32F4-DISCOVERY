@@ -4,6 +4,7 @@
     "C_Cpp.default.intelliSenseMode": "gcc-arm",
     "C_Cpp.default.cStandard": "gnu11",
     "C_Cpp.default.cppStandard": "gnu++14",
+    "testMate.cpp.test.executables": "${workspaceFolder}/build/tests/TestRunner",
     "files.associations": {
         "*.tcc": "cpp",
         "numeric": "cpp",
