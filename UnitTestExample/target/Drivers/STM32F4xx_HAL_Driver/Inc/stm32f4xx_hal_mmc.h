@@ -27,8 +27,6 @@
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_ll_sdmmc.h"
-
 /** @addtogroup STM32F4xx_HAL_Driver
   * @{
   */
