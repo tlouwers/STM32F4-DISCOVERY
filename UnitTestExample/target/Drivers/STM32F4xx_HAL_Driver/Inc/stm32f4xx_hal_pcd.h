@@ -25,8 +25,6 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_ll_usb.h"
-
 #if defined (USB_OTG_FS) || defined (USB_OTG_HS)
 
 /** @addtogroup STM32F4xx_HAL_Driver

@@ -13,7 +13,7 @@ target_sources(TestRunner
         TestRunner.cpp
         TestHI-M1388AR.cpp
         TestLIS3DSH.cpp
-        TestCRC.cpp
+        TestCrc.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/CRC.cpp
         Fake/drivers/Pin/Pin.cpp
