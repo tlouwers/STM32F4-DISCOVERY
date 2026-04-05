@@ -27,12 +27,6 @@ extern "C" {
 #if defined(FMC_Bank3) || defined(FMC_Bank2_3) || defined(FSMC_Bank2_3)
 
 /* Includes ------------------------------------------------------------------*/
-#if defined(FSMC_Bank2_3)
-#include "stm32f4xx_ll_fsmc.h"
-#else
-#include "stm32f4xx_ll_fmc.h"
-#endif /* FSMC_Bank2_3 */
-
 /** @addtogroup STM32F4xx_HAL_Driver
   * @{
   */
@@ -198,7 +192,7 @@ HAL_StatusTypeDef  HAL_NAND_Init(NAND_HandleTypeDef *hnand, FMC_NAND_PCC_TimingT
                                  FMC_NAND_PCC_TimingTypeDef *AttSpace_Timing);
 HAL_StatusTypeDef  HAL_NAND_DeInit(NAND_HandleTypeDef *hnand);
 
-HAL_StatusTypeDef  HAL_NAND_ConfigDevice(NAND_HandleTypeDef *hnand, NAND_DeviceConfigTypeDef *pDeviceConfig);
+HAL_StatusTypeDef  HAL_NAND_ConfigDevice(NAND_HandleTypeDef *hnand, const NAND_DeviceConfigTypeDef *pDeviceConfig);
 
 HAL_StatusTypeDef  HAL_NAND_Read_ID(NAND_HandleTypeDef *hnand, NAND_IDTypeDef *pNAND_ID);
 
@@ -289,7 +283,7 @@ uint32_t              HAL_NAND_Read_Status(const NAND_HandleTypeDef *hnand);
 #define NAND_DEVICE2               0x80000000UL
 #else
 #define NAND_DEVICE                0x80000000UL
-#endif /* NAND_SECOND_BANK */
+#endif /* FMC_Bank2_3 */
 #define NAND_WRITE_TIMEOUT         0x01000000UL
 
 #define CMD_AREA                   (1UL<<16U)  /* A16 = CLE high */
