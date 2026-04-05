@@ -17,6 +17,9 @@ StandupCounter/.vscode/.cortex-debug*
 TiltExample/.vscode/.cortex-debug*
 UnitTestExample/.vscode/.cortex-debug*
 
+# Ignore Claude Code files
+**/CLAUDE.md
+
 # Ignore doxygen folder
 ExampleProject/target/doxygen/docs/**
 FreeRTOSProject/target/doxygen/docs/**
