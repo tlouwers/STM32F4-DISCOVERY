@@ -76,6 +76,9 @@ public:
         Timeout mTimeout;  ///< Timeout value.
     };
 
+    explicit Watchdog();
+    virtual ~Watchdog();
+
     bool Init(const IConfig& config) override;
     bool IsInit() const override;
     bool Sleep() override;

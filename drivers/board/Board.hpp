@@ -11,6 +11,8 @@
  *
  * \brief   Helper class intended to configure the pins and clock of the system.
  *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/board
+ *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
  * \date    04-2019

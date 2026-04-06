@@ -1,0 +1,21 @@
+{
+    "C_Cpp.default.defines": ["USE_HAL_DRIVER",
+                              "STM32F407xx"],
+    "C_Cpp.default.intelliSenseMode": "gcc-arm",
+    "C_Cpp.default.cStandard": "gnu11",
+    "C_Cpp.default.cppStandard": "gnu++14",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/target/Src",
+        "${workspaceFolder}/../../hal/STM32F4xx_HAL_Driver/Inc",
+        "${workspaceFolder}/../../hal/CMSIS/Include",
+        "${workspaceFolder}/../../hal/CMSIS/Device/ST/STM32F4xx/Include"
+    ],
+    "testMate.cpp.test.executables": "${workspaceFolder}/build/tests/TestRunner{,.exe}",
+    "files.associations": {
+        "*.tcc": "cpp",
+        "numeric": "cpp",
+        "streambuf": "cpp",
+        "algorithm": "cpp",
+        "functional": "cpp"
+    },
+}
