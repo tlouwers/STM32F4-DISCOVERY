@@ -1,0 +1,134 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+
+        // ── Bootloader Firmware ──────────────────────────────────────────────
+        {
+            "label": "Configure - Bootloader [Debug]",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/bootloader_fw"
+            },
+            "command": "cmake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Configure - Bootloader [Release]",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/bootloader_fw"
+            },
+            "command": "cmake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_BUILD_TYPE=Release"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build - Bootloader",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/bootloader_fw/build"
+            },
+            "command": "ninja",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+
+        // ── Blink Green (LD4, PD12) ──────────────────────────────────────────
+        {
+            "label": "Configure - Blink Green [Debug]",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/blink_green"
+            },
+            "command": "cmake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Configure - Blink Green [Release]",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/blink_green"
+            },
+            "command": "cmake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_BUILD_TYPE=Release"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build - Blink Green",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/blink_green/build"
+            },
+            "command": "ninja",
+            "problemMatcher": []
+        },
+
+        // ── Blink Orange (LD3, PD13) ─────────────────────────────────────────
+        {
+            "label": "Configure - Blink Orange [Debug]",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/blink_orange"
+            },
+            "command": "cmake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Configure - Blink Orange [Release]",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/blink_orange"
+            },
+            "command": "cmake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_BUILD_TYPE=Release"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build - Blink Orange",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/blink_orange/build"
+            },
+            "command": "ninja",
+            "problemMatcher": []
+        }
+    ]
+}
