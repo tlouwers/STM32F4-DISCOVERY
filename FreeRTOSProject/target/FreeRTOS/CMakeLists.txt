@@ -6,22 +6,22 @@ project(freertos)
 
 # Source files
 add_library(${PROJECT_NAME} STATIC
-    source/croutine.c
-    source/event_groups.c
-    source/heap_4.c
-    source/list.c
-    source/queue.c
-    source/stream_buffer.c
-    source/tasks.c
-    source/timers.c
-    portable/port.c
+    ${FREERTOS_ROOT}/source/croutine.c
+    ${FREERTOS_ROOT}/source/event_groups.c
+    ${FREERTOS_ROOT}/source/heap_4.c
+    ${FREERTOS_ROOT}/source/list.c
+    ${FREERTOS_ROOT}/source/queue.c
+    ${FREERTOS_ROOT}/source/stream_buffer.c
+    ${FREERTOS_ROOT}/source/tasks.c
+    ${FREERTOS_ROOT}/source/timers.c
+    ${FREERTOS_ROOT}/portable/port.c
 )
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/config
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/portable
+    ${CMAKE_SOURCE_DIR}/Src
+    ${FREERTOS_ROOT}/include
+    ${FREERTOS_ROOT}/portable
 )
 
 # Add compile options required by the library

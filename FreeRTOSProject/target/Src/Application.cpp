@@ -26,8 +26,8 @@
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
 #include "utility/Assert/Assert.h"
-#include "../FreeRTOS/include/FreeRTOS.h"
-#include "../FreeRTOS/include/task.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 
 /************************************************************************/

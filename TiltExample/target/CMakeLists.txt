@@ -15,6 +15,9 @@ enable_language(ASM)
 # Path to the shared HAL/CMSIS at the repository root
 set(HAL_ROOT "${CMAKE_SOURCE_DIR}/../../hal")
 
+# Path to the shared FreeRTOS at the repository root
+set(FREERTOS_ROOT "${CMAKE_SOURCE_DIR}/../../freertos")
+
 # Source files - user, HAL and CMSIS
 file(GLOB_RECURSE USER_SOURCES  "Src/*.c" "Src/*.cpp")
 file(GLOB_RECURSE HAL_SOURCES   "${HAL_ROOT}/STM32F4xx_HAL_Driver/Src/*.c")
@@ -27,7 +30,7 @@ include_directories(${HAL_ROOT}/CMSIS/Include)
 include_directories(${HAL_ROOT}/CMSIS/Device/ST/STM32F4xx/Include)
 
 # Include directories - FreeRTOS
-include_directories(FreeRTOS/include)
+include_directories(${FREERTOS_ROOT}/include)
 
 # Add other directories
 add_subdirectory(FreeRTOS)
