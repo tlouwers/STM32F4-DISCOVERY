@@ -19,6 +19,8 @@ UnitTestExample/.vscode/.cortex-debug*
 
 # Ignore Claude Code files
 **/CLAUDE.md
+.claude/
+TODO.md
 
 # Ignore doxygen folder
 ExampleProject/target/doxygen/docs/**

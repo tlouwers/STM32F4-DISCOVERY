@@ -13,23 +13,24 @@ target_sources(TestRunner
         TestRunner.cpp
         TestHI-M1388AR.cpp
         TestLIS3DSH.cpp
-        TestCRC.cpp
+        TestCrc.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/CRC.cpp
         Fake/drivers/Pin/Pin.cpp
         Fake/utility/Assert/Assert.cpp
         Fake/stm32f4xx_hal.c
         # Test subjects
-        ../target/Src/components/HI-M1388AR/HI-M1388AR.cpp
-        ../target/Src/components/LIS3DSH/LIS3DSH.cpp
+        ../drivers/components/HI-M1388AR/HI-M1388AR.cpp
+        ../drivers/components/LIS3DSH/LIS3DSH.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )
 
 # Include the real and Fake source directories
 target_include_directories(TestRunner PRIVATE
-    ../target/Src
+    ../drivers
     ./Fake
+    .
 )
 
 # Link in Google Mock (which also includes Google Test)
