@@ -7,7 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Dac
+ * \class   DAC
  *
  * \brief   DAC peripheral driver class.
  *
@@ -40,7 +40,7 @@
 /**
  * \brief   DAC peripheral driver class.
  */
-class Dac final : public IDAC, public IInitable
+class DAC final : public IDAC, public IInitable
 {
 public:
     /**
@@ -116,8 +116,8 @@ public:
     };
 
 
-    Dac();
-    virtual ~Dac();
+    DAC();
+    virtual ~DAC();
 
     bool Init() override;
     bool IsInit() const override;

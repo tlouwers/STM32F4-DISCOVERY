@@ -1,9 +1,9 @@
 /**
- * \file IRtc.hpp
+ * \file IRTC.hpp
  *
- * \brief   Rtc interface class.
+ * \brief   RTC interface class.
  *
- * \details This class is intended to act as interface for the Rtc class, to
+ * \details This class is intended to act as interface for the RTC class, to
  *          ease unit testing.
  */
 
@@ -38,9 +38,9 @@ struct DateTime
 /* Interface declaration                                                */
 /************************************************************************/
 /**
- * \brief   IRtc interface class.
+ * \brief   IRTC interface class.
  */
-class IRtc
+class IRTC
 {
 public:
     virtual bool SetDateTime(const DateTime& dateTime) = 0;

@@ -2,7 +2,7 @@
 
 
 // Test subject
-#include "Fake/drivers/Crc/CRC.hpp"
+#include "Fake/drivers/CRC/CRC.hpp"
 
 // Supporting files
 #include "board/BoardConfig.hpp"
@@ -25,7 +25,7 @@ protected:
         // Initialize test matter
     }
 
-    Crc mSubject;
+    CRC mSubject;
 };
 
 

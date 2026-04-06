@@ -7,7 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Adc
+ * \class   ADC
  *
  * \brief   ADC peripheral driver class.
  *
@@ -71,7 +71,7 @@ static void CallbackEndOfConversion(const ADCCallbacks& adc_callbacks, uint16_t 
 /**
  * \brief   Constructor, prepares the internal ADC administration.
  */
-Adc::Adc(const ADCInstance& instance) :
+ADC::Adc(const ADCInstance& instance) :
     mInstance(instance),
     mADCCallbacks( (instance == ADCInstance::ADC_1) ? (adc1_callbacks) : ( (instance == ADCInstance::ADC_2) ? (adc2_callbacks) : (adc3_callbacks) ) ),
     mInitialized(false)
@@ -84,7 +84,7 @@ Adc::Adc(const ADCInstance& instance) :
 /**
  * \brief   Destructor, stops ADC channels.
  */
-Adc::~Adc()
+ADC::~Adc()
 {
     Sleep();
 }
@@ -94,7 +94,7 @@ Adc::~Adc()
  * \param   config  The configuration for the ADC instance to use.
  * \returns True if the configuration could be applied, else false.
  */
-bool Adc::Init(const IConfig& config)
+bool ADC::Init(const IConfig& config)
 {
     CheckAndEnableAHB2PeripheralClock(mInstance);
 
@@ -137,7 +137,7 @@ bool Adc::Init(const IConfig& config)
  * \brief   Indicate if ADC is initialized.
  * \returns True if ADC is initialized, else false.
  */
-bool Adc::IsInit() const
+bool ADC::IsInit() const
 {
     return mInitialized;
 }
@@ -147,7 +147,7 @@ bool Adc::IsInit() const
  * \details Aborts ongoing captures.
  * \returns True if ADC module could be put in sleep mode, else false.
  */
-bool Adc::Sleep()
+bool ADC::Sleep()
 {
     // Disable interrupts
     HAL_NVIC_DisableIRQ( ADC_IRQn );
@@ -169,7 +169,7 @@ bool Adc::Sleep()
  * \param   value   Variable to store the sampled value into.
  * \returns True if sampling was succesful, else false.
  */
-bool Adc::GetValue(uint16_t& value)
+bool ADC::GetValue(uint16_t& value)
 {
     if (!mInitialized) { return false; }
 
@@ -193,7 +193,7 @@ bool Adc::GetValue(uint16_t& value)
  * \param   handler     Callback to call when sampling completed.
  * \returns True if the sampling could be started, else false.
  */
-bool Adc::GetValueInterrupt(const std::function<void(uint16_t)>& handler)
+bool ADC::GetValueInterrupt(const std::function<void(uint16_t)>& handler)
 {
     if (!mInitialized) { return false; }
 
@@ -211,7 +211,7 @@ bool Adc::GetValueInterrupt(const std::function<void(uint16_t)>& handler)
  * \param   instance    The ADC instance to use.
  * \note    Asserts if the ADC instance is invalid.
  */
-void Adc::SetInstance(const ADCInstance& instance)
+void ADC::SetInstance(const ADCInstance& instance)
 {
     switch (instance)
     {
@@ -228,7 +228,7 @@ void Adc::SetInstance(const ADCInstance& instance)
  * \param   instance    The ADC instance to enable the clock for.
  * \note    Asserts if not a valid ADC instance provided.
  */
-void Adc::CheckAndEnableAHB2PeripheralClock(const ADCInstance& instance)
+void ADC::CheckAndEnableAHB2PeripheralClock(const ADCInstance& instance)
 {
     switch (instance)
     {
@@ -245,7 +245,7 @@ void Adc::CheckAndEnableAHB2PeripheralClock(const ADCInstance& instance)
  * \param   instance    The ADC instance to disable the clock for.
  * \note    Asserts if not a valid ADC instance provided.
  */
-void Adc::CheckAndDisableAHB2PeripheralClock(const ADCInstance& instance)
+void ADC::CheckAndDisableAHB2PeripheralClock(const ADCInstance& instance)
 {
     switch (instance)
     {
@@ -261,7 +261,7 @@ void Adc::CheckAndDisableAHB2PeripheralClock(const ADCInstance& instance)
  * \param   channel     The desired channel.
  * \returns Translated channel value.
  */
-uint32_t Adc::GetChannel(const Channel& channel)
+uint32_t ADC::GetChannel(const Channel& channel)
 {
     uint32_t channel_value = ADC_CHANNEL_0;
 
@@ -294,7 +294,7 @@ uint32_t Adc::GetChannel(const Channel& channel)
  * \param   resolution  The desired resolution value.
  * \returns Translated resolution value.
  */
-uint32_t Adc::GetResolution(const Resolution& resolution)
+uint32_t ADC::GetResolution(const Resolution& resolution)
 {
     uint32_t resolution_value = ADC_RESOLUTION_12B;
 
@@ -316,7 +316,7 @@ uint32_t Adc::GetResolution(const Resolution& resolution)
  * \param   preemptPrio The preemption priority for the IRQn channel.
  * \param   subPrio     The subpriority level for the IRQ channel.
  */
-void Adc::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
+void ADC::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
 {
     HAL_NVIC_DisableIRQ(type);
     HAL_NVIC_ClearPendingIRQ(type);
@@ -327,7 +327,7 @@ void Adc::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
 /**
  * \brief   Generic ADC IRQ callback. Will propagate other interrupts.
  */
-void Adc::CallbackIRQ() const
+void ADC::CallbackIRQ() const
 {
     HAL_ADC_IRQHandler(const_cast<ADC_HandleTypeDef*>(&mHandle));
 }

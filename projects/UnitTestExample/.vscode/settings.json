@@ -6,9 +6,9 @@
     "C_Cpp.default.cppStandard": "gnu++14",
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/target/Src",
-        "${workspaceFolder}/../hal/STM32F4xx_HAL_Driver/Inc",
-        "${workspaceFolder}/../hal/CMSIS/Include",
-        "${workspaceFolder}/../hal/CMSIS/Device/ST/STM32F4xx/Include"
+        "${workspaceFolder}/../../hal/STM32F4xx_HAL_Driver/Inc",
+        "${workspaceFolder}/../../hal/CMSIS/Include",
+        "${workspaceFolder}/../../hal/CMSIS/Device/ST/STM32F4xx/Include"
     ],
     "testMate.cpp.test.executables": "${workspaceFolder}/build/tests/TestRunner{,.exe}",
     "files.associations": {

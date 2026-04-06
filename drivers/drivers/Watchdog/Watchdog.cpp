@@ -32,6 +32,18 @@
 /* Public Methods                                                       */
 /************************************************************************/
 /**
+ * \brief   Constructor of the Watchdog class.
+ */
+Watchdog::Watchdog() :
+    mInitialized(false)
+{ }
+
+/**
+ * \brief   Destructor of the Watchdog class.
+ */
+Watchdog::~Watchdog() { }
+
+/**
  * \brief   Initializes the Watchdog instance with the given configuration.
  * \param   config  The configuration for the Watchdog to use.
  * \returns True if the configuration could be applied, else false.

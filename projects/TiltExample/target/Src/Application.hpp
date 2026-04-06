@@ -34,7 +34,7 @@
 #include "drivers/DMA/DMA.hpp"
 #include "drivers/Pin/Pin.hpp"
 #include "drivers/SPI/SPI.hpp"
-#include "drivers/Usart/Usart.hpp"
+#include "drivers/USART/USART.hpp"
 
 
 /************************************************************************/
@@ -95,7 +95,7 @@ private:
 
     SPI   mSPIMotion;
     SPI   mSPIMatrix;
-    Usart mUsart;
+    USART mUsart;
 
     DMA mDMA_SPI_Tx;
     DMA mDMA_SPI_Rx;

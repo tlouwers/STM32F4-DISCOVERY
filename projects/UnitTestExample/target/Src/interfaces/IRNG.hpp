@@ -1,5 +1,5 @@
 /**
- * \file    Board.hpp
+ * \file    IRNG.hpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,30 +7,32 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Board
+ * \brief   Generic interface for RNG peripheral driver.
  *
- * \brief   Helper class intended to configure the pins and clock of the system.
- *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/board
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/interfaces
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
- * \date    04-2019
+ * \date    06-2021
  */
 
-#ifndef BOARD_HPP_
-#define BOARD_HPP_
+#ifndef IRNG_HPP_
+#define IRNG_HPP_
+
+/************************************************************************/
+/* Includes                                                             */
+/************************************************************************/
+#include <cstdint>
+
 
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class Board
+class IRNG
 {
 public:
-    static void InitPins();
-    static bool InitClock();
-    static void Sleep();
+    virtual uint32_t GetRandom() = 0;
 };
 
 
-#endif  // BOARD_HPP_
+#endif  // IRNG_HPP_

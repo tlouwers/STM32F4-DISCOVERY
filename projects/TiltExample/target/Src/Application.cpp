@@ -170,7 +170,7 @@ bool Application::Init()
     ASSERT(result);
 
 
-    result = mUsart.Init(Usart::Config(10, false, Usart::Baudrate::_115K2));
+    result = mUsart.Init(USART::Config(10, false, USART::Baudrate::_115K2));
     ASSERT(result);
 
 

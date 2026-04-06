@@ -1,21 +1,21 @@
 # Ignore build folders
-ExampleProject/build/**
-ExampleProject/target/build/**
-FreeRTOSProject/build/**
-FreeRTOSProject/target/build/**
-StandupCounter/build/**
-StandupCounter/target/build/**
-TiltExample/build/**
-TiltExample/target/build/**
-UnitTestExample/build/**
-UnitTestExample/target/build/**
+projects/ExampleProject/build/**
+projects/ExampleProject/target/build/**
+projects/FreeRTOSProject/build/**
+projects/FreeRTOSProject/target/build/**
+projects/StandupCounter/build/**
+projects/StandupCounter/target/build/**
+projects/TiltExample/build/**
+projects/TiltExample/target/build/**
+projects/UnitTestExample/build/**
+projects/UnitTestExample/target/build/**
 
 # Ignore Cortex-Debug temporary files
-ExampleProject/.vscode/.cortex-debug*
-FreeRTOSProject/.vscode/.cortex-debug*
-StandupCounter/.vscode/.cortex-debug*
-TiltExample/.vscode/.cortex-debug*
-UnitTestExample/.vscode/.cortex-debug*
+projects/ExampleProject/.vscode/.cortex-debug*
+projects/FreeRTOSProject/.vscode/.cortex-debug*
+projects/StandupCounter/.vscode/.cortex-debug*
+projects/TiltExample/.vscode/.cortex-debug*
+projects/UnitTestExample/.vscode/.cortex-debug*
 
 # Ignore Claude Code files
 **/CLAUDE.md
@@ -23,8 +23,8 @@ UnitTestExample/.vscode/.cortex-debug*
 TODO.md
 
 # Ignore doxygen folder
-ExampleProject/target/doxygen/docs/**
-FreeRTOSProject/target/doxygen/docs/**
-StandupCounter/target/doxygen/docs/**
-TiltExample/target/doxygen/docs/**
-UnitTestExample/target/doxygen/docs/**
+projects/ExampleProject/target/doxygen/docs/**
+projects/FreeRTOSProject/target/doxygen/docs/**
+projects/StandupCounter/target/doxygen/docs/**
+projects/TiltExample/target/doxygen/docs/**
+projects/UnitTestExample/target/doxygen/docs/**

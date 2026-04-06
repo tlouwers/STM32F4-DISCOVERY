@@ -11,7 +11,7 @@
  *
  * \brief   I2C master peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/I2C
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/I2C
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1

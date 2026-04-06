@@ -13,10 +13,10 @@ project(STM32F407-Discovery)
 enable_language(ASM)
 
 # Path to the shared HAL/CMSIS at the repository root
-set(HAL_ROOT "${CMAKE_SOURCE_DIR}/../../hal")
+set(HAL_ROOT "${CMAKE_SOURCE_DIR}/../../../hal")
 
 # Path to the shared FreeRTOS at the repository root
-set(FREERTOS_ROOT "${CMAKE_SOURCE_DIR}/../../freertos")
+set(FREERTOS_ROOT "${CMAKE_SOURCE_DIR}/../../../freertos")
 
 # Source files - user, HAL and CMSIS
 file(GLOB_RECURSE USER_SOURCES  "Src/*.c" "Src/*.cpp")

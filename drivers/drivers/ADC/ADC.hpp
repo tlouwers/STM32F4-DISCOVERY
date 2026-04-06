@@ -7,7 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Adc
+ * \class   ADC
  *
  * \brief   ADC peripheral driver class.
  *
@@ -54,7 +54,7 @@ enum class ADCInstance : uint8_t
 /************************************************************************/
 /**
  * \struct  ADCCallbacks
- * \brief   Data structure to contain callbacks for a SPI instance.
+ * \brief   Data structure to contain callbacks for an ADC instance.
  */
 struct ADCCallbacks {
     std::function<void()> callbackIRQ  = nullptr;                       ///< Callback to call when IRQ occurs.
@@ -65,7 +65,7 @@ struct ADCCallbacks {
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class Adc final : public IADC, public IConfigInitable
+class ADC final : public IADC, public IConfigInitable
 {
 public:
     /**
@@ -128,8 +128,8 @@ public:
     };
 
 
-    explicit Adc(const ADCInstance& instance);
-    virtual ~Adc();
+    explicit ADC(const ADCInstance& instance);
+    virtual ~ADC();
 
     bool Init(const IConfig& config) override;
     bool IsInit() const override;

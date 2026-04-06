@@ -7,7 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Dac
+ * \class   DAC
  *
  * \brief   DAC peripheral driver class.
  *
@@ -38,14 +38,14 @@
 /**
  * \brief   Constructor, prepares the internal DAC administration.
  */
-Dac::Dac() :
+DAC::Dac() :
     mInitialized(false)
 { ; }
 
 /**
  * \brief   Destructor, stops DAC channels.
  */
-Dac::~Dac()
+DAC::~Dac()
 {
     Sleep();
 }
@@ -54,7 +54,7 @@ Dac::~Dac()
  * \brief   Initializes the DAC.
  * \returns True if the DAC could be initialized, else false.
  */
-bool Dac::Init()
+bool DAC::Init()
 {
     CheckAndEnableAHB1PeripheralClock();
 
@@ -72,7 +72,7 @@ bool Dac::Init()
  * \brief   Indicate if DAC is initialized.
  * \returns True if DAC is initialized, else false.
  */
-bool Dac::IsInit() const
+bool DAC::IsInit() const
 {
     return mInitialized;
 }
@@ -82,7 +82,7 @@ bool Dac::IsInit() const
  * \details Stops output on channel(s).
  * \returns True if DAC module could be put in sleep mode, else false.
  */
-bool Dac::Sleep()
+bool DAC::Sleep()
 {
     StopChannel(Channel::CHANNEL_1);
     StopChannel(Channel::CHANNEL_2);
@@ -104,7 +104,7 @@ bool Dac::Sleep()
  * \brief   Get the handle to the peripheral.
  * \returns The handle to the peripheral.
  */
-const DAC_HandleTypeDef* Dac::GetPeripheralHandle() const
+const DAC_HandleTypeDef* DAC::GetPeripheralHandle() const
 {
     return &mHandle;
 }
@@ -115,7 +115,7 @@ const DAC_HandleTypeDef* Dac::GetPeripheralHandle() const
  *          externally, as it needs to be linked to the DMA class.
  * \returns The DAC channel 1 DMA handle as reference-to-pointer.
  */
-DMA_HandleTypeDef*& Dac::GetDmaChannel1Handle()
+DMA_HandleTypeDef*& DAC::GetDmaChannel1Handle()
 {
     return mHandle.DMA_Handle1;
 }
@@ -126,7 +126,7 @@ DMA_HandleTypeDef*& Dac::GetDmaChannel1Handle()
  *          externally, as it needs to be linked to the DMA class.
  * \returns The DAC channel 2 DMA handle as reference-to-pointer.
  */
-DMA_HandleTypeDef*& Dac::GetDmaChannel2Handle()
+DMA_HandleTypeDef*& DAC::GetDmaChannel2Handle()
 {
     return mHandle.DMA_Handle2;
 }
@@ -138,7 +138,7 @@ DMA_HandleTypeDef*& Dac::GetDmaChannel2Handle()
  * \returns True if the channel could be configured, else false. Stops the
  *          channel before configuring it.
  */
-bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelConfig)
+bool DAC::ConfigureChannel(const Channel& channel, const ChannelConfig& channelConfig)
 {
     if (mInitialized)
     {
@@ -182,7 +182,7 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
  * \param   length  Length of the buffer.
  * \returns True if the waveform could be configured, else false.
  */
-bool Dac::ConfigureWaveform(const Channel& channel, const uint16_t* values, uint16_t length)
+bool DAC::ConfigureWaveform(const Channel& channel, const uint16_t* values, uint16_t length)
 {
     if (values != nullptr && length > 0)
     {
@@ -199,7 +199,7 @@ bool Dac::ConfigureWaveform(const Channel& channel, const uint16_t* values, uint
  * \returns True if the value could be output, else false. Starts the channel
  *          if needed.
  */
-bool Dac::SetValue(const Channel& channel, uint16_t value)
+bool DAC::SetValue(const Channel& channel, uint16_t value)
 {
     switch (channel)
     {
@@ -231,7 +231,7 @@ bool Dac::SetValue(const Channel& channel, uint16_t value)
  * \param   channel     Channel to output the configured waveform on.
  * \returns True if the waveform could be started on the given channel, else false.
  */
-bool Dac::StartWaveform(const Channel& channel)
+bool DAC::StartWaveform(const Channel& channel)
 {
     switch (channel)
     {
@@ -273,7 +273,7 @@ bool Dac::StartWaveform(const Channel& channel)
  * \param   channel     Channel to stop the configured waveform on.
  * \returns True if the waveform could be stopped for the given channel, else false.
  */
-bool Dac::StopWaveform(const Channel& channel)
+bool DAC::StopWaveform(const Channel& channel)
 {
     switch (channel)
     {
@@ -306,7 +306,7 @@ bool Dac::StopWaveform(const Channel& channel)
  * \brief   Check if the appropriate AHB1 peripheral clock for the DAC
  *          is enabled, if not enable it.
  */
-void Dac::CheckAndEnableAHB1PeripheralClock()
+void DAC::CheckAndEnableAHB1PeripheralClock()
 {
     if (__HAL_RCC_DAC_IS_CLK_DISABLED()) { __HAL_RCC_DAC_CLK_ENABLE(); }
 }
@@ -315,7 +315,7 @@ void Dac::CheckAndEnableAHB1PeripheralClock()
  * \brief   Check if the appropriate AHB1 peripheral clock for the DAC
  *          is enabled, if so disable it.
  */
-void Dac::CheckAndDisableAHB1PeripheralClock()
+void DAC::CheckAndDisableAHB1PeripheralClock()
 {
     if (__HAL_RCC_DAC_IS_CLK_ENABLED()) { __HAL_RCC_DAC_CLK_DISABLE(); }
 }
@@ -325,7 +325,7 @@ void Dac::CheckAndDisableAHB1PeripheralClock()
  * \param   trigger     The desired trigger value.
  * \returns Translated channel trigger value.
  */
-uint32_t Dac::GetTrigger(const Trigger& trigger)
+uint32_t DAC::GetTrigger(const Trigger& trigger)
 {
     uint32_t trigger_value = 0;
 
@@ -350,7 +350,7 @@ uint32_t Dac::GetTrigger(const Trigger& trigger)
  * \param   precision   The desired precision.
  * \returns The matching value alignment.
  */
-uint32_t Dac::GetAlignment(const Precision& precision)
+uint32_t DAC::GetAlignment(const Precision& precision)
 {
     uint32_t alignment = 0;
 
@@ -370,7 +370,7 @@ uint32_t Dac::GetAlignment(const Precision& precision)
  * \param   channel     The channel to start.
  * \returns True if the channel is started, else false.
  */
-bool Dac::StartChannel(const Channel& channel)
+bool DAC::StartChannel(const Channel& channel)
 {
     switch (channel)
     {
@@ -402,7 +402,7 @@ bool Dac::StartChannel(const Channel& channel)
  * \param   channel     The channel to stop.
  * \returns True if the channel is stopped, else false.
  */
-bool Dac::StopChannel(const Channel& channel)
+bool DAC::StopChannel(const Channel& channel)
 {
     switch (channel)
     {
@@ -443,7 +443,7 @@ bool Dac::StopChannel(const Channel& channel)
  * \param   values      Pointer to the buffer containing the waveform values.
  * \param   length      Length of the buffer.
  */
-void Dac::SetWaveform(const Channel& channel, const uint16_t* values, uint16_t length)
+void DAC::SetWaveform(const Channel& channel, const uint16_t* values, uint16_t length)
 {
     switch (channel)
     {
