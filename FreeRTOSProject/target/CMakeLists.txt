@@ -12,16 +12,19 @@ project(STM32F407-Discovery)
 # Enable assembler - needed to compile startup code file
 enable_language(ASM)
 
+# Path to the shared HAL/CMSIS at the repository root
+set(HAL_ROOT "${CMAKE_SOURCE_DIR}/../../hal")
+
 # Source files - user, HAL and CMSIS
 file(GLOB_RECURSE USER_SOURCES  "Src/*.c" "Src/*.cpp")
-file(GLOB_RECURSE HAL_SOURCES   "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
-file(GLOB_RECURSE CMSIS_SOURCES "Drivers/CMSIS/Device/ST/STM32F4xx/Source/*.c")
+file(GLOB_RECURSE HAL_SOURCES   "${HAL_ROOT}/STM32F4xx_HAL_Driver/Src/*.c")
+file(GLOB_RECURSE CMSIS_SOURCES "${HAL_ROOT}/CMSIS/Device/ST/STM32F4xx/Source/*.c")
 
 # Include directories - user, HAL and CMSIS
 include_directories(Src)
-include_directories(Drivers/STM32F4xx_HAL_Driver/Inc)
-include_directories(Drivers/CMSIS/Include)
-include_directories(Drivers/CMSIS/Device/ST/STM32F4xx/Include)
+include_directories(${HAL_ROOT}/STM32F4xx_HAL_Driver/Inc)
+include_directories(${HAL_ROOT}/CMSIS/Include)
+include_directories(${HAL_ROOT}/CMSIS/Device/ST/STM32F4xx/Include)
 
 # Include directories - FreeRTOS
 include_directories(FreeRTOS/include)
