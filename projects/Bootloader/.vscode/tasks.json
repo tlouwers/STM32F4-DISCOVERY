@@ -129,6 +129,107 @@
             },
             "command": "ninja",
             "problemMatcher": []
+        },
+
+        // ── Firmware Unit Tests ──────────────────────────────────────────────
+        {
+            "label": "Configure - Unit Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "command": "cmake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build - Unit Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "command": "ninja",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run - Unit Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/build/tests"
+            },
+            "command": "./TestRunner",
+            "problemMatcher": []
+        },
+        {
+            // https://www.gcovr.com/en/stable/guide.html
+            "label": "Coverage - Unit Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/bootloader_fw"
+            },
+            "command": "gcovr",
+            "args": [
+                "-r", ".",
+                "--object-directory", "${workspaceFolder}/build/tests/CMakeFiles/TestRunner.dir",
+                "--html-details",
+                "-o", "${workspaceFolder}/build/coverage.html",
+                "-j", "4"
+            ],
+            "problemMatcher": []
+        },
+
+        // ── Host Unit Tests ──────────────────────────────────────────────────
+        {
+            "label": "Configure - Host Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/host"
+            },
+            "command": "cmake",
+            "args": [
+                "-B./build",
+                "-GNinja",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build - Host Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/host/build"
+            },
+            "command": "ninja",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run - Host Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/host/build/tests"
+            },
+            "command": "./TestRunnerHost",
+            "problemMatcher": []
+        },
+        {
+            "label": "Coverage - Host Tests",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/host/src"
+            },
+            "command": "gcovr",
+            "args": [
+                "-r", ".",
+                "--object-directory", "${workspaceFolder}/host/build/tests/CMakeFiles/TestRunnerHost.dir",
+                "--html-details",
+                "-o", "${workspaceFolder}/host/build/coverage.html",
+                "-j", "4"
+            ],
+            "problemMatcher": []
         }
     ]
 }

@@ -1,0 +1,112 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        // ── Bootloader Firmware ──────────────────────────────────────────────
+        {
+            "name": "Debug Bootloader (OpenOCD)",
+            "cwd": "${workspaceFolder}/bootloader_fw",
+            "executable": "build/bootloader_fw.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "device": "STM32F407VG",
+            "svdFile": "${workspaceFolder}/3rd-party/svd/STM32F407.svd",
+            "interface": "swd",
+            "configFiles": [
+                "board/stm32f4discovery.cfg"
+            ],
+            "runToEntryPoint": "main"
+        },
+
+        // ── Blink Green (LD4, PD12) ──────────────────────────────────────────
+        {
+            "name": "Debug Blink Green (OpenOCD)",
+            "cwd": "${workspaceFolder}/blink_green",
+            "executable": "build/blink_green.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "device": "STM32F407VG",
+            "svdFile": "${workspaceFolder}/3rd-party/svd/STM32F407.svd",
+            "interface": "swd",
+            "configFiles": [
+                "board/stm32f4discovery.cfg"
+            ],
+            "runToEntryPoint": "main"
+        },
+
+        // ── Blink Orange (LD3, PD13) ─────────────────────────────────────────
+        {
+            "name": "Debug Blink Orange (OpenOCD)",
+            "cwd": "${workspaceFolder}/blink_orange",
+            "executable": "build/blink_orange.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "device": "STM32F407VG",
+            "svdFile": "${workspaceFolder}/3rd-party/svd/STM32F407.svd",
+            "interface": "swd",
+            "configFiles": [
+                "board/stm32f4discovery.cfg"
+            ],
+            "runToEntryPoint": "main"
+        },
+
+        // ── Firmware Unit Tests ──────────────────────────────────────────────
+        {
+            "name": "Debug Unit Tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "linux": {
+                "program": "${workspaceFolder}/build/tests/TestRunner",
+                "miDebuggerPath": "/usr/bin/gdb"
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/tests/TestRunner.exe",
+                "miDebuggerPath": "C:/Program Files (x86)/mingw-w64/i686-8.1.0-posix-dwarf-rt_v6-rev0/mingw32/bin/gdb.exe"
+            },
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/tests",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        // ── Host Unit Tests ──────────────────────────────────────────────────
+        {
+            "name": "Debug Host Tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "linux": {
+                "program": "${workspaceFolder}/host/build/tests/TestRunnerHost",
+                "miDebuggerPath": "/usr/bin/gdb"
+            },
+            "windows": {
+                "program": "${workspaceFolder}/host/build/tests/TestRunnerHost.exe",
+                "miDebuggerPath": "C:/Program Files (x86)/mingw-w64/i686-8.1.0-posix-dwarf-rt_v6-rev0/mingw32/bin/gdb.exe"
+            },
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/host/build/tests",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

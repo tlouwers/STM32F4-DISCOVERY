@@ -1,4 +1,9 @@
 # Ignore build folders
+projects/Bootloader/build/**
+projects/Bootloader/bootloader_fw/build/**
+projects/Bootloader/blink_green/build/**
+projects/Bootloader/blink_orange/build/**
+projects/Bootloader/host/build/**
 projects/ExampleProject/build/**
 projects/ExampleProject/target/build/**
 projects/FreeRTOSProject/build/**
@@ -11,6 +16,7 @@ projects/UnitTestExample/build/**
 projects/UnitTestExample/target/build/**
 
 # Ignore Cortex-Debug temporary files
+projects/Bootloader/.vscode/.cortex-debug*
 projects/ExampleProject/.vscode/.cortex-debug*
 projects/FreeRTOSProject/.vscode/.cortex-debug*
 projects/StandupCounter/.vscode/.cortex-debug*
