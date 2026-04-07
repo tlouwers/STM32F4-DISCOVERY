@@ -4,51 +4,6 @@
     "version": "2.0.0",
     "tasks": [
 
-        // ── Bootloader Firmware ──────────────────────────────────────────────
-        {
-            "label": "Configure - Bootloader [Debug]",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/bootloader_fw"
-            },
-            "command": "cmake",
-            "args": [
-                "-B./build",
-                "-GNinja",
-                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Configure - Bootloader [Release]",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/bootloader_fw"
-            },
-            "command": "cmake",
-            "args": [
-                "-B./build",
-                "-GNinja",
-                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
-                "-DCMAKE_BUILD_TYPE=Release"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Build - Bootloader",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/bootloader_fw/build"
-            },
-            "command": "ninja",
-            "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
-        },
-
         // ── Blink Green (LD4, PD12) ──────────────────────────────────────────
         {
             "label": "Configure - Blink Green [Debug]",
@@ -169,7 +124,7 @@
             "label": "Coverage - Unit Tests",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/bootloader_fw"
+                "cwd": "${workspaceFolder}/shared"
             },
             "command": "gcovr",
             "args": [

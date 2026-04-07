@@ -11,15 +11,21 @@ target_sources(TestRunnerHost
     PRIVATE
         # Unit test files
         TestRunner.cpp
+        TestCrc32.cpp
         TestHost.cpp
-        # Test subjects (add host src files here as they are created)
-        # Ex: ../src/Protocol.cpp
-        # Ex: ../src/FirmwarePackage.cpp
+        # Mocks and Fakes
+        # (add fakes here as needed)
+        # Test subjects
+        ../src/crc/SoftwareCrc32.cpp
+        ../src/serial/SerialWin.cpp
+        # Used sources (not part of unit tests)
+        # Ex: ../src/transport/UsartTransport.cpp
 )
 
-# Include host src directory once it exists
+# Include the real and Fake/Mock source directories
 target_include_directories(TestRunnerHost PRIVATE
-    # ../src
+    ../src
+    ./
 )
 
 # Link in Google Mock (which also includes Google Test)
