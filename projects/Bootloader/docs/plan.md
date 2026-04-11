@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Minimal, fast, and robust UART bootloader for the STM32F4 Discovery board. Written in modern C++ (device and protocol library), with a C# desktop application (Avalonia/.NET) for firmware management. Built with CMake/Ninja, tested with GoogleTest, designed for safe forward/backward version updates and reliable recovery on failure.
+Minimal, fast, and robust UART bootloader for the STM32F4 Discovery board. The host-side tool is a standalone .NET 8 desktop application using **Avalonia UI** — a single C# codebase covering protocol library, serial I/O, CLI mode, and GUI. Device-side application firmware (with bootloader-entry module) is C++ built with CMake/Ninja. Designed for safe forward/backward version updates and reliable recovery on failure.
 
 ---
 
@@ -146,14 +146,14 @@ Three approaches are now possible:
 | Device-side bootloader | ST system memory bootloader (factory ROM, no custom firmware) |
 | Bootloader entry | Software jump from application (magic backup register pattern) or BOOT0 pin; see Section 7.1 |
 | Protocol | AN3155 USART (8-bit, even parity, 1 stop bit, auto-baud via 0x7F sync) |
-| Protocol library | C++ with thin C ABI wrapper for cross-language reuse |
-| CLI tool | C++ (links protocol library directly) |
-| GUI application | C# / Avalonia on .NET (Windows 11 primary) — calls protocol library via C ABI or invokes CLI |
+| Host application | Single .NET 8 + Avalonia UI solution (C#) — protocol library, serial, CLI mode, and GUI in one codebase |
+| CLI mode | Same application binary with `--cli` flag or verb commands (no separate executable) |
+| GUI mode | Default launch — Avalonia desktop window |
 | Integrity | Per-packet XOR checksum (AN3155 built-in); full image verified via AN3155 Get Checksum (0xA1) command |
 | Authenticity | Optional cryptographic signature on firmware binary (future phase) |
 | Update strategy | Erase application sectors → write factory image → verify CRC → Go command |
 | Build system | CMake + Ninja |
-| Test framework | GoogleTest + GoogleMock (host-only) |
+| Test framework | xUnit (.NET host app), GoogleTest + GoogleMock (device-side C++ firmware) |
 | CI | Local-only initially |
 | Debug/recovery | OpenOCD / ST-Link; logic analyzer on UART lines |
 
@@ -171,29 +171,15 @@ Three approaches are now possible:
 | `stlink-tools` | 1.8+ | Alternative ST-Link CLI (`st-flash`, `st-info`) |
 | `gdb-multiarch` | 14+ | (optional) Debugging over OpenOCD GDB server |
 
-### 4.2 Host tests (GoogleTest)
+### 4.2 Host application (.NET 8 + Avalonia)
 
 | Tool | Version | Purpose |
 |---|---|---|
-| `g++` or `clang++` | GCC 13+ / Clang 17+ | Host compiler (C++17) |
-| `cmake` | 3.22+ | Build system |
-| `ninja` | 1.11+ | Build backend |
-| `googletest` | 1.14+ | Unit test framework (fetched via CMake ExternalProject) |
-
-### 4.3 CLI tool (`blcli`)
-
-| Tool | Version | Purpose |
-|---|---|---|
-| Host C++ compiler | same as above | Builds CLI binary |
-| (no additional deps) | — | Serial I/O uses OS API directly (Win32 / termios) |
-
-### 4.4 GUI application (C# / Avalonia)
-
-| Tool | Version | Purpose |
-|---|---|---|
-| .NET SDK | 8.0+ | Build and run the GUI |
-| Avalonia UI | 11.x | Cross-platform XAML UI framework |
-| (no additional NuGet packages beyond Avalonia and System.IO.Ports) | | |
+| .NET SDK | 8.0+ | Build, test, and publish the host application |
+| Avalonia UI | 11.x | Cross-platform XAML-based desktop UI framework |
+| xUnit | 2.x | Unit test framework for protocol library and serial |
+| System.IO.Ports | 8.x | Cross-platform serial port access (NuGet) |
+| CommunityToolkit.Mvvm | 8.x | MVVM source generators and helpers (NuGet) |
 
 ### 4.5 Auxiliary / optional
 
@@ -215,7 +201,7 @@ Three approaches are now possible:
 sudo apt update
 sudo apt install -y build-essential cmake ninja-build git
 
-# ARM cross-compiler
+# ARM cross-compiler (for device firmware only)
 sudo apt install -y gcc-arm-none-eabi libnewlib-arm-none-eabi
 
 # Flash / debug tools
@@ -227,7 +213,7 @@ sudo apt install -y minicom picocom
 # Code quality (optional)
 sudo apt install -y clang-format clang-tidy cppcheck
 
-# .NET SDK 8.0 for GUI (optional, only if building GUI on Linux)
+# .NET SDK 8.0 for host application
 sudo apt install -y dotnet-sdk-8.0
 
 # Verify
@@ -235,6 +221,7 @@ arm-none-eabi-gcc --version
 cmake --version
 ninja --version
 openocd --version
+dotnet --version
 ```
 
 **udev rule for ST-Link** (required for non-root access):
@@ -256,7 +243,7 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 | ARM GCC | Download from Arm Developer — add `bin/` to `PATH` |
 | OpenOCD | Download from GitHub releases — add to `PATH` |
 | ST-Link drivers | Install via STSW-LINK009 |
-| .NET SDK 8.0 | `winget install Microsoft.DotNet.SDK.8` |
+| .NET SDK 8.0 | `winget install Microsoft.DotNet.SDK.8` — builds host application |
 | Git | `winget install Git.Git` |
 | PuTTY / Tera Term | Serial monitor for UART debugging |
 
@@ -268,18 +255,24 @@ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
 ninja -C build
 ./build/tests/TestRunner
 
-# Host unit tests (from projects/Bootloader/host/)
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
-ninja -C build
-./build/tests/TestRunnerHost
+# Host application — build (from projects/Bootloader/host/)
+dotnet build
 
-# Cross-compile bootloader firmware (from projects/Bootloader/bootloader_fw/)
-cmake -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE=../shared/arm-none-eabi-gcc.cmake -DCMAKE_BUILD_TYPE=Release
-ninja -C build
+# Host application — run tests
+dotnet test
 
-# Flash via OpenOCD
+# Host application — run GUI (default)
+dotnet run --project src/BootloaderTool
+
+# Host application — run CLI mode
+dotnet run --project src/BootloaderTool -- factory-reset -p COM3 -f factory.bin
+
+# Host application — publish self-contained (Windows x64)
+dotnet publish src/BootloaderTool -c Release -r win-x64 --self-contained
+
+# Flash application firmware via OpenOCD
 openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
-  -c "program build/bootloader_fw.bin 0x08000000 verify reset exit"
+  -c "program build/app_firmware.bin 0x08000000 verify reset exit"
 ```
 
 All VS Code build tasks are defined in `.vscode/tasks.json`.
@@ -314,17 +307,21 @@ All VS Code build tasks are defined in `.vscode/tasks.json`.
 ┌─────────────────────────────────────────────────────────┐
 │                    Host (PC / Windows 11)                │
 │                                                         │
-│  ┌──────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │  GUI App │───▶│ Protocol Lib │◀───│   CLI Tool   │   │
-│  │  (C#)    │    │ (C++ / C ABI)│    │   (C++)      │   │
-│  └──────────┘    └──────┬───────┘    └──────────────┘   │
-│                         │                               │
-│                   ┌─────┴──────┐                        │
-│                   │ Serial I/O │ (Win32 COM / termios)   │
-│                   └─────┬──────┘                        │
-└─────────────────────────┼───────────────────────────────┘
-                     UART │ (8E1, auto-baud)
-┌─────────────────────────┼───────────────────────────────┐
+│  ┌────────────────────────────────────────────────────┐  │
+│  │      BootloaderTool (.NET 8 + Avalonia)             │  │
+│  │                                                     │  │
+│  │  ┌──────────┐    ┌──────────────┐                   │  │
+│  │  │  GUI     │───▶│ Protocol Lib │◀── CLI mode       │  │
+│  │  │ (Avalonia│    │ (C# classes) │    (verb commands) │  │
+│  │  │  MVVM)   │    └──────┬───────┘                   │  │
+│  │  └──────────┘           │                           │  │
+│  │                   ┌─────┴──────┐                    │  │
+│  │                   │ Serial I/O │ (System.IO.Ports)  │  │
+│  │                   └─────┬──────┘                    │  │
+│  └─────────────────────────┼──────────────────────────┘  │
+└─────────────────────────────┼───────────────────────────┘
+                         UART │ (8E1, auto-baud)
+┌─────────────────────────────┼───────────────────────────┐
 │               STM32F4 Discovery                         │
 │                                                         │
 │  ┌──────────────────────────────────────────────────┐   │
@@ -391,14 +388,15 @@ void OnFactoryResetCommand() {
 
 **BOOT0 pin alternative:** For hardware-triggered entry (e.g. holding a button during power-on), pull BOOT0 (pin 94 on LQFP100, connected to B2 on Discovery) high before reset. The ST system memory bootloader starts automatically — no application code needed.
 
-### 7.2 Host-side components (`host/`)
+### 7.2 Host-side components (`host/`) — .NET 8 + Avalonia
 
-| Component | Responsibility |
+Single .NET solution (`BootloaderTool.sln`) with the following projects:
+
+| Project | Responsibility |
 |---|---|
-| `protocol-lib` | Portable C++ library implementing AN3155: sync, all commands, ACK/NACK handling, retry, progress callbacks. Thin C ABI wrapper for GUI FFI. |
-| `serial-io` | OS-specific serial port (`SerialWin` / `SerialPosix`) behind `ISerial`. UART config: 8E1, configurable baud |
-| `blcli` | CLI executable: `factory-reset`, `upload`, `verify`, `read`, `info` commands; dual progress bars, reconnect logic |
-| GUI App | C# / Avalonia: branded factory reset workflow, progress visualization, error recovery, log panel |
+| `BootloaderTool` | Avalonia desktop app (GUI mode) and CLI entry point (verb commands). Single published executable. |
+| `BootloaderTool.Protocol` | Class library: AN3155 implementation, CRC32, `ISerial` interface, `FirmwareImage`, `FactoryResetSession` |
+| `BootloaderTool.Tests` | xUnit tests for protocol library: CRC32, AN3155 commands, factory reset session, mock serial |
 
 ## 8. Protocol — AN3155 USART
 
@@ -553,19 +551,21 @@ The AN3155 Get Checksum command (0xA1) uses the STM32 hardware CRC peripheral. T
 - `SoftwareCrc32` — used in host tests and pre-flight verification of the firmware binary
 - Matches STM32F4 hardware CRC peripheral output exactly — validated by a known-answer test
 
-## 11. CLI Tool (`blcli`)
+## 11. CLI Mode
+
+The same `BootloaderTool` executable supports CLI mode when invoked with verb commands. No separate binary.
 
 ### 11.1 Commands
 
 | Command | Description |
 |---|---|
-| `blcli list` | Scan serial ports, probe for ST bootloader-mode devices (send 0x7F, wait for ACK) |
-| `blcli info -p COM3` | Query device in bootloader mode: chip ID, protocol version, supported commands |
-| `blcli factory-reset -p COM3 -f factory.bin` | Full factory reset: erase → write → verify → go |
-| `blcli upload -p COM3 -f fw.bin` | Write firmware only (device already in bootloader mode) |
-| `blcli verify -p COM3 -f fw.bin` | Run Get Checksum and compare against file CRC |
-| `blcli read -p COM3 --addr 0x08000000 --len 1024 -o dump.bin` | Read memory region to file |
-| `blcli go -p COM3 --addr 0x08000000` | Jump to application |
+| `BootloaderTool list` | Scan serial ports, probe for ST bootloader-mode devices (send 0x7F, wait for ACK) |
+| `BootloaderTool info -p COM3` | Query device in bootloader mode: chip ID, protocol version, supported commands |
+| `BootloaderTool factory-reset -p COM3 -f factory.bin` | Full factory reset: erase → write → verify → go |
+| `BootloaderTool upload -p COM3 -f fw.bin` | Write firmware only (device already in bootloader mode) |
+| `BootloaderTool verify -p COM3 -f fw.bin` | Run Get Checksum and compare against file CRC |
+| `BootloaderTool read -p COM3 --addr 0x08000000 --len 1024 -o dump.bin` | Read memory region to file |
+| `BootloaderTool go -p COM3 --addr 0x08000000` | Jump to application |
 
 ### 11.2 Progress display
 
@@ -597,26 +597,27 @@ Factory reset complete in 12.1s.
 
 ### 11.4 Library reuse
 
-`protocol-lib` exposes a callback-driven API:
+`BootloaderTool.Protocol` exposes a callback-driven API:
 
-```cpp
-FactoryResetSession session(serial_port);
-session.onProgress([](ResetStage stage, uint32_t current, uint32_t total) { ... });
-session.onLog([](LogLevel level, const char* msg) { ... });
-session.run(FirmwareImage("factory.bin"));
+```csharp
+var session = new FactoryResetSession(serialPort);
+session.Progress += (stage, current, total) => { ... };
+session.Log += (level, msg) => { ... };
+await session.RunAsync(new FirmwareImage("factory.bin"));
 ```
 
-Consumed by `blcli` (direct C++ link) and GUI app (C# P/Invoke on C ABI wrapper, or `blcli --json` subprocess).
+Consumed directly by both CLI mode and GUI (same process, same assembly — no FFI or subprocess).
 
-## 12. GUI Application (C# / Avalonia)
+## 12. GUI (Avalonia, default launch mode)
 
-Calls `protocol-lib` via C ABI (P/Invoke) or launches `blcli --json` as subprocess.
+The GUI is the default launch mode of `BootloaderTool`. It calls `BootloaderTool.Protocol` directly (same process, no FFI).
 
-- **Device panel**: serial port selector, connect button, chip ID and protocol version display once connected.
+- **Device panel**: serial port selector (auto-refreshing), connect button, chip ID and protocol version display once connected.
 - **Factory Reset panel**: firmware file picker (drag-and-drop), CRC and size preview, single "Factory Reset" button.
 - **Progress panel**: progress bar with stage label (Connecting → Erasing → Writing → Verifying → Done), KB/s rate, ETA, scrollable log.
 - **Error panel**: plain-language error message, Retry button, log export, manual Go / Read buttons for diagnostics.
 - Auto-reconnect: if serial disconnects mid-operation, shows reconnect countdown and retries automatically.
+- **MVVM architecture**: views in AXAML, view models use `CommunityToolkit.Mvvm`, protocol interactions on background threads with progress marshalled to UI thread.
 
 ## 13. Versioning & Releases
 
@@ -628,32 +629,37 @@ Semantic versioning for bootloader core and firmware images. Image metadata incl
 
 Each phase is independently buildable, testable, and demo-able. Phases 1–3 require no hardware. Phase 4 is the first hardware touchpoint.
 
-### Phase 1 — Foundation
+### Phase 1 — Foundation (complete — C++ prototype)
 **Goal:** Repo scaffold, build system, CRC32 implementation, first passing test.
 
+| Deliverable | Detail | Status |
+|---|---|---|
+| Build system | `host/CMakeLists.txt`, toolchain `shared/arm-none-eabi-gcc.cmake` (for app firmware only) | Done |
+| `ICrc` interface | Pure virtual; `SoftwareCrc32` implementation (C++) | Done |
+| CRC32 | Software, polynomial `0x04C11DB7` (matches STM32F4 hardware CRC unit) | Done |
+| `ISerial` / `SerialWin` / `SerialPosix` | C++ serial port abstraction | Done |
+| First test | GoogleTest: CRC32 known-answer test | Done |
+
+**Exit criteria:** CRC32 unit test passes; host build produces a test binary. ✓
+
+> **Note:** Phase 1 was implemented in C++ as a prototype. The C++ code in `host/src/` and `host/tests/` serves as reference for the .NET reimplementation in Phase 2. The C++ GoogleTest infrastructure at the project root (`tests/`) remains for device-side firmware unit tests.
+
+### Phase 2 — .NET solution + AN3155 protocol library
+**Goal:** Create the .NET 8 + Avalonia solution, port CRC32 and serial, implement the full AN3155 protocol — all tested with xUnit.
+
 | Deliverable | Detail |
 |---|---|
-| Build system | `host/CMakeLists.txt`, toolchain `shared/arm-none-eabi-gcc.cmake` (for app firmware only) |
-| `ICrc` interface | Pure virtual; `SoftwareCrc32` implementation |
-| CRC32 | Software, polynomial `0x04C11DB7` (matches STM32F4 hardware CRC unit — used by AN3155 Get Checksum) |
-| First test | GoogleTest: CRC32 known-answer test against a reference binary |
-
-**Exit criteria:** CRC32 unit test passes; host build produces a test binary.
-
-### Phase 2 — AN3155 protocol library
-**Goal:** Complete AN3155 implementation as a portable C++ library, fully tested on host.
-
-| Deliverable | Detail |
-|---|---|
-| `ISerial` | Interface: open, close, send, receive, set timeout |
-| `MockSerial` | Simulates ACK/NACK responses, timeouts, connection loss |
+| Solution scaffold | `host/BootloaderTool.sln` with projects: `BootloaderTool` (app), `BootloaderTool.Protocol` (class lib), `BootloaderTool.Tests` (xUnit) |
+| `ICrc` / `Crc32` | C# port of STM32-compatible CRC32 (`0x04C11DB7`, no reflection) |
+| `ISerial` | C# interface: `Open`, `Close`, `Write`, `Read`, `SetTimeout` |
+| `SerialPortAdapter` | `System.IO.Ports` implementation of `ISerial` (8E1 config) |
+| `MockSerial` | xUnit-friendly mock that simulates ACK/NACK, timeouts, connection loss |
 | `An3155Client` | Implements all commands: Sync, Get, GetID, ExtendedErase, WriteMemory, GetChecksum, Go, ReadMemory |
 | Retry + timeout logic | Configurable retries (default 3), per-command timeout, reconnect loop |
-| Progress callbacks | `onProgress(stage, current, total)`, `onLog(level, msg)` |
-| C ABI wrapper | `protocol_c.h` / `.cpp` — thin wrapper for GUI FFI |
-| Tests | Sync/baud detect, each command happy path, NACK handling, timeout+retry, connection loss during erase |
+| Progress events | `Progress` event (`stage`, `current`, `total`), `Log` event (`level`, `msg`) |
+| xUnit tests | CRC32 known-answer, sync/baud detect, each command happy path, NACK handling, timeout+retry, connection loss during erase |
 
-**Exit criteria:** All AN3155 commands pass unit tests with MockSerial simulating both happy path and failure modes.
+**Exit criteria:** All AN3155 commands pass xUnit tests with MockSerial; CRC32 matches STM32 hardware output; `dotnet test` green.
 
 ### Phase 3 — Factory reset orchestrator
 **Goal:** High-level `FactoryResetSession` that sequences the full operation, tested end-to-end on host.
@@ -668,7 +674,7 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 **Exit criteria:** Full factory reset sequence completes and verifies successfully on host with MockSerial.
 
 ### Phase 4 — Application firmware + BootloaderEntry module
-**Goal:** Minimal application firmware with the BootloaderEntry module; first real hardware test.
+**Goal:** Minimal application firmware with the BootloaderEntry module; first real hardware test. Unit tests use GoogleTest.
 
 | Deliverable | Detail |
 |---|---|
@@ -676,36 +682,24 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 | Startup hook | Checks RTC BKP0R before `SystemInit()`; jumps to `0x1FFF0000` if magic present |
 | App firmware | Simple blink app that exposes the factory reset command over UART (at app baud rate) |
 | Linker script | `shared/linker/stm32f4_app.ld` — app starts at `0x08000000` |
+| Unit tests | GoogleTest tests for BootloaderEntry logic (magic register check, jump guard conditions) |
 
 **Exit criteria:** Sending factory reset command from PC causes device to jump to ST bootloader; host polls 0x7F and gets ACK.
 
-### Phase 5 — CLI tool (`blcli`)
-**Goal:** Polished CLI that drives the full factory reset workflow.
+### Phase 5 — GUI + CLI mode
+**Goal:** Polished Avalonia GUI (default) and CLI mode in the same executable.
 
 | Deliverable | Detail |
 |---|---|
-| `blcli` | Commands: `factory-reset`, `upload`, `verify`, `info`, `read` — lives in `host/src/` |
-| Serial backends | `SerialWin` (Win32 `CreateFile`), `SerialPosix` (termios) — both 8E1 |
-| Progress display | Single progress bar with stage labels (Connecting → Erasing → Writing → Verifying → Done), rate, ETA |
+| Avalonia GUI | MVVM: serial port selector, firmware file picker, device info panel, progress bar with stage labels, ETA, scrollable log, error recovery panel |
+| CLI mode | Verb commands: `factory-reset`, `upload`, `verify`, `info`, `read`, `go`, `list` — console progress bar |
+| Serial backend | `SerialPortAdapter` using `System.IO.Ports` — 8E1, configurable baud |
 | Reconnect loop | Auto-reconnect on serial loss; configurable timeout and interval |
-| `--json` output | Machine-readable progress events for GUI subprocess mode |
+| `--json` output | Machine-readable progress events (CLI mode) for scripting |
 
-**Exit criteria:** `blcli factory-reset -p COM3 -f factory.bin` completes successfully on real hardware with disconnect/reconnect mid-write.
+**Exit criteria:** GUI: click "Factory Reset" → watch all stages → cable yank mid-write → reconnect → resume → completion. CLI: `BootloaderTool factory-reset -p COM3 -f factory.bin` completes on real hardware.
 
-### Phase 6 — GUI application
-**Goal:** Branded Avalonia app with a clear, user-friendly factory reset workflow.
-
-| Deliverable | Detail |
-|---|---|
-| Avalonia project | MVVM, minimal deps — lives in `host/gui/` |
-| Main screen | Serial port selector, firmware file picker, device info panel (chip ID, protocol version) |
-| Factory reset panel | Single "Factory Reset" button, progress bar with stage labels, ETA, log panel |
-| Error recovery panel | Clear error messages, retry button, manual reconnect, log export |
-| Protocol integration | P/Invoke on `protocol_c` DLL or `blcli --json` subprocess |
-
-**Exit criteria:** Click "Factory Reset" → watch all stages → cable yank mid-write → reconnect → resume → completion.
-
-### Phase 7 — End-to-end validation
+### Phase 6 — End-to-end validation
 **Goal:** Demonstrate the full workflow using two versions of the blink app.
 
 | Deliverable | Detail |
@@ -716,9 +710,9 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 
 Full end-to-end test plan: `docs/end_to_end_test.md`.
 
-**Exit criteria:** Both CLI and GUI complete the full cycle; documented with terminal transcripts.
+**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts.
 
-### Phase 8 — Documentation & presentation
+### Phase 7 — Documentation & presentation
 **Goal:** Diagrams and docs suitable for presentation and onboarding.
 
 | Deliverable | Detail |
@@ -732,14 +726,13 @@ Full end-to-end test plan: `docs/end_to_end_test.md`.
 
 | Phase | Host test | Hardware test |
 |---|---|---|
-| 1 | CRC32 known-answer test | Cross-compile check |
-| 2 | AN3155 all commands (MockSerial) — happy path + failure modes | — |
+| 1 | CRC32 known-answer test (GoogleTest, C++ prototype) | Cross-compile check |
+| 2 | CRC32 + AN3155 all commands (xUnit, MockSerial) — happy path + failure modes | — |
 | 3 | FactoryResetSession end-to-end over MockSerial; mid-write disconnect + retry | — |
-| 4 | — | ST bootloader responds to 0x7F sync after software jump from app |
-| 5 | — | CLI `factory-reset` completes; disconnect mid-write recovers |
-| 6 | — | GUI factory reset completes; cable yank mid-write recovers |
-| 7 | — | Full lifecycle with `blink_v1` and `blink_v2`; CLI and GUI |
-| 8 | — | Documentation review |
+| 4 | BootloaderEntry unit tests (GoogleTest) | ST bootloader responds to 0x7F sync after software jump from app |
+| 5 | — | GUI + CLI `factory-reset` completes; disconnect mid-write recovers |
+| 6 | — | Full lifecycle with `blink_v1` and `blink_v2`; CLI and GUI |
+| 7 | — | Documentation review |
 
 ## 16. Risk & Mitigation
 
@@ -760,4 +753,4 @@ Full end-to-end test plan: `docs/end_to_end_test.md`.
 
 Phases 1–3 require **no hardware** — all testing runs on host with MockSerial.
 Phase 4 is the first hardware touchpoint.
-Phases 5–7 build outward. Phase 8 runs in parallel with any later phase.
+Phases 5–6 build outward. Phase 7 runs in parallel with any later phase.
