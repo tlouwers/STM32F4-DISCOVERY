@@ -642,9 +642,9 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 
 **Exit criteria:** CRC32 unit test passes; host build produces a test binary. ✓
 
-> **Note:** Phase 1 was implemented in C++ as a prototype. The C++ code in `host/src/` and `host/tests/` serves as reference for the .NET reimplementation in Phase 2. The C++ GoogleTest infrastructure at the project root (`tests/`) remains for device-side firmware unit tests.
+> **Note:** Phase 1 was implemented in C++ as a prototype. The C++ host code has been removed — all host functionality is now in the .NET solution. The C++ GoogleTest infrastructure at the project root (`tests/`) remains for device-side firmware unit tests.
 
-### Phase 2 — .NET solution + AN3155 protocol library
+### Phase 2 — .NET solution + AN3155 protocol library (complete)
 **Goal:** Create the .NET 8 + Avalonia solution, port CRC32 and serial, implement the full AN3155 protocol — all tested with xUnit.
 
 | Deliverable | Detail |
@@ -659,7 +659,7 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 | Progress events | `Progress` event (`stage`, `current`, `total`), `Log` event (`level`, `msg`) |
 | xUnit tests | CRC32 known-answer, sync/baud detect, each command happy path, NACK handling, timeout+retry, connection loss during erase |
 
-**Exit criteria:** All AN3155 commands pass xUnit tests with MockSerial; CRC32 matches STM32 hardware output; `dotnet test` green.
+**Exit criteria:** All AN3155 commands pass xUnit tests with MockSerial; CRC32 matches STM32 hardware output; `dotnet test` green. ✓
 
 ### Phase 3 — Factory reset orchestrator
 **Goal:** High-level `FactoryResetSession` that sequences the full operation, tested end-to-end on host.
