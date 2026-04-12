@@ -35,9 +35,9 @@ public class NackException : Exception
 /// <summary>
 /// Thrown when the bootloader does not respond within the timeout.
 /// </summary>
-public class TimeoutException : Exception
+public class BootloaderTimeoutException : Exception
 {
-    public TimeoutException(string message) : base(message) { }
+    public BootloaderTimeoutException(string message) : base(message) { }
 }
 
 /// <summary>

@@ -116,7 +116,9 @@ public sealed class MockSerial : ISerial
 
     public void FlushInput()
     {
-        _responses.Clear();
+        // Only discard partially-consumed data (simulates hardware buffer flush).
+        // Do not clear pre-scripted responses — those represent future device
+        // behaviour, not bytes already sitting in the OS receive buffer.
         _currentResponse = Array.Empty<byte>();
         _currentOffset = 0;
     }

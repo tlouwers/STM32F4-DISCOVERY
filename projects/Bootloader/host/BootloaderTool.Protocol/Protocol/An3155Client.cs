@@ -402,9 +402,9 @@ public sealed class An3155Client
         if (response == An3155Constants.Nack)
             throw new NackException(command);
         if (response == 0)
-            throw new Protocol.TimeoutException($"Timeout waiting for ACK to command 0x{command:X2}");
+            throw new BootloaderTimeoutException($"Timeout waiting for ACK to command 0x{command:X2}");
 
-        throw new Protocol.TimeoutException(
+        throw new BootloaderTimeoutException(
             $"Unexpected response 0x{response:X2} to command 0x{command:X2}");
     }
 
@@ -416,7 +416,7 @@ public sealed class An3155Client
         if (n < 0)
             throw new ConnectionLostException("Serial read failed");
         if (n == 0)
-            throw new Protocol.TimeoutException("Timeout reading byte");
+            throw new BootloaderTimeoutException("Timeout reading byte");
         return buf[0];
     }
 
@@ -430,7 +430,7 @@ public sealed class An3155Client
             if (n < 0)
                 throw new ConnectionLostException("Serial read failed");
             if (n == 0)
-                throw new Protocol.TimeoutException("Timeout reading data");
+                throw new BootloaderTimeoutException("Timeout reading data");
             totalRead += n;
         }
     }

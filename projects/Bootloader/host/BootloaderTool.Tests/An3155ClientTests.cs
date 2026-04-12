@@ -113,7 +113,7 @@ public class An3155ClientTests : IDisposable
     public void Get_Timeout_ThrowsTimeoutException()
     {
         // No response at all
-        Assert.Throws<Protocol.TimeoutException>(() => _client.Get());
+        Assert.Throws<BootloaderTimeoutException>(() => _client.Get());
     }
 
     // ── Get Version ────────────────────────────────────────────────────────

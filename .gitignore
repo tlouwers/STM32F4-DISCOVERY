@@ -15,6 +15,10 @@ projects/TiltExample/target/build/**
 projects/UnitTestExample/build/**
 projects/UnitTestExample/target/build/**
 
+# Ignore .NET build output
+**/bin/
+**/obj/
+
 # Ignore Cortex-Debug temporary files
 projects/Bootloader/.vscode/.cortex-debug*
 projects/ExampleProject/.vscode/.cortex-debug*

@@ -137,9 +137,9 @@
             "problemMatcher": []
         },
 
-        // ── Host Unit Tests ──────────────────────────────────────────────────
+        // ── Host Unit Tests (C++ / GoogleTest — Phase 1 reference) ────────────
         {
-            "label": "Configure - Host Tests",
+            "label": "Configure - Host Tests (C++)",
             "type": "shell",
             "options": {
                 "cwd": "${workspaceFolder}/host"
@@ -153,7 +153,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Build - Host Tests",
+            "label": "Build - Host Tests (C++)",
             "type": "shell",
             "options": {
                 "cwd": "${workspaceFolder}/host/build"
@@ -162,7 +162,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Run - Host Tests",
+            "label": "Run - Host Tests (C++)",
             "type": "shell",
             "options": {
                 "cwd": "${workspaceFolder}/host/build/tests"
@@ -171,7 +171,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Coverage - Host Tests",
+            "label": "Coverage - Host Tests (C++)",
             "type": "shell",
             "options": {
                 "cwd": "${workspaceFolder}/host/src"
@@ -184,6 +184,56 @@
                 "-o", "${workspaceFolder}/host/build/coverage.html",
                 "-j", "4"
             ],
+            "problemMatcher": []
+        },
+
+        // ── Host Application (.NET 8) ───────────────────────────────────────
+        {
+            "label": "Build - Host App (.NET)",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/host"
+            },
+            "command": "dotnet",
+            "args": ["build"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Test - Host App (.NET)",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/host"
+            },
+            "command": "dotnet",
+            "args": ["test", "--verbosity", "normal"],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Run - Host App (.NET)",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/host"
+            },
+            "command": "dotnet",
+            "args": ["run", "--project", "BootloaderTool"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean - Host App (.NET)",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/host"
+            },
+            "command": "dotnet",
+            "args": ["clean"],
             "problemMatcher": []
         }
     ]
