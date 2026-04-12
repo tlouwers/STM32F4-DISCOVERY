@@ -137,56 +137,6 @@
             "problemMatcher": []
         },
 
-        // ── Host Unit Tests (C++ / GoogleTest — Phase 1 reference) ────────────
-        {
-            "label": "Configure - Host Tests (C++)",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/host"
-            },
-            "command": "cmake",
-            "args": [
-                "-B./build",
-                "-GNinja",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Build - Host Tests (C++)",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/host/build"
-            },
-            "command": "ninja",
-            "problemMatcher": []
-        },
-        {
-            "label": "Run - Host Tests (C++)",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/host/build/tests"
-            },
-            "command": "./TestRunnerHost",
-            "problemMatcher": []
-        },
-        {
-            "label": "Coverage - Host Tests (C++)",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/host/src"
-            },
-            "command": "gcovr",
-            "args": [
-                "-r", ".",
-                "--object-directory", "${workspaceFolder}/host/build/tests/CMakeFiles/TestRunnerHost.dir",
-                "--html-details",
-                "-o", "${workspaceFolder}/host/build/coverage.html",
-                "-j", "4"
-            ],
-            "problemMatcher": []
-        },
-
         // ── Host Application (.NET 8) ───────────────────────────────────────
         {
             "label": "Build - Host App (.NET)",
