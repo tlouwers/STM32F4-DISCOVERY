@@ -55,6 +55,7 @@ DMA::DMA(Stream stream) :
 DMA::~DMA()
 {
     DisableInterrupt(mStream);
+    DisconnectInternalCallback(mStream);
 
     HAL_DMA_DeInit(&mHandle);
 }
@@ -81,8 +82,8 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     mHandle.Init.Direction           = GetDirection(direction);
     mHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
     mHandle.Init.MemInc              = DMA_MINC_ENABLE;
-    mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;     // Fixed ay Byte size.
-    mHandle.Init.MemDataAlignment    = GetDataWidth(width);
+    mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;     // Fixed at Byte size.
+    mHandle.Init.MemDataAlignment    = GetMemDataAlign(width);
     mHandle.Init.Mode                = (bufferMode == DMA::BufferMode::Circular) ? DMA_CIRCULAR : DMA_NORMAL;
     mHandle.Init.Priority            = GetPriority(priority);
     mHandle.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
@@ -102,6 +103,10 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
  * \param   parent  The parent to link with, this is the handle of the peripheral.
  * \param   handle  The DMA handle of the peripheral which is 'swapped' with the configured DMA object.
  * \returns True if the DMA object could be linked, else false.
+ * \note    Honouring the HalfBufferInterrupt selection requires the peripheral
+ *          driver to consult IsHalfBufferInterruptEnabled() and clear the HT
+ *          callback / interrupt after starting DMA, since HAL_xxx_Receive_DMA
+ *          unconditionally re-enables DMA_IT_HT in the stream CR.
  */
 bool DMA::Link(const void* parent, DMA_HandleTypeDef*& handle)
 {
@@ -110,12 +115,17 @@ bool DMA::Link(const void* parent, DMA_HandleTypeDef*& handle)
     mHandle.Parent = const_cast<void*>(parent);
     handle         = &mHandle;
 
-    if (mHalfBufferInterrupt == HalfBufferInterrupt::Disabled)
-    {
-        __HAL_DMA_DISABLE_IT(handle, DMA_IT_HT);
-    }
-
     return true;
+}
+
+/**
+ * \brief   Indicates whether the user requested the half-transfer interrupt
+ *          to remain enabled after Configure().
+ * \returns True if the half-transfer interrupt should be delivered, else false.
+ */
+bool DMA::IsHalfBufferInterruptEnabled() const
+{
+    return mHalfBufferInterrupt == HalfBufferInterrupt::Enabled;
 }
 
 
@@ -199,18 +209,20 @@ uint32_t DMA::GetDirection(Direction direction)
 }
 
 /**
- * \brief   Get the DMA data width as register value.
+ * \brief   Get the DMA memory-side data alignment as register value.
  * \param   width   The data width to get the register value for.
- * \returns The data width as register value.
+ * \returns The memory data alignment as register value.
+ * \note    Returns DMA_MDATAALIGN_* (MSIZE field), not DMA_PDATAALIGN_*; the
+ *          two macro families occupy different bits of the stream CR.
  */
-uint32_t DMA::GetDataWidth(DataWidth width)
+uint32_t DMA::GetMemDataAlign(DataWidth width)
 {
     switch (width)
     {
-        case DataWidth::Byte:     return DMA_PDATAALIGN_BYTE;     break;
-        case DataWidth::HalfWord: return DMA_PDATAALIGN_HALFWORD; break;
-        case DataWidth::Word:     return DMA_PDATAALIGN_WORD;     break;
-        default: ASSERT(false); while(1) { __NOP(); } return DMA_PDATAALIGN_BYTE; break;    // Impossible selection
+        case DataWidth::Byte:     return DMA_MDATAALIGN_BYTE;     break;
+        case DataWidth::HalfWord: return DMA_MDATAALIGN_HALFWORD; break;
+        case DataWidth::Word:     return DMA_MDATAALIGN_WORD;     break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_MDATAALIGN_BYTE; break;    // Impossible selection
     }
 }
 
@@ -232,31 +244,81 @@ uint32_t DMA::GetPriority(Priority priority)
 }
 
 /**
+ * \brief   Get the IRQn for the given DMA stream.
+ * \param   stream  The DMA stream to get the IRQn for.
+ * \returns The IRQn corresponding to the DMA stream.
+ */
+IRQn_Type DMA::GetIRQn(Stream stream)
+{
+    switch (stream)
+    {
+        case Stream::Dma1_Stream0: return DMA1_Stream0_IRQn; break;
+        case Stream::Dma1_Stream1: return DMA1_Stream1_IRQn; break;
+        case Stream::Dma1_Stream2: return DMA1_Stream2_IRQn; break;
+        case Stream::Dma1_Stream3: return DMA1_Stream3_IRQn; break;
+        case Stream::Dma1_Stream4: return DMA1_Stream4_IRQn; break;
+        case Stream::Dma1_Stream5: return DMA1_Stream5_IRQn; break;
+        case Stream::Dma1_Stream6: return DMA1_Stream6_IRQn; break;
+        case Stream::Dma1_Stream7: return DMA1_Stream7_IRQn; break;
+        case Stream::Dma2_Stream0: return DMA2_Stream0_IRQn; break;
+        case Stream::Dma2_Stream1: return DMA2_Stream1_IRQn; break;
+        case Stream::Dma2_Stream2: return DMA2_Stream2_IRQn; break;
+        case Stream::Dma2_Stream3: return DMA2_Stream3_IRQn; break;
+        case Stream::Dma2_Stream4: return DMA2_Stream4_IRQn; break;
+        case Stream::Dma2_Stream5: return DMA2_Stream5_IRQn; break;
+        case Stream::Dma2_Stream6: return DMA2_Stream6_IRQn; break;
+        case Stream::Dma2_Stream7: return DMA2_Stream7_IRQn; break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA1_Stream0_IRQn; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get a reference to the static callback slot for the given stream.
+ * \param   stream  The DMA stream whose slot to access.
+ * \returns Reference to the std::function slot for that stream.
+ */
+std::function<void()>& DMA::GetCallbackSlot(Stream stream)
+{
+    switch (stream)
+    {
+        case Stream::Dma1_Stream0: return dma1Callbacks[0]; break;
+        case Stream::Dma1_Stream1: return dma1Callbacks[1]; break;
+        case Stream::Dma1_Stream2: return dma1Callbacks[2]; break;
+        case Stream::Dma1_Stream3: return dma1Callbacks[3]; break;
+        case Stream::Dma1_Stream4: return dma1Callbacks[4]; break;
+        case Stream::Dma1_Stream5: return dma1Callbacks[5]; break;
+        case Stream::Dma1_Stream6: return dma1Callbacks[6]; break;
+        case Stream::Dma1_Stream7: return dma1Callbacks[7]; break;
+        case Stream::Dma2_Stream0: return dma2Callbacks[0]; break;
+        case Stream::Dma2_Stream1: return dma2Callbacks[1]; break;
+        case Stream::Dma2_Stream2: return dma2Callbacks[2]; break;
+        case Stream::Dma2_Stream3: return dma2Callbacks[3]; break;
+        case Stream::Dma2_Stream4: return dma2Callbacks[4]; break;
+        case Stream::Dma2_Stream5: return dma2Callbacks[5]; break;
+        case Stream::Dma2_Stream6: return dma2Callbacks[6]; break;
+        case Stream::Dma2_Stream7: return dma2Callbacks[7]; break;
+        default: ASSERT(false); while(1) { __NOP(); } return dma1Callbacks[0]; break;    // Impossible selection
+    }
+}
+
+/**
  * \brief   Connect the internal DMA interrupt handling to the DMA object instance.
  * \param   stream  The DMA stream to connect the callback administration for.
  */
 void DMA::ConnectInternalCallback(Stream stream)
 {
-    switch (stream)
-    {
-        case Stream::Dma1_Stream0: dma1Callbacks[0] = [this]() { this->Callback(); }; break;
-        case Stream::Dma1_Stream1: dma1Callbacks[1] = [this]() { this->Callback(); }; break;
-        case Stream::Dma1_Stream2: dma1Callbacks[2] = [this]() { this->Callback(); }; break;
-        case Stream::Dma1_Stream3: dma1Callbacks[3] = [this]() { this->Callback(); }; break;
-        case Stream::Dma1_Stream4: dma1Callbacks[4] = [this]() { this->Callback(); }; break;
-        case Stream::Dma1_Stream5: dma1Callbacks[5] = [this]() { this->Callback(); }; break;
-        case Stream::Dma1_Stream6: dma1Callbacks[6] = [this]() { this->Callback(); }; break;
-        case Stream::Dma1_Stream7: dma1Callbacks[7] = [this]() { this->Callback(); }; break;
-        case Stream::Dma2_Stream0: dma2Callbacks[0] = [this]() { this->Callback(); }; break;
-        case Stream::Dma2_Stream1: dma2Callbacks[1] = [this]() { this->Callback(); }; break;
-        case Stream::Dma2_Stream2: dma2Callbacks[2] = [this]() { this->Callback(); }; break;
-        case Stream::Dma2_Stream3: dma2Callbacks[3] = [this]() { this->Callback(); }; break;
-        case Stream::Dma2_Stream4: dma2Callbacks[4] = [this]() { this->Callback(); }; break;
-        case Stream::Dma2_Stream5: dma2Callbacks[5] = [this]() { this->Callback(); }; break;
-        case Stream::Dma2_Stream6: dma2Callbacks[6] = [this]() { this->Callback(); }; break;
-        case Stream::Dma2_Stream7: dma2Callbacks[7] = [this]() { this->Callback(); }; break;
-        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
-    };
+    GetCallbackSlot(stream) = [this]() { this->Callback(); };
+}
+
+/**
+ * \brief   Disconnect the internal DMA interrupt handling for this object.
+ * \param   stream  The DMA stream to disconnect.
+ * \note    Called from the destructor to drop the lambda's captured 'this',
+ *          so a stray IRQ cannot dispatch into a destroyed object.
+ */
+void DMA::DisconnectInternalCallback(Stream stream)
+{
+    GetCallbackSlot(stream) = nullptr;
 }
 
 /**
@@ -267,26 +329,7 @@ void DMA::ConnectInternalCallback(Stream stream)
  */
 void DMA::EnableInterrupt(Stream stream, uint32_t preemptPrio, uint32_t subPrio)
 {
-    switch (stream)
-    {
-        case Stream::Dma1_Stream0: { SetIRQn(DMA1_Stream0_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma1_Stream1: { SetIRQn(DMA1_Stream1_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma1_Stream2: { SetIRQn(DMA1_Stream2_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma1_Stream3: { SetIRQn(DMA1_Stream3_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma1_Stream4: { SetIRQn(DMA1_Stream4_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma1_Stream5: { SetIRQn(DMA1_Stream5_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma1_Stream6: { SetIRQn(DMA1_Stream6_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma1_Stream7: { SetIRQn(DMA1_Stream7_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma2_Stream0: { SetIRQn(DMA2_Stream0_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma2_Stream1: { SetIRQn(DMA2_Stream1_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma2_Stream2: { SetIRQn(DMA2_Stream2_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma2_Stream3: { SetIRQn(DMA2_Stream3_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma2_Stream4: { SetIRQn(DMA2_Stream4_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma2_Stream5: { SetIRQn(DMA2_Stream5_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma2_Stream6: { SetIRQn(DMA2_Stream6_IRQn, preemptPrio, subPrio); } break;
-        case Stream::Dma2_Stream7: { SetIRQn(DMA2_Stream7_IRQn, preemptPrio, subPrio); } break;
-        default: ASSERT(false); while(1) { __NOP(); } break; // Impossible selection
-    }
+    SetIRQn(GetIRQn(stream), preemptPrio, subPrio);
 }
 
 /**
@@ -295,26 +338,7 @@ void DMA::EnableInterrupt(Stream stream, uint32_t preemptPrio, uint32_t subPrio)
  */
 void DMA::DisableInterrupt(Stream stream)
 {
-    switch (stream)
-    {
-        case Stream::Dma1_Stream0: { HAL_NVIC_DisableIRQ(DMA1_Stream0_IRQn); } break;
-        case Stream::Dma1_Stream1: { HAL_NVIC_DisableIRQ(DMA1_Stream1_IRQn); } break;
-        case Stream::Dma1_Stream2: { HAL_NVIC_DisableIRQ(DMA1_Stream2_IRQn); } break;
-        case Stream::Dma1_Stream3: { HAL_NVIC_DisableIRQ(DMA1_Stream3_IRQn); } break;
-        case Stream::Dma1_Stream4: { HAL_NVIC_DisableIRQ(DMA1_Stream4_IRQn); } break;
-        case Stream::Dma1_Stream5: { HAL_NVIC_DisableIRQ(DMA1_Stream5_IRQn); } break;
-        case Stream::Dma1_Stream6: { HAL_NVIC_DisableIRQ(DMA1_Stream6_IRQn); } break;
-        case Stream::Dma1_Stream7: { HAL_NVIC_DisableIRQ(DMA1_Stream7_IRQn); } break;
-        case Stream::Dma2_Stream0: { HAL_NVIC_DisableIRQ(DMA2_Stream0_IRQn); } break;
-        case Stream::Dma2_Stream1: { HAL_NVIC_DisableIRQ(DMA2_Stream1_IRQn); } break;
-        case Stream::Dma2_Stream2: { HAL_NVIC_DisableIRQ(DMA2_Stream2_IRQn); } break;
-        case Stream::Dma2_Stream3: { HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn); } break;
-        case Stream::Dma2_Stream4: { HAL_NVIC_DisableIRQ(DMA2_Stream4_IRQn); } break;
-        case Stream::Dma2_Stream5: { HAL_NVIC_DisableIRQ(DMA2_Stream5_IRQn); } break;
-        case Stream::Dma2_Stream6: { HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn); } break;
-        case Stream::Dma2_Stream7: { HAL_NVIC_DisableIRQ(DMA2_Stream7_IRQn); } break;
-        default: ASSERT(false); while(1) { __NOP(); } break; // Impossible selection
-    }
+    HAL_NVIC_DisableIRQ(GetIRQn(stream));
 }
 
 /**
@@ -334,9 +358,9 @@ void DMA::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
 /**
  * \brief   Internal class callback which connects the DMA HAL callbacks to this object.
  */
-void DMA::Callback() const
+void DMA::Callback()
 {
-    HAL_DMA_IRQHandler(const_cast<DMA_HandleTypeDef*>(&mHandle));
+    HAL_DMA_IRQHandler(&mHandle);
 }
 
 

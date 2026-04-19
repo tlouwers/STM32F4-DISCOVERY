@@ -25,6 +25,7 @@
 /* Includes                                                             */
 /************************************************************************/
 #include <cstdint>
+#include <functional>
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_dma.h"
 
@@ -146,6 +147,8 @@ public:
     bool Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width = DataWidth::Byte, Priority priority = Priority::Low, HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled);
     bool Link(const void* parent, DMA_HandleTypeDef*& handle);
 
+    bool IsHalfBufferInterruptEnabled() const;
+
 private:
     DMA_HandleTypeDef   mHandle = {};
     Stream              mStream;
@@ -154,15 +157,18 @@ private:
     DMA_Stream_TypeDef* GetInstance(Stream stream);
     uint32_t GetChannel(Channel channel);
     uint32_t GetDirection(Direction direction);
-    uint32_t GetDataWidth(DataWidth width);
+    uint32_t GetMemDataAlign(DataWidth width);
     uint32_t GetPriority(Priority priority);
+    IRQn_Type GetIRQn(Stream stream);
+    std::function<void()>& GetCallbackSlot(Stream stream);
 
     void ConnectInternalCallback(Stream stream);
+    void DisconnectInternalCallback(Stream stream);
     void EnableInterrupt(Stream stream, uint32_t preemptPrio, uint32_t subPrio);
     void DisableInterrupt(Stream stream);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
 
-    void Callback() const;
+    void Callback();
 };
 
 
