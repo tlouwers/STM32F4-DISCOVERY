@@ -7,6 +7,7 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   Pin
  *
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  *          State is preserved (partly) within the hardware.
@@ -82,13 +83,15 @@ static int GetIndexById(uint16_t id)
  */
 Pin::Pin(Pin&& other)
 {
-    mId        = other.mId;
-    mPort      = other.mPort;
-    mDirection = other.mDirection;
+    mId         = other.mId;
+    mPort       = other.mPort;
+    mDirection  = other.mDirection;
+    mPullUpDown = other.mPullUpDown;
 
-    other.mId        = INVALID_ENTRY;
-    other.mPort      = nullptr;
-    other.mDirection = Direction::UNDEFINED;
+    other.mId         = INVALID_ENTRY;
+    other.mPort       = nullptr;
+    other.mDirection  = Direction::UNDEFINED;
+    other.mPullUpDown = PullUpDown::HIGHZ;
 }
 
 /**
@@ -131,9 +134,10 @@ Pin::Pin(PinIdPort idAndPort, PullUpDown pullUpDown)
  * \brief   Constructor for pin as alternate function.
  * \param   idAndPort   Pin id and port to which the pin belongs.
  * \param   alternate   The alternate function for the pin.
- * \param   pullUpDown  Pull up or pull down mode configuration.
+ * \param   pullUpDown  Pull up or pull down mode configuration. HIGHZ means
+ *                      no internal pull is applied (typical for AF pins with
+ *                      external pull-ups, e.g. I2C).
  * \param   mode        Alternate function drive mode configuration, default push pull.
- * \note    If pullUpDown is set to HIGHZ it is ignored.
  */
 Pin::Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */, Mode mode /* = Mode::PUSH_PULL */)
 {
@@ -206,15 +210,16 @@ void Pin::Configure(PullUpDown pullUpDown)
 
     HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
-    mDirection = Direction::INPUT;
+    mDirection  = Direction::INPUT;
+    mPullUpDown = pullUpDown;
 }
 
 /**
  * \brief   Configuration method for pin as alternate function.
  * \param   alternate   The alternate function for the pin.
- * \param   pullUpDown  Pull up or pull down mode configuration.
+ * \param   pullUpDown  Pull up or pull down mode configuration. HIGHZ means
+ *                      no internal pull is applied.
  * \param   mode        Alternate function drive mode configuration, default push pull.
- * \note    If pullUpDown is set to HIGHZ it is ignored.
  */
 void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::HIGHZ */, Mode mode /* = Mode::PUSH_PULL */)
 {
@@ -262,7 +267,7 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
     }
 
     const auto index = GetIndexById(mId);
-    // Check: if callback exits then pin is already configured as interrupt
+    // Check: if callback exists then pin is already configured as interrupt
     if (pinInterruptList[index].callback != nullptr)
     {
         // Restore NVIC for pin
@@ -287,7 +292,21 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
         case Trigger::BOTH:    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING_FALLING; break;
         default: ASSERT(false);                                                       break;    // Unknown trigger configuration
     }
-    GPIO_InitStructure.Pin = mId;
+    GPIO_InitStructure.Pin   = mId;
+    GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+
+    // Preserve the pull set by the prior Configure(PullUpDown): HAL_GPIO_Init
+    // unconditionally rewrites PUPDR from GPIO_InitStructure.Pull, so we must
+    // carry it forward here.
+    switch (mPullUpDown)
+    {
+        case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
+        case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
+        case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+        case PullUpDown::ANALOG:  // Fall through -- analog + interrupt is invalid, treat as no pull
+        case PullUpDown::HIGHZ:   // Fall through
+        default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
+    }
 
     HAL_GPIO_Init(mPort, &GPIO_InitStructure);
 
@@ -309,7 +328,7 @@ bool Pin::InterruptEnable()
 
     const auto index = GetIndexById(mId);
 
-    // Check: if callback exits then pin is already configured as interrupt
+    // Check: if callback exists then pin is already configured as interrupt
     if (pinInterruptList[index].callback != nullptr)
     {
         // Enable NVIC for pin
@@ -332,7 +351,7 @@ bool Pin::InterruptDisable()
 
     const auto index = GetIndexById(mId);
 
-    // Check: if callback exits then pin is already configured as interrupt
+    // Check: if callback exists then pin is already configured as interrupt
     if (pinInterruptList[index].callback != nullptr)
     {
         // Disable NVIC for pin
@@ -360,7 +379,7 @@ bool Pin::InterruptRemove()
 
     const auto index = GetIndexById(mId);
 
-    // Check: if callback exits then pin is already configured as interrupt
+    // Check: if callback exists then pin is already configured as interrupt
     if (pinInterruptList[index].callback != nullptr)
     {
         // Disable NVIC for pin
@@ -386,8 +405,7 @@ void Pin::Toggle() const
 {
     ASSERT(mDirection == Direction::OUTPUT);    // Cannot toggle level if pin is not configured as output
 
-    (HAL_GPIO_ReadPin(mPort, mId) == GPIO_PIN_SET) ? HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_RESET) :
-                                                     HAL_GPIO_WritePin(mPort, mId, GPIO_PIN_SET);
+    HAL_GPIO_TogglePin(mPort, mId);
 }
 
 /**
@@ -431,13 +449,15 @@ Pin& Pin::operator= (Pin&& other)
 {
     if (this != &other)
     {
-        mId        = other.mId;
-        mPort      = other.mPort;
-        mDirection = other.mDirection;
+        mId         = other.mId;
+        mPort       = other.mPort;
+        mDirection  = other.mDirection;
+        mPullUpDown = other.mPullUpDown;
 
-        other.mId        = INVALID_ENTRY;
-        other.mPort      = nullptr;
-        other.mDirection = Direction::UNDEFINED;
+        other.mId         = INVALID_ENTRY;
+        other.mPort       = nullptr;
+        other.mDirection  = Direction::UNDEFINED;
+        other.mPullUpDown = PullUpDown::HIGHZ;
     }
     return *this;
 }
@@ -543,14 +563,22 @@ IRQn_Type Pin::GetIRQn(uint16_t id)
 {
     ASSERT(IsOnlyASingleBitSetInIdMask(id) == true);
 
-         if (id & GPIO_PIN_0)  { return EXTI0_IRQn;     }
-    else if (id & GPIO_PIN_1)  { return EXTI1_IRQn;     }
-    else if (id & GPIO_PIN_2)  { return EXTI2_IRQn;     }
-    else if (id & GPIO_PIN_3)  { return EXTI3_IRQn;     }
-    else if (id & GPIO_PIN_4)  { return EXTI3_IRQn;     }
-    else if (id & GPIO_PIN_5)  { return EXTI4_IRQn;     }
-    else if (id < GPIO_PIN_10) { return EXTI9_5_IRQn;   }
-    else                       { return EXTI15_10_IRQn; }
+    // Map pin index -> EXTI NVIC line (see RM0090 Table 62 / CMSIS stm32f407xx.h).
+    // Pins 0..4 each have a dedicated vector; 5..9 share EXTI9_5; 10..15 share EXTI15_10.
+    switch (GetIndexById(id))
+    {
+        case 0:  return EXTI0_IRQn;
+        case 1:  return EXTI1_IRQn;
+        case 2:  return EXTI2_IRQn;
+        case 3:  return EXTI3_IRQn;
+        case 4:  return EXTI4_IRQn;
+        case 5:  // Fall through
+        case 6:  // Fall through
+        case 7:  // Fall through
+        case 8:  // Fall through
+        case 9:  return EXTI9_5_IRQn;
+        default: return EXTI15_10_IRQn;
+    }
 }
 
 

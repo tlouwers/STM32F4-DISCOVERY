@@ -181,9 +181,10 @@ public:
     Pin& operator= (Pin&& other);
 
 private:
-    uint16_t      mId        = UINT16_MAX;
-    GPIO_TypeDef* mPort      = nullptr;
-    Direction     mDirection = Direction::UNDEFINED;
+    uint16_t      mId         = UINT16_MAX;
+    GPIO_TypeDef* mPort       = nullptr;
+    Direction     mDirection  = Direction::UNDEFINED;
+    PullUpDown    mPullUpDown = PullUpDown::HIGHZ;      ///< Preserved so Interrupt() can re-apply the pull setting
 
     void CheckAndSetIdAndPort(uint16_t id, GPIO_TypeDef* port);
     void CheckAndEnableAHB1PeripheralClock(GPIO_TypeDef* port);
