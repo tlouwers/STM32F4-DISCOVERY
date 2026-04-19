@@ -8,17 +8,17 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | drivers/board | Helper class and configuration file to configure clock and pins of the board. |
 | drivers/components/HI-M1388AR | HI-M1388AR 8x8 LED matrix display class. Includes library with digits, letters and symbols to display. |
 | drivers/components/LIS3DSH | LIS3DSH accelerometer class with HW fifo support. |
-| drivers/drivers/ADC | ADC peripheral driver class. Simple and Interrupt based input capture for single channel. |
+| drivers/drivers/Adc | Adc peripheral driver class. Simple and Interrupt based input capture for single channel. |
 | drivers/drivers/BasicTimer | BasicTimer peripheral driver class. Intended for use with DAC. |
-| drivers/drivers/CRC | Crc peripheral driver class. Uses hardware CRC module of the STM32F4. |
-| drivers/drivers/DAC | DAC peripheral driver class. Simple and DMA based output for any waveform (uses BasicTimer). |
+| drivers/drivers/Crc | Crc peripheral driver class. Uses hardware CRC module of the STM32F4. |
+| drivers/drivers/Dac | Dac peripheral driver class. Simple and DMA based output for any waveform (uses BasicTimer). |
 | drivers/drivers/DMA | DMA utility class, intended as plug-in functionality for peripherals. |
 | drivers/drivers/GenericTimer | GenericTimer peripheral driver class. Provides period timer functionality. |
 | drivers/drivers/I2C | I2C peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | drivers/drivers/Pin | Helper class intended as 'set & forget' for pin configurations. State is preserved (partly) within the hardware. |
 | drivers/drivers/PWM | PWM peripheral driver class. Using Timer 2..4 as clock source. |
-| drivers/drivers/RNG | Hardware random number generator. Uses PLL (40 clock cycles) and analog noise to generate true 32-bit random number. |
-| drivers/drivers/RTC | RTC peripheral driver class. Provides easier handling of Date and Time. |
+| drivers/drivers/Rng | Hardware random number generator. Uses PLL (40 clock cycles) and analog noise to generate true 32-bit random number. |
+| drivers/drivers/Rtc | Rtc peripheral driver class. Provides easier handling of Date and Time. |
 | drivers/drivers/SPI | SPI peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | drivers/drivers/Usart | USART peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | drivers/drivers/Watchdog | Watchdog (IWDG) peripheral driver class. |
