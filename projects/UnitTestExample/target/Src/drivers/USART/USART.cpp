@@ -82,7 +82,7 @@ static void CallbackRxDone(const UsartCallbacks& usart_callbacks, uint16_t bytes
  * \brief   Constructor, prepares the internal USART instance administration.
  * \param   instance    The USART instance to use.
  */
-USART::Usart(const UsartInstance& instance) :
+USART::USART(const UsartInstance& instance) :
     mInstance(instance),
     mUsartCallbacks( (instance == UsartInstance::USART_1) ? (usart1_callbacks) : ( (instance == UsartInstance::USART_2) ? (usart2_callbacks) : ( (instance == UsartInstance::USART_3) ? (usart3_callbacks) : (usart6_callbacks) ) ) ),
     mInitialized(false)
@@ -95,7 +95,7 @@ USART::Usart(const UsartInstance& instance) :
 /**
  * \brief   Destructor, disabled interrupts.
  */
-USART::~Usart()
+USART::~USART()
 {
     Sleep();
 }
