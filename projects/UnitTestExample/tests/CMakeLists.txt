@@ -15,7 +15,7 @@ target_sources(TestRunner
         TestLIS3DSH.cpp
         TestCrc.cpp
         # Mocks and Fakes
-        Fake/drivers/CRC/CRC.cpp
+        Fake/drivers/Crc/Crc.cpp
         Fake/drivers/Pin/Pin.cpp
         Fake/utility/Assert/Assert.cpp
         Fake/stm32f4xx_hal.c
