@@ -77,26 +77,35 @@ Adc::Adc(const ADCInstance& instance) :
     mInitialized(false)
 {
     SetInstance(instance);
-
-    mADCCallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
 }
 
 /**
  * \brief   Destructor, stops Adc channels.
+ * \note    DisconnectCallbacks is also invoked unconditionally here as a
+ *          safety net: ADC1/2/3 share ADC_IRQn, so a stale lambda holding
+ *          this object's `this` would otherwise be dispatched by a peer
+ *          instance after destruction.
  */
 Adc::~Adc()
 {
     Sleep();
+    DisconnectCallbacks();
 }
 
 /**
  * \brief   Initializes the Adc instance with the given configuration.
  * \param   config  The configuration for the Adc instance to use.
  * \returns True if the configuration could be applied, else false.
+ * \note    The clock prescaler is fixed at PCLK2/2; the F407 datasheet caps
+ *          ADCCLK at 36 MHz, so this driver assumes Board keeps PCLK2 below
+ *          72 MHz. The current Board (HSE = 8 MHz, no PLL) yields PCLK2 =
+ *          8 MHz which is well within range; switching to the 168 MHz PLL
+ *          path drafted in Board.cpp would push ADCCLK to 42 MHz and needs
+ *          a configurable prescaler first.
  */
 bool Adc::Init(const IConfig& config)
 {
-    CheckAndEnableAHB2PeripheralClock(mInstance);
+    CheckAndEnableAPB2PeripheralClock(mInstance);
 
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
@@ -126,6 +135,7 @@ bool Adc::Init(const IConfig& config)
 
         if (HAL_ADC_ConfigChannel(&mHandle, &adcChannelConfig) == HAL_OK)
         {
+            mADCCallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
             mInitialized = true;
             return true;
         }
@@ -146,22 +156,28 @@ bool Adc::IsInit() const
  * \brief   Puts the Adc module in sleep mode.
  * \details Aborts ongoing captures.
  * \returns True if Adc module could be put in sleep mode, else false.
+ * \note    ADC1/2/3 share ADC_IRQn, so the NVIC line is only disabled when
+ *          no other Adc instance still holds an active callback slot.
  */
 bool Adc::Sleep()
 {
-    // Disable interrupts
-    HAL_NVIC_DisableIRQ( ADC_IRQn );
-
     HAL_ADC_Stop(&mHandle);
+
+    if (HAL_ADC_DeInit(&mHandle) != HAL_OK) { return false; }
 
     mInitialized = false;
 
-    if (HAL_ADC_DeInit(&mHandle) == HAL_OK)
+    DisconnectCallbacks();
+
+    if ((adc1_callbacks.callbackIRQ == nullptr) &&
+        (adc2_callbacks.callbackIRQ == nullptr) &&
+        (adc3_callbacks.callbackIRQ == nullptr))
     {
-        CheckAndDisableAHB2PeripheralClock(mInstance);
-        return true;
+        HAL_NVIC_DisableIRQ(ADC_IRQn);
     }
-    return false;
+
+    CheckAndDisableAPB2PeripheralClock(mInstance);
+    return true;
 }
 
 /**
@@ -223,35 +239,33 @@ void Adc::SetInstance(const ADCInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB2 peripheral clock for the Adc
- *          instance is enabled, if not enable it.
+ * \brief   Enable the APB2 peripheral clock for the given Adc instance.
  * \param   instance    The Adc instance to enable the clock for.
  * \note    Asserts if not a valid Adc instance provided.
  */
-void Adc::CheckAndEnableAHB2PeripheralClock(const ADCInstance& instance)
+void Adc::CheckAndEnableAPB2PeripheralClock(const ADCInstance& instance)
 {
     switch (instance)
     {
-        case ADCInstance::ADC_1: if (__HAL_RCC_ADC1_IS_CLK_DISABLED()) { __HAL_RCC_ADC1_CLK_ENABLE(); } break;
-        case ADCInstance::ADC_2: if (__HAL_RCC_ADC2_IS_CLK_DISABLED()) { __HAL_RCC_ADC2_CLK_ENABLE(); } break;
-        case ADCInstance::ADC_3: if (__HAL_RCC_ADC3_IS_CLK_DISABLED()) { __HAL_RCC_ADC3_CLK_ENABLE(); } break;
+        case ADCInstance::ADC_1: __HAL_RCC_ADC1_CLK_ENABLE(); break;
+        case ADCInstance::ADC_2: __HAL_RCC_ADC2_CLK_ENABLE(); break;
+        case ADCInstance::ADC_3: __HAL_RCC_ADC3_CLK_ENABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
 /**
- * \brief   Check if the appropriate AHB2 peripheral clock for the Adc
- *          instance is enabled, if so disable it.
+ * \brief   Disable the APB2 peripheral clock for the given Adc instance.
  * \param   instance    The Adc instance to disable the clock for.
  * \note    Asserts if not a valid Adc instance provided.
  */
-void Adc::CheckAndDisableAHB2PeripheralClock(const ADCInstance& instance)
+void Adc::CheckAndDisableAPB2PeripheralClock(const ADCInstance& instance)
 {
     switch (instance)
     {
-        case ADCInstance::ADC_1: if (__HAL_RCC_ADC1_IS_CLK_ENABLED()) { __HAL_RCC_ADC1_CLK_DISABLE(); } break;
-        case ADCInstance::ADC_2: if (__HAL_RCC_ADC2_IS_CLK_ENABLED()) { __HAL_RCC_ADC2_CLK_DISABLE(); } break;
-        case ADCInstance::ADC_3: if (__HAL_RCC_ADC3_IS_CLK_ENABLED()) { __HAL_RCC_ADC3_CLK_DISABLE(); } break;
+        case ADCInstance::ADC_1: __HAL_RCC_ADC1_CLK_DISABLE(); break;
+        case ADCInstance::ADC_2: __HAL_RCC_ADC2_CLK_DISABLE(); break;
+        case ADCInstance::ADC_3: __HAL_RCC_ADC3_CLK_DISABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
@@ -327,9 +341,21 @@ void Adc::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
 /**
  * \brief   Generic Adc IRQ callback. Will propagate other interrupts.
  */
-void Adc::CallbackIRQ() const
+void Adc::CallbackIRQ()
 {
-    HAL_ADC_IRQHandler(const_cast<ADC_HandleTypeDef*>(&mHandle));
+    HAL_ADC_IRQHandler(&mHandle);
+}
+
+/**
+ * \brief   Drop both callback std::functions for this Adc instance.
+ * \note    Called from Sleep() and as a destructor safety net so that no
+ *          stale lambda capturing `this` outlives the object on the
+ *          shared ADC_IRQn line.
+ */
+void Adc::DisconnectCallbacks()
+{
+    mADCCallbacks.callbackIRQ             = nullptr;
+    mADCCallbacks.callbackEndOfConversion = nullptr;
 }
 
 
@@ -348,9 +374,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* handle)
     // Could only get here via interrupt: stop, as new requests will start anew
     if (HAL_ADC_Stop_IT(handle) != HAL_OK) { ASSERT(false); }
 
-    if (handle->Instance == ADC1) { CallbackEndOfConversion(adc1_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
-    if (handle->Instance == ADC2) { CallbackEndOfConversion(adc2_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
-    if (handle->Instance == ADC3) { CallbackEndOfConversion(adc3_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
+    if      (handle->Instance == ADC1) { CallbackEndOfConversion(adc1_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
+    else if (handle->Instance == ADC2) { CallbackEndOfConversion(adc2_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
+    else if (handle->Instance == ADC3) { CallbackEndOfConversion(adc3_callbacks, static_cast<uint16_t>(HAL_ADC_GetValue(handle))); }
 }
 
 /**
