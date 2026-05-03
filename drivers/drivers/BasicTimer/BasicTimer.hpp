@@ -11,7 +11,7 @@
  *
  * \brief   BasicTimer class used for the DAC to drive the DMA based output sampling.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/BasicTimer
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/BasicTimer
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -104,12 +104,14 @@ private:
     bool                mStarted;
 
     void SetInstance(const BasicTimerInstance& instance);
-    void CheckAndEnableAHB1PeripheralClock(const BasicTimerInstance& instance);
-    void CheckAndDisableAHB1PeripheralClock(const BasicTimerInstance& instance);
+    void CheckAndEnablePeripheralClock(const BasicTimerInstance& instance);
+    void CheckAndDisablePeripheralClock(const BasicTimerInstance& instance);
+    static uint32_t GetTimerInputClockFreq();
     uint16_t CalculatePeriod(uint16_t desiredFrequency);
     IRQn_Type GetIRQn(const BasicTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
+    void DisconnectCallbacks();
 };
 
 

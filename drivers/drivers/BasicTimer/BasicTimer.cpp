@@ -10,7 +10,7 @@
  *
  * \brief   BasicTimer class used for the DAC to drive the DMA based output sampling.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/BasicTimer
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/BasicTimer
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -53,7 +53,7 @@ static void CallbackIRQ(const BasicTimerCallback& timer_callback)
 /************************************************************************/
 /**
  * \brief   Constructor, prepares the internal BasicTimer instance administration.
- * \param   instance    The BasicTImer instance to use.
+ * \param   instance    The BasicTimer instance to use.
  */
 BasicTimer::BasicTimer(const BasicTimerInstance& instance) :
     mInstance(instance),
@@ -62,31 +62,38 @@ BasicTimer::BasicTimer(const BasicTimerInstance& instance) :
     mStarted(false)
 {
     SetInstance(instance);
-
-    mBasicTimerCallback.callbackIRQ = [this]() { this->CallbackIRQ(); };
 }
 
 /**
- * \brief   Destructor, stop timer, disabled interrupts.
+ * \brief   Destructor, stops the timer and disables interrupts.
+ * \note    DisconnectCallbacks is also invoked unconditionally here as a
+ *          safety net so a stale lambda capturing this object's `this`
+ *          cannot be dispatched after destruction.
  */
 BasicTimer::~BasicTimer()
 {
     Sleep();
+    DisconnectCallbacks();
 }
 
 /**
  * \brief   Initializes the BasicTimer instance with the given configuration.
  * \param   config  The configuration for the BasicTimer instance to use.
  * \returns True if the configuration could be applied, else false.
- * \note    APB1 assumed to be 8 MHz.
+ * \note    The prescaler is computed from the actual APB1 timer clock so
+ *          that CNT_CLK lands at 1 MHz regardless of board clock tree.
  */
 bool BasicTimer::Init(const IConfig& config)
 {
-    CheckAndEnableAHB1PeripheralClock(mInstance);
+    CheckAndEnablePeripheralClock(mInstance);
 
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
-    mHandle.Init.Prescaler         = 8 - 1;                           // (Freq. APB1) / (Prescaler + 1) = (Freq. CLK_CNT) --> Get from 8 MHz to 1 MHz as timer counter
+    EXPECT(cfg.mFrequency > 0);
+    if (cfg.mFrequency == 0) { return false; }
+
+    // (Freq. timer input) / (Prescaler + 1) = (Freq. CLK_CNT) --> aim for 1 MHz CNT
+    mHandle.Init.Prescaler         = (GetTimerInputClockFreq() / 1000000U) - 1U;
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
     mHandle.Init.Period            = CalculatePeriod(cfg.mFrequency); // (Freq. desired) = (Freq. CNT_CLK) / (TIM_ARR + 1)
     mHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
@@ -103,12 +110,14 @@ bool BasicTimer::Init(const IConfig& config)
             // Configure NVIC to generate interrupt
             SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
+            mBasicTimerCallback.callbackIRQ = [this]() { this->CallbackIRQ(); };
+
             mInitialized = true;
             return true;
         }
     }
     return false;
-};
+}
 
 /**
  * \brief   Indicate if BasicTimer is initialized.
@@ -128,17 +137,16 @@ bool BasicTimer::Sleep()
 {
     Stop();
 
+    if (HAL_TIM_Base_DeInit(&mHandle) != HAL_OK) { return false; }
+
     mInitialized = false;
 
-    // Disable interrupts
     HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
 
-    if (HAL_TIM_Base_DeInit(&mHandle) == HAL_OK)
-    {
-        CheckAndDisableAHB1PeripheralClock(mInstance);
-        return true;
-    }
-    return false;
+    DisconnectCallbacks();
+
+    CheckAndDisablePeripheralClock(mInstance);
+    return true;
 }
 
 /**
@@ -206,35 +214,46 @@ void BasicTimer::SetInstance(const BasicTimerInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the BasicTimer
- *          instance is enabled, if not enable it.
+ * \brief   Enable the peripheral clock for the BasicTimer instance.
  * \param   instance    The BasicTimer instance to enable the clock for.
- * \note    Asserts if not a valid BasicTimer instance provided.
+ * \note    TIM6 and TIM7 sit on APB1; the underlying CLK_ENABLE macros
+ *          are idempotent so no IS_CLK_DISABLED guard is needed.
  */
-void BasicTimer::CheckAndEnableAHB1PeripheralClock(const BasicTimerInstance& instance)
+void BasicTimer::CheckAndEnablePeripheralClock(const BasicTimerInstance& instance)
 {
     switch (instance)
     {
-        case BasicTimerInstance::TIMER_6: if (__HAL_RCC_TIM6_IS_CLK_DISABLED()) { __HAL_RCC_TIM6_CLK_ENABLE(); } break;
-        case BasicTimerInstance::TIMER_7: if (__HAL_RCC_TIM7_IS_CLK_DISABLED()) { __HAL_RCC_TIM7_CLK_ENABLE(); } break;
+        case BasicTimerInstance::TIMER_6: __HAL_RCC_TIM6_CLK_ENABLE(); break;
+        case BasicTimerInstance::TIMER_7: __HAL_RCC_TIM7_CLK_ENABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the BasicTimer
- *          instance is enabled, if so disable it.
+ * \brief   Disable the peripheral clock for the BasicTimer instance.
  * \param   instance    The BasicTimer instance to disable the clock for.
- * \note    Asserts if not a valid BasicTimer instance provided.
  */
-void BasicTimer::CheckAndDisableAHB1PeripheralClock(const BasicTimerInstance& instance)
+void BasicTimer::CheckAndDisablePeripheralClock(const BasicTimerInstance& instance)
 {
     switch (instance)
     {
-        case BasicTimerInstance::TIMER_6: if (__HAL_RCC_TIM6_IS_CLK_ENABLED()) { __HAL_RCC_TIM6_CLK_DISABLE(); } break;
-        case BasicTimerInstance::TIMER_7: if (__HAL_RCC_TIM7_IS_CLK_ENABLED()) { __HAL_RCC_TIM7_CLK_DISABLE(); } break;
+        case BasicTimerInstance::TIMER_6: __HAL_RCC_TIM6_CLK_DISABLE(); break;
+        case BasicTimerInstance::TIMER_7: __HAL_RCC_TIM7_CLK_DISABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
+}
+
+/**
+ * \brief   Return the input clock feeding TIM6/TIM7.
+ * \details TIM6 and TIM7 are clocked from APB1. Per RM0090 §6.2 the timer
+ *          input clock equals APB1 when the APB1 prescaler is 1, otherwise
+ *          twice APB1.
+ * \returns Timer input clock in Hz.
+ */
+uint32_t BasicTimer::GetTimerInputClockFreq()
+{
+    const uint32_t apb1 = HAL_RCC_GetPCLK1Freq();
+    return ((RCC->CFGR & RCC_CFGR_PPRE1) >= RCC_CFGR_PPRE1_DIV2) ? (apb1 * 2U) : apb1;
 }
 
 /**
@@ -294,6 +313,17 @@ void BasicTimer::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
 void BasicTimer::CallbackIRQ()
 {
     HAL_TIM_IRQHandler(&mHandle);
+}
+
+/**
+ * \brief   Drop the IRQ callback std::function for this BasicTimer instance.
+ * \note    Called from Sleep() and as a destructor safety net so no stale
+ *          lambda capturing `this` outlives the object on the static
+ *          timer{6,7}_callback slot.
+ */
+void BasicTimer::DisconnectCallbacks()
+{
+    mBasicTimerCallback.callbackIRQ = nullptr;
 }
 
 
