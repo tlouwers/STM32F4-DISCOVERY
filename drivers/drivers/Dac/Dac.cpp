@@ -56,7 +56,7 @@ Dac::~Dac()
  */
 bool Dac::Init()
 {
-    CheckAndEnableAHB1PeripheralClock();
+    CheckAndEnablePeripheralClock();
 
     mHandle.Instance = DAC;
 
@@ -90,14 +90,12 @@ bool Dac::Sleep()
     SetWaveform(Channel::CHANNEL_1, nullptr, 0);
     SetWaveform(Channel::CHANNEL_2, nullptr, 0);
 
+    if (HAL_DAC_DeInit(&mHandle) != HAL_OK) { return false; }
+
     mInitialized = false;
 
-    if (HAL_DAC_DeInit(&mHandle) == HAL_OK)
-    {
-        CheckAndDisableAHB1PeripheralClock();
-        return true;
-    }
-    return false;
+    CheckAndDisablePeripheralClock();
+    return true;
 }
 
 /**
@@ -151,21 +149,19 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
         {
             case Channel::CHANNEL_1:
                 StopChannel(Channel::CHANNEL_1);
-                mChannel1.mStarted   = false;
-                mChannel1.mPrecision = channelConfig.mPrecision;
-                mChannel1.mTrigger   = channelConfig.mTrigger;
                 if (HAL_DAC_ConfigChannel(&mHandle, &chanConf, DAC_CHANNEL_1) == HAL_OK)
                 {
+                    mChannel1.mPrecision = channelConfig.mPrecision;
+                    mChannel1.mTrigger   = channelConfig.mTrigger;
                     return true;
                 }
                 break;
             case Channel::CHANNEL_2:
                 StopChannel(Channel::CHANNEL_2);
-                mChannel2.mStarted   = false;
-                mChannel2.mPrecision = channelConfig.mPrecision;
-                mChannel2.mTrigger   = channelConfig.mTrigger;
                 if (HAL_DAC_ConfigChannel(&mHandle, &chanConf, DAC_CHANNEL_2) == HAL_OK)
                 {
+                    mChannel2.mPrecision = channelConfig.mPrecision;
+                    mChannel2.mTrigger   = channelConfig.mTrigger;
                     return true;
                 }
                 break;
@@ -184,12 +180,15 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
  */
 bool Dac::ConfigureWaveform(const Channel& channel, const uint16_t* values, uint16_t length)
 {
-    if (values != nullptr && length > 0)
-    {
-        SetWaveform(channel, values, length);
-        return true;
-    }
-    return false;
+    EXPECT(values);
+    EXPECT(length > 0);
+
+    if (values == nullptr) { return false; }
+    if (length == 0)       { return false; }
+    if (!mInitialized)     { return false; }
+
+    SetWaveform(channel, values, length);
+    return true;
 }
 
 /**
@@ -201,6 +200,8 @@ bool Dac::ConfigureWaveform(const Channel& channel, const uint16_t* values, uint
  */
 bool Dac::SetValue(const Channel& channel, uint16_t value)
 {
+    if (!mInitialized) { return false; }
+
     switch (channel)
     {
         case Channel::CHANNEL_1:
@@ -233,6 +234,8 @@ bool Dac::SetValue(const Channel& channel, uint16_t value)
  */
 bool Dac::StartWaveform(const Channel& channel)
 {
+    if (!mInitialized) { return false; }
+
     switch (channel)
     {
         case Channel::CHANNEL_1:
@@ -275,6 +278,8 @@ bool Dac::StartWaveform(const Channel& channel)
  */
 bool Dac::StopWaveform(const Channel& channel)
 {
+    if (!mInitialized) { return false; }
+
     switch (channel)
     {
         case Channel::CHANNEL_1:
@@ -303,21 +308,19 @@ bool Dac::StopWaveform(const Channel& channel)
 /* Private Methods                                                      */
 /************************************************************************/
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the Dac
- *          is enabled, if not enable it.
+ * \brief   Enable the peripheral clock for the Dac.
  */
-void Dac::CheckAndEnableAHB1PeripheralClock()
+void Dac::CheckAndEnablePeripheralClock()
 {
-    if (__HAL_RCC_DAC_IS_CLK_DISABLED()) { __HAL_RCC_DAC_CLK_ENABLE(); }
+    __HAL_RCC_DAC_CLK_ENABLE();
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the Dac
- *          is enabled, if so disable it.
+ * \brief   Disable the peripheral clock for the Dac.
  */
-void Dac::CheckAndDisableAHB1PeripheralClock()
+void Dac::CheckAndDisablePeripheralClock()
 {
-    if (__HAL_RCC_DAC_IS_CLK_ENABLED()) { __HAL_RCC_DAC_CLK_DISABLE(); }
+    __HAL_RCC_DAC_CLK_DISABLE();
 }
 
 /**
