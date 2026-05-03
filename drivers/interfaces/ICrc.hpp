@@ -9,7 +9,7 @@
  *                                                                Terry Louwers
  * \brief   Generic interface for Crc peripheral.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/interfaces
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/interfaces
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -31,7 +31,7 @@
 class ICrc
 {
 public:
-    virtual uint32_t Calculate(uint32_t* buffer, uint32_t length) = 0;
+    virtual uint32_t Calculate(const uint32_t* buffer, uint32_t length) = 0;
 };
 
 
