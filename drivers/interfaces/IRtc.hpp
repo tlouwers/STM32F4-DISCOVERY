@@ -1,10 +1,19 @@
 /**
- * \file IRtc.hpp
+ * \file    IRtc.hpp
  *
- * \brief   Rtc interface class.
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ * \brief   Generic interface for Rtc peripheral driver.
  *
- * \details This class is intended to act as interface for the Rtc class, to
- *          ease unit testing.
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/interfaces
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    06-2021
  */
 
 #ifndef IRTC_HPP_
@@ -25,7 +34,7 @@
  */
 struct DateTime
 {
-    uint16_t year   = 2000;     ///< The year [2000..2255].
+    uint16_t year   = 2000;     ///< The year [2000..2099]. The RTC year register is BCD 00..99.
     uint8_t  month  = 1;        ///< The month [1..12].
     uint8_t  day    = 1;        ///< The day [1..31].
     uint8_t  hour   = 0;        ///< The hour [0..23].
@@ -35,11 +44,8 @@ struct DateTime
 
 
 /************************************************************************/
-/* Interface declaration                                                */
+/* Class declaration                                                    */
 /************************************************************************/
-/**
- * \brief   IRtc interface class.
- */
 class IRtc
 {
 public:
