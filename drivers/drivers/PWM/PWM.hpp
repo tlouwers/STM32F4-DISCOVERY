@@ -11,7 +11,7 @@
  *
  * \brief   Helper class using Timer2..4 to provide PWM functionality.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/PWM
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/PWM
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1
@@ -121,8 +121,9 @@ private:
     bool              mInitialized;
 
     void SetInstance(const PwmTimerInstance& instance);
-    void CheckAndEnableAHB1PeripheralClock(const PwmTimerInstance& instance);
-    void CheckAndDisbleAHB1PeripheralClock(const PwmTimerInstance& instance);
+    void CheckAndEnablePeripheralClock(const PwmTimerInstance& instance);
+    void CheckAndDisablePeripheralClock(const PwmTimerInstance& instance);
+    uint32_t GetTimerInputClockFreq();
     uint16_t CalculatePeriod(float desiredFrequency);
     uint32_t CalculatePulse(uint8_t desiredDutyCycle, uint32_t period);
     uint32_t GetChannel(Channel channel);
