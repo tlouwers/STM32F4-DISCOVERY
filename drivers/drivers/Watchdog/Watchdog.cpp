@@ -13,7 +13,7 @@
  *
  * \note    The IWDG depends on the LSI clock to be available and running.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Watchdog
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Watchdog
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -50,12 +50,12 @@ Watchdog::~Watchdog() { }
  */
 bool Watchdog::Init(const IConfig& config)
 {
-    // Check if LSI clock is running, if not: assert and fail
-    const bool isLSIEnabled = IsLSIClockEnabled();
+    // Check if LSI clock is ready, if not: assert and fail
+    const bool isLSIReady = IsLSIClockReady();
 
-    ASSERT(isLSIEnabled);
+    ASSERT(isLSIReady);
 
-    if (!isLSIEnabled) { return false; }
+    if (!isLSIReady) { return false; }
 
     // Optional: freeze the independent watchdog timer while debugging
     __HAL_DBGMCU_FREEZE_IWDG();
@@ -85,7 +85,10 @@ bool Watchdog::IsInit() const
 }
 
 /**
- * \brief   Dummy, always returns false.
+ * \brief   Always returns false: the IWDG cannot be disabled once started.
+ * \details Per RM0090 §19.4.1 the IWDG, once enabled, runs until the next
+ *          power-on reset. There is no software path to put it back to
+ *          sleep.
  * \returns False.
  */
 bool Watchdog::Sleep()
@@ -101,24 +104,22 @@ bool Watchdog::Sleep()
 void Watchdog::Refresh() const
 {
     HAL_IWDG_Refresh(const_cast<IWDG_HandleTypeDef*>(&mHandle));
-};
+}
 
 
 /************************************************************************/
 /* Private Methods                                                      */
 /************************************************************************/
 /**
- * \brief   Check if the LSI clock is enabled.
- * \details The Watchdog depends on the running 32 kHz LSI clock.
- * \returns True if it is enabled, else false.
+ * \brief   Check if the LSI clock is ready.
+ * \details The Watchdog depends on the running 32 kHz LSI clock. LSIRDY
+ *          asserts ~85 µs after LSION is set; checking RDY rather than
+ *          ON catches the window where LSI is enabled but not yet stable.
+ * \returns True if LSI is ready, else false.
  */
-bool Watchdog::IsLSIClockEnabled() const
+bool Watchdog::IsLSIClockReady()
 {
-    RCC_OscInitTypeDef RCC_OscInitStruct = {};
-
-    HAL_RCC_GetOscConfig(&RCC_OscInitStruct);
-
-    return (RCC_OscInitStruct.LSIState == RCC_LSI_ON);
+    return (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY) != 0U);
 }
 
 /**
@@ -129,23 +130,23 @@ bool Watchdog::IsLSIClockEnabled() const
  */
 uint32_t Watchdog::CalculatePrescaler(Timeout timeout)
 {
-    uint32_t prescaler = 0;
+    uint32_t prescaler = IWDG_PRESCALER_4;
 
     switch (timeout)
     {
-        case Timeout::_5_MS:   prescaler = 0; break;
-        case Timeout::_10_MS:  prescaler = 0; break;
-        case Timeout::_25_MS:  prescaler = 0; break;
-        case Timeout::_50_MS:  prescaler = 0; break;
-        case Timeout::_125_MS: prescaler = 0; break;
-        case Timeout::_250_MS: prescaler = 0; break;
-        case Timeout::_500_MS: prescaler = 0; break;
-        case Timeout::_1_S:    prescaler = 1; break;
-        case Timeout::_2_S:    prescaler = 2; break;
-        case Timeout::_4_S:    prescaler = 3; break;
-        case Timeout::_8_S:    prescaler = 4; break;
-        case Timeout::_16_S:   prescaler = 5; break;
-        case Timeout::_32_S:   prescaler = 6; break;
+        case Timeout::_5_MS:   prescaler = IWDG_PRESCALER_4;   break;
+        case Timeout::_10_MS:  prescaler = IWDG_PRESCALER_4;   break;
+        case Timeout::_25_MS:  prescaler = IWDG_PRESCALER_4;   break;
+        case Timeout::_50_MS:  prescaler = IWDG_PRESCALER_4;   break;
+        case Timeout::_125_MS: prescaler = IWDG_PRESCALER_4;   break;
+        case Timeout::_250_MS: prescaler = IWDG_PRESCALER_4;   break;
+        case Timeout::_500_MS: prescaler = IWDG_PRESCALER_4;   break;
+        case Timeout::_1_S:    prescaler = IWDG_PRESCALER_8;   break;
+        case Timeout::_2_S:    prescaler = IWDG_PRESCALER_16;  break;
+        case Timeout::_4_S:    prescaler = IWDG_PRESCALER_32;  break;
+        case Timeout::_8_S:    prescaler = IWDG_PRESCALER_64;  break;
+        case Timeout::_16_S:   prescaler = IWDG_PRESCALER_128; break;
+        case Timeout::_32_S:   prescaler = IWDG_PRESCALER_256; break;
         default: ASSERT(false); break;
     }
 

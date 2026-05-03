@@ -13,7 +13,7 @@
  *
  * \note    The IWDG depends on the LSI clock to be available and running.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Watchdog
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Watchdog
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -76,7 +76,7 @@ public:
         Timeout mTimeout;  ///< Timeout value.
     };
 
-    explicit Watchdog();
+    Watchdog();
     virtual ~Watchdog();
 
     bool Init(const IConfig& config) override;
@@ -89,9 +89,9 @@ private:
     IWDG_HandleTypeDef mHandle = {};
     bool               mInitialized;
 
-    bool IsLSIClockEnabled() const;
-    uint32_t CalculatePrescaler(Timeout timeout);
-    uint32_t CalculateReload(Timeout timeout);
+    static bool IsLSIClockReady();
+    static uint32_t CalculatePrescaler(Timeout timeout);
+    static uint32_t CalculateReload(Timeout timeout);
 };
 
 #endif  // WATCHDOG_HPP_
