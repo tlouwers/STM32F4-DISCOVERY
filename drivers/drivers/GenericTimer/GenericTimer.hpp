@@ -11,7 +11,7 @@
  *
  * \brief   Helper class to provide general elapsed timer functionality.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/GenericTimer
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/GenericTimer
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -113,12 +113,14 @@ private:
     bool                   mStarted;
 
     void SetInstance(const GenericTimerInstance& instance);
-    void CheckAndEnableAHBPeripheralClock(const GenericTimerInstance& instance);
-    void CheckAndDisableAHBPeripheralClock(const GenericTimerInstance& instance);
+    void CheckAndEnablePeripheralClock(const GenericTimerInstance& instance);
+    void CheckAndDisablePeripheralClock(const GenericTimerInstance& instance);
+    uint32_t GetTimerInputClockFreq(const GenericTimerInstance& instance);
     uint16_t CalculatePeriod(float desiredFrequency);
     IRQn_Type GetIRQn(const GenericTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
+    void DisconnectCallbacks();
 };
 
 

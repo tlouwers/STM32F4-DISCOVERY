@@ -10,7 +10,7 @@
  *
  * \brief   Helper class to provide general elapsed timer functionality.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/GenericTimer
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/GenericTimer
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -90,31 +90,39 @@ GenericTimer::GenericTimer(const GenericTimerInstance& instance) :
     mStarted(false)
 {
     SetInstance(instance);
-
-    mGenericTimerCallback.callbackIRQ = [this]() { this->CallbackIRQ(); };
 }
 
 /**
- * \brief   Destructor, stop timer, disabled interrupts.
+ * \brief   Destructor, stops the timer and disables interrupts.
+ * \note    DisconnectCallbacks is also invoked unconditionally here as a
+ *          safety net so a stale lambda capturing this object's `this`
+ *          cannot be dispatched after destruction.
  */
 GenericTimer::~GenericTimer()
 {
     Sleep();
+    DisconnectCallbacks();
 }
 
 /**
  * \brief   Initializes the GenericTimer instance with the given configuration.
  * \param   config  The configuration for the GenericTimer instance to use.
  * \returns True if the configuration could be applied, else false.
- * \note    APB1 and APB2 assumed to be 8 MHz.
+ * \note    The prescaler is computed from the actual APB1/APB2 timer clock
+ *          (depending on the instance) so that CK_CNT lands at 10 kHz
+ *          regardless of board clock tree.
  */
 bool GenericTimer::Init(const IConfig& config)
 {
-    CheckAndEnableAHBPeripheralClock(mInstance);
+    CheckAndEnablePeripheralClock(mInstance);
 
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
-    mHandle.Init.Prescaler         = 800 - 1;                            // (Freq. APB) / (Prescaler + 1) = (Freq. CK_CNT) --> Get from 8 MHz to 10 kHz as timer counter
+    EXPECT(cfg.mFrequency > 0.0f);
+    if (cfg.mFrequency <= 0.0f) { return false; }
+
+    // (Freq. timer input) / (Prescaler + 1) = (Freq. CK_CNT) --> aim for 10 kHz CNT
+    mHandle.Init.Prescaler         = (GetTimerInputClockFreq(mInstance) / 10000U) - 1U;
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
     mHandle.Init.Period            = CalculatePeriod(cfg.mFrequency);    // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     mHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
@@ -126,11 +134,13 @@ bool GenericTimer::Init(const IConfig& config)
         // Configure NVIC to generate interrupt
         SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
+        mGenericTimerCallback.callbackIRQ = [this]() { this->CallbackIRQ(); };
+
         mInitialized = true;
         return true;
     }
     return false;
-};
+}
 
 /**
  * \brief   Indicate if GenericTimer is initialized.
@@ -150,17 +160,16 @@ bool GenericTimer::Sleep()
 {
     Stop();
 
+    if (HAL_TIM_Base_DeInit(&mHandle) != HAL_OK) { return false; }
+
     mInitialized = false;
 
-    // Disable interrupts
     HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
 
-    if (HAL_TIM_Base_DeInit(&mHandle) == HAL_OK)
-    {
-        CheckAndDisableAHBPeripheralClock(mInstance);
-        return true;
-    }
-    return false;
+    DisconnectCallbacks();
+
+    CheckAndDisablePeripheralClock(mInstance);
+    return true;
 }
 
 /**
@@ -237,50 +246,76 @@ void GenericTimer::SetInstance(const GenericTimerInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB1 or AHB2 peripheral clock for the GenericTimer
- *          instance is enabled, if not enable it.
+ * \brief   Enable the peripheral clock for the GenericTimer instance.
  * \param   instance    The GenericTimer instance to enable the clock for.
- * \note    Asserts if not a valid GenericTimer instance provided.
+ * \note    TIM2/3/4/5/12/13/14 sit on APB1, TIM9/10/11 on APB2; the
+ *          underlying CLK_ENABLE macros are idempotent so no IS_CLK_DISABLED
+ *          guard is needed.
  */
-void GenericTimer::CheckAndEnableAHBPeripheralClock(const GenericTimerInstance& instance)
+void GenericTimer::CheckAndEnablePeripheralClock(const GenericTimerInstance& instance)
 {
     switch (instance)
     {
-        case GenericTimerInstance::TIMER_2:  if (__HAL_RCC_TIM2_IS_CLK_DISABLED())  { __HAL_RCC_TIM2_CLK_ENABLE();  } break;
-        case GenericTimerInstance::TIMER_3:  if (__HAL_RCC_TIM3_IS_CLK_DISABLED())  { __HAL_RCC_TIM3_CLK_ENABLE();  } break;
-        case GenericTimerInstance::TIMER_4:  if (__HAL_RCC_TIM4_IS_CLK_DISABLED())  { __HAL_RCC_TIM4_CLK_ENABLE();  } break;
-        case GenericTimerInstance::TIMER_5:  if (__HAL_RCC_TIM5_IS_CLK_DISABLED())  { __HAL_RCC_TIM5_CLK_ENABLE();  } break;
-        case GenericTimerInstance::TIMER_9:  if (__HAL_RCC_TIM9_IS_CLK_DISABLED())  { __HAL_RCC_TIM9_CLK_ENABLE();  } break;
-        case GenericTimerInstance::TIMER_10: if (__HAL_RCC_TIM10_IS_CLK_DISABLED()) { __HAL_RCC_TIM10_CLK_ENABLE(); } break;
-        case GenericTimerInstance::TIMER_11: if (__HAL_RCC_TIM11_IS_CLK_DISABLED()) { __HAL_RCC_TIM11_CLK_ENABLE(); } break;
-        case GenericTimerInstance::TIMER_12: if (__HAL_RCC_TIM12_IS_CLK_DISABLED()) { __HAL_RCC_TIM12_CLK_ENABLE(); } break;
-        case GenericTimerInstance::TIMER_13: if (__HAL_RCC_TIM13_IS_CLK_DISABLED()) { __HAL_RCC_TIM13_CLK_ENABLE(); } break;
-        case GenericTimerInstance::TIMER_14: if (__HAL_RCC_TIM14_IS_CLK_DISABLED()) { __HAL_RCC_TIM14_CLK_ENABLE(); } break;
+        case GenericTimerInstance::TIMER_2:  __HAL_RCC_TIM2_CLK_ENABLE();  break;
+        case GenericTimerInstance::TIMER_3:  __HAL_RCC_TIM3_CLK_ENABLE();  break;
+        case GenericTimerInstance::TIMER_4:  __HAL_RCC_TIM4_CLK_ENABLE();  break;
+        case GenericTimerInstance::TIMER_5:  __HAL_RCC_TIM5_CLK_ENABLE();  break;
+        case GenericTimerInstance::TIMER_9:  __HAL_RCC_TIM9_CLK_ENABLE();  break;
+        case GenericTimerInstance::TIMER_10: __HAL_RCC_TIM10_CLK_ENABLE(); break;
+        case GenericTimerInstance::TIMER_11: __HAL_RCC_TIM11_CLK_ENABLE(); break;
+        case GenericTimerInstance::TIMER_12: __HAL_RCC_TIM12_CLK_ENABLE(); break;
+        case GenericTimerInstance::TIMER_13: __HAL_RCC_TIM13_CLK_ENABLE(); break;
+        case GenericTimerInstance::TIMER_14: __HAL_RCC_TIM14_CLK_ENABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
 /**
- * \brief   Check if the appropriate AHB1 or AHB2 peripheral clock for the GenericTimer
- *          instance is enabled, if so disable it.
+ * \brief   Disable the peripheral clock for the GenericTimer instance.
  * \param   instance    The GenericTimer instance to disable the clock for.
- * \note    Asserts if not a valid GenericTimer instance provided.
  */
-void GenericTimer::CheckAndDisableAHBPeripheralClock(const GenericTimerInstance& instance)
+void GenericTimer::CheckAndDisablePeripheralClock(const GenericTimerInstance& instance)
 {
     switch (instance)
     {
-        case GenericTimerInstance::TIMER_2:  if (__HAL_RCC_TIM2_IS_CLK_ENABLED())  { __HAL_RCC_TIM2_CLK_DISABLE();  } break;
-        case GenericTimerInstance::TIMER_3:  if (__HAL_RCC_TIM3_IS_CLK_ENABLED())  { __HAL_RCC_TIM3_CLK_DISABLE();  } break;
-        case GenericTimerInstance::TIMER_4:  if (__HAL_RCC_TIM4_IS_CLK_ENABLED())  { __HAL_RCC_TIM4_CLK_DISABLE();  } break;
-        case GenericTimerInstance::TIMER_5:  if (__HAL_RCC_TIM5_IS_CLK_ENABLED())  { __HAL_RCC_TIM5_CLK_DISABLE();  } break;
-        case GenericTimerInstance::TIMER_9:  if (__HAL_RCC_TIM9_IS_CLK_ENABLED())  { __HAL_RCC_TIM9_CLK_DISABLE();  } break;
-        case GenericTimerInstance::TIMER_10: if (__HAL_RCC_TIM10_IS_CLK_ENABLED()) { __HAL_RCC_TIM10_CLK_DISABLE(); } break;
-        case GenericTimerInstance::TIMER_11: if (__HAL_RCC_TIM11_IS_CLK_ENABLED()) { __HAL_RCC_TIM11_CLK_DISABLE(); } break;
-        case GenericTimerInstance::TIMER_12: if (__HAL_RCC_TIM12_IS_CLK_ENABLED()) { __HAL_RCC_TIM12_CLK_DISABLE(); } break;
-        case GenericTimerInstance::TIMER_13: if (__HAL_RCC_TIM13_IS_CLK_ENABLED()) { __HAL_RCC_TIM13_CLK_DISABLE(); } break;
-        case GenericTimerInstance::TIMER_14: if (__HAL_RCC_TIM14_IS_CLK_ENABLED()) { __HAL_RCC_TIM14_CLK_DISABLE(); } break;
+        case GenericTimerInstance::TIMER_2:  __HAL_RCC_TIM2_CLK_DISABLE();  break;
+        case GenericTimerInstance::TIMER_3:  __HAL_RCC_TIM3_CLK_DISABLE();  break;
+        case GenericTimerInstance::TIMER_4:  __HAL_RCC_TIM4_CLK_DISABLE();  break;
+        case GenericTimerInstance::TIMER_5:  __HAL_RCC_TIM5_CLK_DISABLE();  break;
+        case GenericTimerInstance::TIMER_9:  __HAL_RCC_TIM9_CLK_DISABLE();  break;
+        case GenericTimerInstance::TIMER_10: __HAL_RCC_TIM10_CLK_DISABLE(); break;
+        case GenericTimerInstance::TIMER_11: __HAL_RCC_TIM11_CLK_DISABLE(); break;
+        case GenericTimerInstance::TIMER_12: __HAL_RCC_TIM12_CLK_DISABLE(); break;
+        case GenericTimerInstance::TIMER_13: __HAL_RCC_TIM13_CLK_DISABLE(); break;
+        case GenericTimerInstance::TIMER_14: __HAL_RCC_TIM14_CLK_DISABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Return the input clock feeding the given GenericTimer instance.
+ * \details TIM2/3/4/5/12/13/14 are clocked from APB1; TIM9/10/11 from APB2.
+ *          Per RM0090 §6.2 the timer input clock equals the bus when its
+ *          prescaler is 1, otherwise twice the bus.
+ * \param   instance    The GenericTimer instance to query.
+ * \returns Timer input clock in Hz.
+ */
+uint32_t GenericTimer::GetTimerInputClockFreq(const GenericTimerInstance& instance)
+{
+    switch (instance)
+    {
+        case GenericTimerInstance::TIMER_9:
+        case GenericTimerInstance::TIMER_10:
+        case GenericTimerInstance::TIMER_11:
+        {
+            const uint32_t apb2 = HAL_RCC_GetPCLK2Freq();
+            return ((RCC->CFGR & RCC_CFGR_PPRE2) >= RCC_CFGR_PPRE2_DIV2) ? (apb2 * 2U) : apb2;
+        }
+        default:
+        {
+            const uint32_t apb1 = HAL_RCC_GetPCLK1Freq();
+            return ((RCC->CFGR & RCC_CFGR_PPRE1) >= RCC_CFGR_PPRE1_DIV2) ? (apb1 * 2U) : apb1;
+        }
     }
 }
 
@@ -289,7 +324,6 @@ void GenericTimer::CheckAndDisableAHBPeripheralClock(const GenericTimerInstance&
  * \param   desiredFrequency    The desired frequency in Hz to use.
  * \returns Period value (TIM_ARR).
  * \note    The CK_CNT is assumed to be 10 kHz.
- *          Asserts if desiredFrequency not within valid range.
  */
 uint16_t GenericTimer::CalculatePeriod(float desiredFrequency)
 {
@@ -297,12 +331,9 @@ uint16_t GenericTimer::CalculatePeriod(float desiredFrequency)
     // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     // (10000 / desiredFrequency) - 1 = TIM_ARR
 
-    EXPECT(desiredFrequency > 0.0);
-    EXPECT(desiredFrequency <= 10000.0);
-
     uint32_t period = (10000 / desiredFrequency) - 1;
 
-    if (period > 10000) { period = 10000; }
+    if (period > UINT16_MAX) { period = UINT16_MAX; }
 
     return static_cast<uint16_t>(period);
 }
@@ -353,6 +384,18 @@ void GenericTimer::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPri
 void GenericTimer::CallbackIRQ()
 {
     HAL_TIM_IRQHandler(&mHandle);
+}
+
+/**
+ * \brief   Drop the IRQ and elapsed callbacks for this GenericTimer instance.
+ * \note    Called from Sleep() and as a destructor safety net so no stale
+ *          lambda capturing `this` outlives the object on the static
+ *          timer{2..14}_callback slot.
+ */
+void GenericTimer::DisconnectCallbacks()
+{
+    mGenericTimerCallback.callbackIRQ     = nullptr;
+    mGenericTimerCallback.callbackElapsed = nullptr;
 }
 
 
@@ -418,7 +461,6 @@ extern "C" void TIM5_IRQHandler(void)
  */
 extern "C" void TIM1_BRK_TIM9_IRQHandler(void)
 {
-//    CallbackIRQ(timer1_callback);
     CallbackIRQ(timer9_callback);
 }
 
@@ -427,7 +469,6 @@ extern "C" void TIM1_BRK_TIM9_IRQHandler(void)
  */
 extern "C" void TIM1_UP_TIM10_IRQHandler(void)
 {
-//    CallbackIRQ(timer1_callback);
     CallbackIRQ(timer10_callback);
 }
 
@@ -436,7 +477,6 @@ extern "C" void TIM1_UP_TIM10_IRQHandler(void)
  */
 extern "C" void TIM1_TRG_COM_TIM11_IRQHandler(void)
 {
-//    CallbackIRQ(timer1_callback);
     CallbackIRQ(timer11_callback);
 }
 
@@ -445,7 +485,6 @@ extern "C" void TIM1_TRG_COM_TIM11_IRQHandler(void)
  */
 extern "C" void TIM8_BRK_TIM12_IRQHandler(void)
 {
-//    CallbackIRQ(timer8_callback);
     CallbackIRQ(timer12_callback);
 }
 
@@ -454,7 +493,6 @@ extern "C" void TIM8_BRK_TIM12_IRQHandler(void)
  */
 extern "C" void TIM8_UP_TIM13_IRQHandler(void)
 {
-//    CallbackIRQ(timer8_callback);
     CallbackIRQ(timer13_callback);
 }
 
@@ -463,6 +501,5 @@ extern "C" void TIM8_UP_TIM13_IRQHandler(void)
  */
 extern "C" void TIM8_TRG_COM_TIM14_IRQHandler(void)
 {
-//    CallbackIRQ(timer8_callback);
     CallbackIRQ(timer14_callback);
 }
