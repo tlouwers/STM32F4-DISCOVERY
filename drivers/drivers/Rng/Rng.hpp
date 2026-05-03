@@ -14,7 +14,7 @@
  * \details According to specification: Rng passed FIPS PUB 140-2 (2001 October 10)
  *          tests with a success ratio of 99%.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Rng
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Rng
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -46,14 +46,15 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    uint32_t GetRandom() override;
+    bool GetRandom(uint32_t& out) override;
 
 private:
     RNG_HandleTypeDef mHandle = {};
     bool              mInitialized;
 
-    void CheckAndEnableAHBPeripheralClock();
-    void CheckAndDisableAHBPeripheralClock();
+    void CheckAndEnablePeripheralClock();
+    void CheckAndDisablePeripheralClock();
+    static bool IsRngClockConfigured();
 };
 
 

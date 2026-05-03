@@ -34,6 +34,9 @@ bool Application::Initialize()
 // Generate a random number:
 uint32_t Application::Example()
 {
-    return = mRng.GetRandom();          // Blocking call, 40 clock cycles @ 48 MHz (PLL clock)
+    uint32_t value = 0;
+    bool ok = mRng.GetRandom(value);    // Blocking call, polls DRDY for up to ~40 ms
+    ASSERT(ok);
+    return value;
 }
 ```
