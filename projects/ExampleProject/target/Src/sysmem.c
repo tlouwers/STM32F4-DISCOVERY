@@ -65,8 +65,10 @@ void *_sbrk(ptrdiff_t incr)
     __sbrk_heap_end = &_end;
   }
 
-  /* Protect heap from growing into the reserved MSP stack */
-  if (__sbrk_heap_end + incr > max_heap)
+  /* Protect heap from growing into the reserved MSP stack.
+   * Reserve sizeof(uint32_t) extra so the marker write below does not
+   * spill into the stack region on an exact-fit allocation. */
+  if (__sbrk_heap_end + incr + sizeof(uint32_t) > max_heap)
   {
     errno = ENOMEM;
     return (void *)-1;
@@ -74,7 +76,17 @@ void *_sbrk(ptrdiff_t incr)
 
   prev_heap_end = __sbrk_heap_end;
   __sbrk_heap_end += incr;
-  *((uint32_t*)((void*)__sbrk_heap_end)) = 0xFAFBFCFD;   // Mark end of heap to detect stack overflow
+
+  /* Mark end of heap to detect stack overflow (read by end_of_heap_overrun
+   * in drivers/utility/HeapCheck/heap_check.c). The marker MUST only be
+   * written on real allocations (incr > 0); writing on _sbrk(0) queries
+   * would re-establish the marker an instant before the overrun check
+   * reads it and silently defeat the detection. Value mirrors
+   * HEAP_END_MARKER in heap_check.h -- keep them in sync. */
+  if (incr > 0)
+  {
+    *((uint32_t*)((void*)__sbrk_heap_end)) = 0xFAFBFCFDU;
+  }
 
   return (void *)prev_heap_end;
 }
