@@ -26,6 +26,11 @@
 /************************************************************************/
 /* Constants                                                            */
 /************************************************************************/
+// GPIO peripheral and pin macros from the STM32 HAL contain C-style casts;
+// suppress the warning for these constexpr initializers only.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 // Button
 constexpr PinIdPort PIN_BUTTON      = { GPIO_PIN_0,  GPIOA };
 
@@ -69,6 +74,9 @@ constexpr PinIdPort PIN_DAC_CHANNEL2 = { GPIO_PIN_5,  GPIOA };
 
 // ADC
 constexpr PinIdPort PIN_ADC1_CHANNEL11 = { GPIO_PIN_1,  GPIOC };
+
+#pragma GCC diagnostic pop
+
 /*
 constexpr PinIdPort PIN_ADC1_CHANNEL0  = { GPIO_PIN_0,  GPIOA };
 constexpr PinIdPort PIN_ADC1_CHANNEL1  = { GPIO_PIN_1,  GPIOA };

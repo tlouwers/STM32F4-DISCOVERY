@@ -32,6 +32,7 @@
 class IGenericTimer
 {
 public:
+    virtual ~IGenericTimer() = default;
     virtual bool Start(const std::function<void()>& handler) = 0;
     virtual bool IsStarted() const = 0;
     virtual bool Stop() = 0;

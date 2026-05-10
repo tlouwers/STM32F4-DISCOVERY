@@ -32,6 +32,8 @@
 class IPWM
 {
 public:
+    virtual ~IPWM() = default;
+
     /**
      * \enum    Channel
      * \brief   Available PWM channels.

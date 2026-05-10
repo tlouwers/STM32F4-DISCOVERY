@@ -376,6 +376,8 @@ bool LIS3DSH::Configure(const IConfig& config)
  */
 bool LIS3DSH::PrepareReadBuffer(SampleFrequency sampleFrequency)
 {
+    (void)(sampleFrequency);
+
     // If we had claimed memory before: delete it
     if (mReadBuffer != nullptr) { delete [] mReadBuffer; }
 

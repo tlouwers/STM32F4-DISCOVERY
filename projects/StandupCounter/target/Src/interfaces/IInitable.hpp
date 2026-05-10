@@ -50,6 +50,7 @@ public:
 class IInitable
 {
 public:
+    virtual ~IInitable() = default;
     virtual bool Init() = 0;
     virtual bool IsInit() const = 0;
     virtual bool Sleep() = 0;
@@ -62,6 +63,7 @@ public:
 class IConfigInitable
 {
 public:
+    virtual ~IConfigInitable() = default;
     virtual bool Init(const IConfig& config) = 0;
     virtual bool IsInit() const = 0;
     virtual bool Sleep() = 0;

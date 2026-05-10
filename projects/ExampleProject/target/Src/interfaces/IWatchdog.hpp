@@ -31,6 +31,7 @@
 class IWatchdog
 {
 public:
+    virtual ~IWatchdog() = default;
     virtual void Refresh() const = 0;
 };
 

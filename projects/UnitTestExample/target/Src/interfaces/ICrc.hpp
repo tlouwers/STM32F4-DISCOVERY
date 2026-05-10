@@ -31,6 +31,7 @@
 class ICrc
 {
 public:
+    virtual ~ICrc() = default;
     virtual uint32_t Calculate(uint32_t* buffer, uint32_t length) = 0;
 };
 

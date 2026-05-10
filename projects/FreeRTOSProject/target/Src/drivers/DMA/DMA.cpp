@@ -25,6 +25,10 @@
 #include "drivers/DMA/DMA.hpp"
 #include "utility/Assert/Assert.h"
 
+// HAL register and peripheral macros contain C-style casts; suppress
+// the warning for this HAL wrapper translation unit.
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 
 /************************************************************************/
 /* Static variables                                                     */

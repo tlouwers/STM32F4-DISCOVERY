@@ -31,6 +31,7 @@
 class IRng
 {
 public:
+    virtual ~IRng() = default;
     virtual uint32_t GetRandom() = 0;
 };
 

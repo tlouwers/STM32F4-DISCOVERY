@@ -374,7 +374,7 @@ bool LIS3DSH::Configure(const IConfig& config)
  * \param   sampleFrequency     Sample frequency for accelerometer data.
  * \returns True if the read buffer could be prepared successfully, else false.
  */
-bool LIS3DSH::PrepareReadBuffer(SampleFrequency sampleFrequency)
+bool LIS3DSH::PrepareReadBuffer(SampleFrequency /*sampleFrequency*/)
 {
     // If we had claimed memory before: delete it
     if (mReadBuffer != nullptr) { delete [] mReadBuffer; }

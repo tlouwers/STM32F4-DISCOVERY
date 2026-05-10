@@ -146,7 +146,7 @@ bool Application::Init()
  */
 void Application::Error()
 {
-#if (DEBUG)
+#ifdef DEBUG
     __asm volatile("BKPT #01");
 #endif
 
@@ -260,7 +260,7 @@ void Application::CallbackMotionDataReceived()
  * \brief   Blink led green task handler.
  * \details Configured to be executed every 200 milliseconds.
  */
-void vBlinkLedGreen(void *pvParameters)
+void vBlinkLedGreen(void * /*pvParameters*/)
 {
     while (true)
     {
@@ -275,7 +275,7 @@ void vBlinkLedGreen(void *pvParameters)
  * \brief   Blink led red task handler.
  * \details Configured to be executed every 450 milliseconds.
  */
-void vBlinkLedRed(void *pvParameters)
+void vBlinkLedRed(void * /*pvParameters*/)
 {
     while (true)
     {
@@ -290,7 +290,7 @@ void vBlinkLedRed(void *pvParameters)
  * \brief   Blink led blue task handler.
  * \details Configured to be executed every 575 milliseconds.
  */
-void vBlinkLedBlue(void *pvParameters)
+void vBlinkLedBlue(void * /*pvParameters*/)
 {
     while (true)
     {
@@ -304,7 +304,7 @@ void vBlinkLedBlue(void *pvParameters)
 /**
  * \brief   Handle motion data in task after being notified from ISR (callback).
  */
-void vMotionData(void *pvParameters)
+void vMotionData(void * /*pvParameters*/)
 {
     const TickType_t xMaxBlockTime = pdMS_TO_TICKS( 500 );
     uint32_t ulNotificationValue;
@@ -333,6 +333,6 @@ extern "C" void vApplicationIdleHook(void)
 /**
  * \brief
  */
-extern "C" void vApplicationStackOverflowHook( TaskHandle_t xTask, char *pcTaskName ) {
+extern "C" void vApplicationStackOverflowHook( TaskHandle_t /*xTask*/, char * /*pcTaskName*/ ) {
     ASSERT(false);
 }

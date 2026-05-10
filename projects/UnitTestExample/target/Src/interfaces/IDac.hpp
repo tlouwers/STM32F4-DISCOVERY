@@ -32,6 +32,8 @@
 class IDac
 {
 public:
+    virtual ~IDac() = default;
+
     /**
      * \enum    Channel
      * \brief   Available Dac channels.

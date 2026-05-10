@@ -191,7 +191,7 @@ void Application::Error()
 {
     __disable_irq();
 
-#if (DEBUG)
+#ifdef DEBUG
     __asm volatile("BKPT #01");
 #endif
 
@@ -272,8 +272,8 @@ MotionSample Application::CalculateMotionSample(const MotionSampleRaw &sampleRaw
     sample.Z = sampleRaw.Z * K;
 
     // Calculate the pith and roll in degrees
-    sample.pitch = 180 * atan2(sample.Y, sample.Z) / M_PI;
-    sample.roll  = 180 * atan2(sample.X, sample.Z) / M_PI;
+    sample.pitch = 180.0f * atan2f(sample.Y, sample.Z) / static_cast<float>(M_PI);
+    sample.roll  = 180.0f * atan2f(sample.X, sample.Z) / static_cast<float>(M_PI);
 
     return sample;
 }
@@ -290,28 +290,28 @@ void Application::CalculatePixel(uint8_t *dest, const MotionSample &sample, bool
     if (dest != nullptr)
     {
         uint8_t columnPitch = 0;
-             if (sample.pitch >  40.0) { columnPitch = 0x0F; }     // Special case: row
-        else if (sample.pitch >  30.0) { columnPitch = 7;    }
-        else if (sample.pitch >  20.0) { columnPitch = 6;    }
-        else if (sample.pitch >  10.0) { columnPitch = 5;    }
-        else if (sample.pitch >=  0.0) { columnPitch = 4;    }
-        else if (sample.pitch > -10.0) { columnPitch = 3;    }
-        else if (sample.pitch > -20.0) { columnPitch = 2;    }
-        else if (sample.pitch > -30.0) { columnPitch = 1;    }
-        else if (sample.pitch > -40.0) { columnPitch = 0;    }
-        else                           { columnPitch = 0xF0; }     // Special case: row
+             if (sample.pitch >  40.0f) { columnPitch = 0x0F; }     // Special case: row
+        else if (sample.pitch >  30.0f) { columnPitch = 7;    }
+        else if (sample.pitch >  20.0f) { columnPitch = 6;    }
+        else if (sample.pitch >  10.0f) { columnPitch = 5;    }
+        else if (sample.pitch >=  0.0f) { columnPitch = 4;    }
+        else if (sample.pitch > -10.0f) { columnPitch = 3;    }
+        else if (sample.pitch > -20.0f) { columnPitch = 2;    }
+        else if (sample.pitch > -30.0f) { columnPitch = 1;    }
+        else if (sample.pitch > -40.0f) { columnPitch = 0;    }
+        else                            { columnPitch = 0xF0; }     // Special case: row
 
         uint8_t rowRoll = 0;
-             if (sample.roll >  40.0) { rowRoll = 0x0F; }          // Special case: column
-        else if (sample.roll >  30.0) { rowRoll = 7;    }
-        else if (sample.roll >  20.0) { rowRoll = 6;    }
-        else if (sample.roll >  10.0) { rowRoll = 5;    }
-        else if (sample.roll >=  0.0) { rowRoll = 4;    }
-        else if (sample.roll > -10.0) { rowRoll = 3;    }
-        else if (sample.roll > -20.0) { rowRoll = 2;    }
-        else if (sample.roll > -30.0) { rowRoll = 1;    }
-        else if (sample.roll > -40.0) { rowRoll = 0;    }
-        else                          { rowRoll = 0xF0; }          // Special case: column
+             if (sample.roll >  40.0f) { rowRoll = 0x0F; }          // Special case: column
+        else if (sample.roll >  30.0f) { rowRoll = 7;    }
+        else if (sample.roll >  20.0f) { rowRoll = 6;    }
+        else if (sample.roll >  10.0f) { rowRoll = 5;    }
+        else if (sample.roll >=  0.0f) { rowRoll = 4;    }
+        else if (sample.roll > -10.0f) { rowRoll = 3;    }
+        else if (sample.roll > -20.0f) { rowRoll = 2;    }
+        else if (sample.roll > -30.0f) { rowRoll = 1;    }
+        else if (sample.roll > -40.0f) { rowRoll = 0;    }
+        else                           { rowRoll = 0xF0; }          // Special case: column
 
         uint8_t pixel = 0;
              if (columnPitch == 0x0F) { for (uint8_t i = 0; i < MATRIX_NR_COLUMNS; i++ ) { dest[i] = 0x80; } }
@@ -403,6 +403,8 @@ void Application::CallbackSendSampleViaUsart(const MotionSampleRaw &sample)
  */
 void vMotionData(void *pvParameters)
 {
+    (void)(pvParameters);
+
     const TickType_t xMaxBlockTime = pdMS_TO_TICKS( 500 );
     uint32_t ulNotificationValue;
 
@@ -425,6 +427,8 @@ void vMotionData(void *pvParameters)
  */
 void vMatrix(void *pvParameters)
 {
+    (void)(pvParameters);
+
     while (true)
     {
         MotionSample sample;
@@ -443,6 +447,8 @@ void vMatrix(void *pvParameters)
  */
 void vUsart(void *pvParameters)
 {
+    (void)(pvParameters);
+
     while (true)
     {
         // While data in queue: send to Usart (towards PC)

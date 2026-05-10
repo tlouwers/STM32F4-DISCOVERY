@@ -57,9 +57,9 @@ public:
     HI_M1388AR(ISPI& spi, PinIdPort chipSelect);
     virtual ~HI_M1388AR();
 
-    bool Init(const IConfig& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
     bool ClearDisplay();
     bool WriteDigits(const uint8_t* src);

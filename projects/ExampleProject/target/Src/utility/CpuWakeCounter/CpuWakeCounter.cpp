@@ -136,7 +136,7 @@ void CpuWakeCounter::EnterSleepMode(SleepMode mode, bool suspend_systick /* = tr
     {
         const uint32_t wake_window = total_window - mWindowSleepCycles;
 
-        mCpuStats.wakePercentage = (100.0f * (float)wake_window) / (float)total_window;
+        mCpuStats.wakePercentage = (100.0f * static_cast<float>(wake_window)) / static_cast<float>(total_window);
         mCpuStats.loopCount      = mLoopCount;
 
         mUpdateAvailable = true;

@@ -162,7 +162,7 @@ void Application::Process()
  */
 void Application::Error()
 {
-#if (DEBUG)
+#ifdef DEBUG
     __asm volatile("BKPT #01");
 #endif
 
