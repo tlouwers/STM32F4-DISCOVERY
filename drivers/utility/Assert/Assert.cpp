@@ -10,7 +10,7 @@
  *
  * \brief   Custom implementation of ASSERT() and EXPECT().
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/utility/Assert
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/utility/Assert
  *
  * \details Implemented with 'C' header and 'C++' implementation to
  *          be usable from both languages. Intended use is to provide
@@ -52,7 +52,7 @@ static constexpr uint8_t MAX_LOG_LINE_SIZE = 128;   ///< In bytes, including clo
 void _expect_log(const char* expr, int line, const char* file)
 {
     char messBuff[MAX_LOG_LINE_SIZE] = {};
-    if (snprintf(messBuff, MAX_LOG_LINE_SIZE, "EXPECT: [%s], line: [%d], file: [%s]", expr, line, file))
+    if (snprintf(messBuff, MAX_LOG_LINE_SIZE, "EXPECT: [%s], line: [%d], file: [%s]", expr, line, file) > 0)
     {
         // ToDo: enable when real logger is implemented...
 //        Logging::Static_Log(LogLevel::ERROR, messBuff);
@@ -61,18 +61,22 @@ void _expect_log(const char* expr, int line, const char* file)
 
 /**
  * \brief   Handler for expect_breakpoint().
- * \details Enter breakpoint when hit, loop forever if not actively debugging.
+ * \details If a debugger is attached, BKPT halts execution at this
+ *          instruction; if not, the CPU takes the HardFault exception and
+ *          execution stops in the default fault handler.
  */
-void _expect_breakpoint()
+void _expect_breakpoint(void)
 {
     __asm volatile("BKPT #01");     // Break into the debugger
 }
 
 /**
  * \brief   Handler for assert_breakpoint().
- * \details Enter breakpoint when hit, loop forever if not actively debugging.
+ * \details If a debugger is attached, BKPT halts execution at this
+ *          instruction; if not, the CPU takes the HardFault exception and
+ *          execution stops in the default fault handler.
  */
-void _assert_breakpoint()
+void _assert_breakpoint(void)
 {
     __asm volatile("BKPT #01");     // Break into the debugger
 }
@@ -84,13 +88,16 @@ void _assert_breakpoint()
  * \param   line    The line number at which the assert occurred.
  * \param   file    The file in which the assert occurred.
  */
-void _assert_reset(const char* expr, int line, const char* file)
+__attribute__((noreturn)) void _assert_reset(const char* expr, int line, const char* file)
 {
     // Preserve state, log on bootup, ...
-
-    HAL_NVIC_SystemReset();         // Perform reset of the microcontroller.
 
     (void)(expr);                   // Hide compiler warnings
     (void)(line);
     (void)(file);
+
+    HAL_NVIC_SystemReset();         // Perform reset of the microcontroller.
+
+    for (;;) { }                    // Defensive: HAL_NVIC_SystemReset never returns,
+                                    // but [[noreturn]] needs a non-returning body too.
 }
