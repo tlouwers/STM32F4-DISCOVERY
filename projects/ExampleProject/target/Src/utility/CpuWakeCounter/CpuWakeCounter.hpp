@@ -11,11 +11,11 @@
  *
  * \brief   Helper class to measure CPU wake percentage.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/CpuWakeCounter
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/utility/CpuWakeCounter
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    02-2019
+ * \version 1.2
+ * \date    01-2022
  */
 
 #ifndef CPU_WAKE_COUNTER_HPP_
@@ -67,7 +67,7 @@ enum class SleepMode : bool
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class CpuWakeCounter
+class CpuWakeCounter final
 {
 public:
     bool Init();
@@ -78,8 +78,12 @@ public:
     CpuStats GetStatistics() const;
 
 private:
-    CpuStats mCpuStats = {};
-    bool mUpdateAvailable = false;
+    CpuStats mCpuStats          = {};
+    bool     mInitialized       = false;
+    bool     mUpdateAvailable   = false;
+    uint32_t mWindowStartCycle  = 0;    ///< DWT->CYCCNT at start of current measurement window.
+    uint32_t mWindowSleepCycles = 0;    ///< Cycles spent in WFI/WFE within the current window.
+    uint32_t mLoopCount         = 0;    ///< Number of EnterSleepMode calls within the current window.
 };
 
 

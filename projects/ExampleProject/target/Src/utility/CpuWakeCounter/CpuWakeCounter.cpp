@@ -1,5 +1,5 @@
 /**
- * \file CpuWakeCounter.cpp
+ * \file    CpuWakeCounter.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -11,11 +11,11 @@
  *
  * \brief   Helper class to measure CPU wake percentage.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/CpuWakeCounter
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/utility/CpuWakeCounter
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
- * \version 1.0
- * \date    02-2019
+ * \version 1.2
+ * \date    01-2022
  */
 
 /************************************************************************/
@@ -29,10 +29,14 @@
 /************************************************************************/
 /**
  * \brief   Initialize the DWT (Data Watchpoint and Trace) unit on the
- *          microcontroller.
- * \returns True if the unit could be initialized, else false.
+ *          microcontroller and start a fresh measurement window.
+ * \details Re-callable: a second Init() resets all per-window state so the
+ *          first published statistics after re-Init reflect only post-Init
+ *          activity.
+ * \returns True if the DWT could be initialized, else false.
  */
-bool CpuWakeCounter::Init() {
+bool CpuWakeCounter::Init()
+{
     // Enable TRC
     CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk;    // ~0x01000000 -- Disable TRC
     CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk;    //  0x01000000 -- Enable  TRC
@@ -48,46 +52,50 @@ bool CpuWakeCounter::Init() {
     __NOP();
     __NOP();
 
-    // Check if DWT has started
-    return (DWT->CYCCNT == 0) ? false : true;
+    // Verify DWT is actually counting
+    if (DWT->CYCCNT == 0) { return false; }
+
+    // Open a fresh measurement window starting from now.
+    mWindowStartCycle  = DWT->CYCCNT;
+    mWindowSleepCycles = 0;
+    mLoopCount         = 0;
+    mCpuStats          = {};
+    mUpdateAvailable   = false;
+    mInitialized       = true;
+
+    return true;
 }
 
 /**
  * \brief   Enter sleep mode with native WaitForInterrupt or WaitForEvent
- *          configured. Will keep track of the CPU wake percentage and
- *          (main) loop count. Once per second an update is flagged available
- *          in variable 'updated'.
+ *          configured. Tracks total elapsed and sleep cycles within the
+ *          current ~1-second window; once the window completes, publishes
+ *          fresh CpuStats and flags an update available.
  * \param   mode            The sleep mode to configure.
  * \param   suspend_systick Flag, indicating the Systick interrupt is to be
- *                          suspended during sleep or not. Default true.
- * \note    This method assumes the DWT block is enabled.
- * \note    This method assumes it is called roughly once per second (or more).
+ *                          suspended during sleep or not. Default true. Set
+ *                          to false if the caller is willing to trade some
+ *                          accounting accuracy for the ~60 cycles spent in
+ *                          HAL_SuspendTick + HAL_ResumeTick per call.
+ * \note    No-op if Init() has not been called (or returned false).
+ * \note    Wake cycles are derived as (window_total - window_sleep) at the
+ *          1-second boundary rather than accumulated per-call. This keeps
+ *          the hot path to one unsigned subtraction per iteration and
+ *          structurally rules out the multiply-overflow bug that the
+ *          previous explicit wake-cycle accumulation was prone to under
+ *          a 168 MHz PLL clock.
  */
 void CpuWakeCounter::EnterSleepMode(SleepMode mode, bool suspend_systick /* = true */)
 {
-    static uint32_t CycleCountAfterSleep = 0;
-    static uint32_t WakeCycleCount       = 0;
-    static uint32_t SleepCycleCount      = 0;
-    static uint32_t LoopCount            = 0;
+    if (!mInitialized) { return; }
 
-    // Save the CPU counts from before entering sleep mode
-    uint32_t CycleCountBeforeSleep = DWT->CYCCNT;
-
-    // Increase the wake cycle count - take wrapping into account
-    if (CycleCountBeforeSleep >= CycleCountAfterSleep)
-    {
-        WakeCycleCount += (CycleCountBeforeSleep - CycleCountAfterSleep);
-    }
-    else
-    {
-        WakeCycleCount += (UINT32_MAX - (CycleCountAfterSleep - CycleCountBeforeSleep - 1));
-    }
+    const uint32_t cycle_before_sleep = DWT->CYCCNT;
 
     // If requested, suspend Systick to prevent it from waking the CPU
     if (suspend_systick) { HAL_SuspendTick(); }
 
     // Disable global interrupts, preserve state
-    uint32_t primask_state = __get_PRIMASK();
+    const uint32_t primask_state = __get_PRIMASK();
     __disable_irq();
 
     // Enter sleep mode: either WaitForInterrupt or WaitForEvent
@@ -100,13 +108,12 @@ void CpuWakeCounter::EnterSleepMode(SleepMode mode, bool suspend_systick /* = tr
         __WFE();
     }
 
-    // This is right after waking from event/interrupt
+    // Snapshot CYCCNT immediately after WFI/WFE returns -- still under
+    // PRIMASK so no ISR has run yet, keeping the boundary clean.
+    const uint32_t cycle_after_sleep = DWT->CYCCNT;
 
-    // Save the CPU counts from right after exiting sleep mode
-    CycleCountAfterSleep = DWT->CYCCNT;
-
-    // Restore global interrupts - restore state
-    if (!primask_state) { __enable_irq(); }
+    // Restore global interrupts to the caller's prior state.
+    __set_PRIMASK(primask_state);
 
     // Note: at this point interrupts are being handled, once finished the
     // remainder of this method continues below.
@@ -114,35 +121,31 @@ void CpuWakeCounter::EnterSleepMode(SleepMode mode, bool suspend_systick /* = tr
     // If requested, resume Systick again
     if (suspend_systick) { HAL_ResumeTick(); }
 
-    // Increase the sleep cycle count - take wrapping into account
-    if (CycleCountAfterSleep >= CycleCountBeforeSleep)
-    {
-        SleepCycleCount += (CycleCountAfterSleep - CycleCountBeforeSleep);
-    }
-    else
-    {
-        SleepCycleCount += (UINT32_MAX - (CycleCountBeforeSleep - CycleCountAfterSleep - 1));
-    }
+    // Accumulate sleep cycles. Unsigned subtraction handles the (rare)
+    // single-wrap case correctly; sub-25-second windows cannot wrap twice
+    // at any clock the F407 can run.
+    mWindowSleepCycles += (cycle_after_sleep - cycle_before_sleep);
 
-    // Flag no update is available (yet)
     mUpdateAvailable = false;
+    ++mLoopCount;
 
-    // Increase the loop counter
-    ++LoopCount;
-
-    // If the time spent awake and asleep together is more than 1 second in CPU cycles
-    if ( (WakeCycleCount + SleepCycleCount) >= SystemCoreClock)
+    // Window total = elapsed cycles since window opened. Once it reaches
+    // SystemCoreClock the window is "1 second" and ready to publish.
+    const uint32_t total_window = cycle_after_sleep - mWindowStartCycle;
+    if (total_window >= SystemCoreClock)
     {
-        mCpuStats.loopCount       = LoopCount;
-        // Calculate percentage - assume we iterate once per second
-        mCpuStats.wakePercentage  = WakeCycleCount * 100;
-        mCpuStats.wakePercentage /= WakeCycleCount + SleepCycleCount;
+        const uint32_t wake_window = total_window - mWindowSleepCycles;
+
+        mCpuStats.wakePercentage = (100.0f * (float)wake_window) / (float)total_window;
+        mCpuStats.loopCount      = mLoopCount;
 
         mUpdateAvailable = true;
 
-        SleepCycleCount = 0;     // Reset counters
-        WakeCycleCount  = 0;
-        LoopCount       = 0;
+        // Start the next window from this same boundary so the timeline is
+        // contiguous (no dropped cycles between consecutive windows).
+        mWindowStartCycle  = cycle_after_sleep;
+        mWindowSleepCycles = 0;
+        mLoopCount         = 0;
     }
 }
 
@@ -156,16 +159,12 @@ bool CpuWakeCounter::IsUpdated() const
 }
 
 /**
- * \brief   Get the updated CpuStats.
- * \details Contains the wake percentage and loop count.
- * \returns Update CpuStats as struct.
+ * \brief   Get the latest published CpuStats.
+ * \details Contains the wake percentage and loop count for the most
+ *          recently completed measurement window.
+ * \returns CpuStats struct (by value).
  */
 CpuStats CpuWakeCounter::GetStatistics() const
 {
-    CpuStats stats;
-
-    stats.loopCount      = mCpuStats.loopCount;
-    stats.wakePercentage = mCpuStats.wakePercentage;
-
-    return stats;
+    return mCpuStats;
 }

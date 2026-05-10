@@ -26,7 +26,7 @@ CpuWakeCounter cpuWakeCounter;
 bool Application::Initialize()
 {
     bool result = cpuWakeCounter.Init();
-    assert(result);
+    ASSERT(result);
 
     // Other stuff...
 
@@ -48,7 +48,7 @@ void Application::Process()
         // Handle the statistics, like log or assert if the wake percentage is above 80%
         if (cpuStats.wakePercentage > 80.0f)
         {
-            assert(false);
+            ASSERT(false);
         }
     }
 
