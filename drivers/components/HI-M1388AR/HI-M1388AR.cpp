@@ -11,7 +11,7 @@
  *
  * \brief   Driver for the HI-M1388AR 8x8 LED matrix display.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/HI-M1388AR
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/components/HI-M1388AR
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -81,11 +81,14 @@ bool HI_M1388AR::Init(const IConfig& config)
 
     if (result)
     {
-        mInitialized = true;
-
-        // Initial value = all leds off
-        result &= ClearDisplay();
+        // Initial value = all leds off (the MAX7219 digit registers are
+        // undefined on cold power-on per its datasheet). Done before flipping
+        // mInitialized so a SPI failure here doesn't leave the driver
+        // claiming success.
+        result &= ClearDigitRegisters();
         EXPECT(result);
+
+        if (result) { mInitialized = true; }
     }
 
     return result;
@@ -107,9 +110,14 @@ bool HI_M1388AR::IsInit() const
  */
 bool HI_M1388AR::Sleep()
 {
-    bool result = ClearDisplay();
+    bool result = true;
 
-    result &= WriteRegister(SHUTDOWN, 0x00);
+    if (mInitialized)
+    {
+        // SHUTDOWN alone blanks the display and retains digit-register state;
+        // no need to pre-clear digits before entering shutdown.
+        result = WriteRegister(SHUTDOWN, 0x00);
+    }
 
     mChipSelect.Configure(PullUpDown::HIGHZ);
 
@@ -124,16 +132,11 @@ bool HI_M1388AR::Sleep()
  */
 bool HI_M1388AR::ClearDisplay()
 {
-    if (mInitialized)
-    {
-        // All leds off
-        uint8_t buffer[8] = {};
-        bool result = WriteDigits(buffer);
-        EXPECT(result);
-        return result;
-    }
+    if (!mInitialized) { return false; }
 
-    return false;
+    bool result = ClearDigitRegisters();
+    EXPECT(result);
+    return result;
 }
 
 /**
@@ -147,23 +150,14 @@ bool HI_M1388AR::WriteDigits(const uint8_t* src)
     EXPECT(src);
 
     if (src == nullptr) { return false; }
+    if (!mInitialized)  { return false; }
 
-    if (mInitialized)
+    bool result = true;
+    for (uint8_t i = 0; i < 8; i++)
     {
-        bool result = false;
-
-        result  = WriteRegister(DIGIT_0, *src++);
-        result &= WriteRegister(DIGIT_1, *src++);
-        result &= WriteRegister(DIGIT_2, *src++);
-        result &= WriteRegister(DIGIT_3, *src++);
-        result &= WriteRegister(DIGIT_4, *src++);
-        result &= WriteRegister(DIGIT_5, *src++);
-        result &= WriteRegister(DIGIT_6, *src++);
-        result &= WriteRegister(DIGIT_7, *src  );
-
-        return result;
+        result &= WriteRegister(DIGIT_0 + i, src[i]);
     }
-    return false;
+    return result;
 }
 
 
@@ -186,11 +180,7 @@ bool HI_M1388AR::Configure(const IConfig& config)
     bool result = WriteRegister(SHUTDOWN, 0x01);
     EXPECT(result);
 
-    // Intensity to 0x00
-    result &= WriteRegister(INTENSITY, 0x00);
-    EXPECT(result);
-
-    // Decode mode to 0x00
+    // Decode mode to 0x00 (no BCD decode -- raw 8-bit row data)
     result &= WriteRegister(DECODE_MODE, 0x00);
     EXPECT(result);
 
@@ -202,6 +192,22 @@ bool HI_M1388AR::Configure(const IConfig& config)
     result &= WriteRegister(INTENSITY, cfg.mBrightness);
     EXPECT(result);
 
+    return result;
+}
+
+/**
+ * \brief   Clear the eight digit registers without gating on mInitialized.
+ * \details Used by Init() before mInitialized is set, and by ClearDisplay()
+ *          (which guards on mInitialized at the public boundary).
+ * \returns True if all digit registers could be cleared, else false.
+ */
+bool HI_M1388AR::ClearDigitRegisters()
+{
+    bool result = true;
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        result &= WriteRegister(DIGIT_0 + i, 0x00);
+    }
     return result;
 }
 

@@ -11,7 +11,7 @@
  * \brief   Library of constants representing contents for the HI-M1388AR 8x8
  *          LED matrix display.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/HI-M1388AR
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/components/HI-M1388AR
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -110,7 +110,7 @@ constexpr uint8_t symbol_smiley[MATRIX_SIZE]        = { 0x3C, 0x42, 0x99, 0xA5, 
 constexpr uint8_t symbol_sadface[MATRIX_SIZE]       = { 0x3C, 0x42, 0xA5, 0x99, 0x81, 0xA5, 0x42, 0x3C };
 constexpr uint8_t symbol_question_mark[MATRIX_SIZE] = { 0x18, 0x00, 0x18, 0x38, 0x60, 0x66, 0x3C, 0x00 };
 
-#endif DOXYGEN_SHOULD_SKIP_THIS
+#endif  // DOXYGEN_SHOULD_SKIP_THIS
 
 
 #endif  // HI_M1388AR_LIB_HPP_
