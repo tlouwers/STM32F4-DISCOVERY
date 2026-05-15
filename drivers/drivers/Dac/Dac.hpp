@@ -29,6 +29,7 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "drivers/DMA/DMA.hpp"
 #include "interfaces/IInitable.hpp"
 #include "interfaces/IDac.hpp"
 #include "stm32f4xx_hal.h"
@@ -123,9 +124,7 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    const DAC_HandleTypeDef* GetPeripheralHandle() const;
-    DMA_HandleTypeDef*& GetDmaChannel1Handle();
-    DMA_HandleTypeDef*& GetDmaChannel2Handle();
+    bool LinkDma(const Channel& channel, DMA& dma);
 
     bool ConfigureChannel(const Channel& channel, const ChannelConfig& channelConfig);
     bool ConfigureWaveform(const Channel& channel, const uint16_t* values, uint16_t length);

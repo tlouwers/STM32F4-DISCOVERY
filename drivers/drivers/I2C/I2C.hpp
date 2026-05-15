@@ -26,6 +26,7 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "drivers/DMA/DMA.hpp"
 #include "interfaces/IInitable.hpp"
 #include "interfaces/II2C.hpp"
 #include "stm32f4xx_hal.h"
@@ -108,9 +109,7 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    const I2C_HandleTypeDef* GetPeripheralHandle() const;
-    DMA_HandleTypeDef*& GetDmaTxHandle();
-    DMA_HandleTypeDef*& GetDmaRxHandle();
+    bool LinkDma(DMA& dma);
 
     bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler) override;
     bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler) override;

@@ -42,7 +42,9 @@ static std::function<void()> dma2Callbacks[8] {};
  */
 DMA::DMA(Stream stream) :
     mStream(stream),
-    mHalfBufferInterrupt(HalfBufferInterrupt::Enabled)
+    mDirection(Direction::MemoryToPeripheral),
+    mHalfBufferInterrupt(HalfBufferInterrupt::Enabled),
+    mConfigured(false)
 {
     ASSERT(mHandle.Instance == nullptr);
 
@@ -73,13 +75,15 @@ DMA::~DMA()
  */
 bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width /* = DataWidth::Byte */, Priority priority /* = Priority::Low */, HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */)
 {
+    mConfigured          = false;
+    mDirection           = direction;
     mHalfBufferInterrupt = halfBufferInterrupt;
 
     if (__HAL_RCC_DMA1_IS_CLK_DISABLED()) { __HAL_RCC_DMA1_CLK_ENABLE(); }
     if (__HAL_RCC_DMA2_IS_CLK_DISABLED()) { __HAL_RCC_DMA2_CLK_ENABLE(); }
 
     mHandle.Init.Channel             = GetChannel(channel);
-    mHandle.Init.Direction           = GetDirection(direction);
+    mHandle.Init.Direction           = GetHalDirection(direction);
     mHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
     mHandle.Init.MemInc              = DMA_MINC_ENABLE;
     mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;     // Fixed at Byte size.
@@ -92,6 +96,7 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     {
         ConnectInternalCallback(mStream);
         EnableInterrupt(mStream, 0, 0);
+        mConfigured = true;
         return true;
     }
 
@@ -99,23 +104,34 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
 }
 
 /**
- * \brief   Method to 'link' a DMA object with a peripheral.
- * \param   parent  The parent to link with, this is the handle of the peripheral.
- * \param   handle  The DMA handle of the peripheral which is 'swapped' with the configured DMA object.
- * \returns True if the DMA object could be linked, else false.
- * \note    Honouring the HalfBufferInterrupt selection requires the peripheral
- *          driver to consult IsHalfBufferInterruptEnabled() and clear the HT
- *          callback / interrupt after starting DMA, since HAL_xxx_Receive_DMA
- *          unconditionally re-enables DMA_IT_HT in the stream CR.
+ * \brief   Indicates whether Configure() has successfully run on this object.
+ * \returns True if the DMA stream has been configured, else false.
  */
-bool DMA::Link(const void* parent, DMA_HandleTypeDef*& handle)
+bool DMA::IsConfigured() const
 {
-    if (parent == nullptr) { return false; }
+    return mConfigured;
+}
 
-    mHandle.Parent = const_cast<void*>(parent);
-    handle         = &mHandle;
+/**
+ * \brief   Returns the direction the stream was configured for.
+ * \returns The Direction passed to Configure(); value is meaningful only
+ *          when IsConfigured() returns true.
+ */
+DMA::Direction DMA::GetDirection() const
+{
+    return mDirection;
+}
 
-    return true;
+/**
+ * \brief   Access the underlying HAL DMA handle.
+ * \details Used by peripheral drivers in their LinkDma() implementation to
+ *          wire the stream into the peripheral's hdmatx / hdmarx slot via
+ *          __HAL_LINKDMA. Not intended for application code.
+ * \returns Pointer to the underlying DMA_HandleTypeDef. Never nullptr.
+ */
+DMA_HandleTypeDef* DMA::Handle()
+{
+    return &mHandle;
 }
 
 /**
@@ -197,7 +213,7 @@ uint32_t DMA::GetChannel(Channel channel)
  * \param   direction   The direction to get the register value for.
  * \returns The direction as register value.
  */
-uint32_t DMA::GetDirection(Direction direction)
+uint32_t DMA::GetHalDirection(Direction direction)
 {
     switch (direction)
     {

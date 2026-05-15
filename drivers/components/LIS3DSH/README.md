@@ -44,9 +44,9 @@ bool Application::Initialize()
     mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
 
-    // Link DMA utility class with SPI
-    mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
-    mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
+    // Link DMA utility class with SPI (direction inferred from each DMA's configured Direction)
+    mSPI.LinkDma(mDMA_SPI_Tx);
+    mSPI.LinkDma(mDMA_SPI_Rx);
 
     // Initialize SPI
     mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));

@@ -99,34 +99,31 @@ bool Dac::Sleep()
 }
 
 /**
- * \brief   Get the handle to the peripheral.
- * \returns The handle to the peripheral.
+ * \brief   Link a configured DMA stream into the Dac's channel-1 or channel-2 slot.
+ * \param   channel The Dac channel whose DMA slot to wire (CHANNEL_1 → DMA_Handle1,
+ *                  CHANNEL_2 → DMA_Handle2).
+ * \param   dma     A DMA object that has been Configure()'d with Direction
+ *                  MemoryToPeripheral (both Dac channels are outputs).
+ * \returns True if the DMA was linked, false if dma was not configured or
+ *          its Direction is not MemoryToPeripheral.
  */
-const DAC_HandleTypeDef* Dac::GetPeripheralHandle() const
+bool Dac::LinkDma(const Channel& channel, DMA& dma)
 {
-    return &mHandle;
-}
+    if (!dma.IsConfigured())                                            { return false; }
+    if (dma.GetDirection() != DMA::Direction::MemoryToPeripheral)       { return false; }
 
-/**
- * \brief   Get the pointer to the Dac channel 1 DMA handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dac channel 1 DMA handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& Dac::GetDmaChannel1Handle()
-{
-    return mHandle.DMA_Handle1;
-}
-
-/**
- * \brief   Get the pointer to the Dac channel 2 DMA handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dac channel 2 DMA handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& Dac::GetDmaChannel2Handle()
-{
-    return mHandle.DMA_Handle2;
+    switch (channel)
+    {
+        case Channel::CHANNEL_1:
+            __HAL_LINKDMA(&mHandle, DMA_Handle1, *dma.Handle());
+            return true;
+        case Channel::CHANNEL_2:
+            __HAL_LINKDMA(&mHandle, DMA_Handle2, *dma.Handle());
+            return true;
+        default:
+            ASSERT(false);
+            return false;
+    }
 }
 
 /**

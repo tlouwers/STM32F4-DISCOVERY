@@ -26,6 +26,7 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "drivers/DMA/DMA.hpp"
 #include "interfaces/IInitable.hpp"
 #include "interfaces/IUSART.hpp"
 #include "stm32f4xx_hal.h"
@@ -173,9 +174,7 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    const UART_HandleTypeDef* GetPeripheralHandle() const;
-    DMA_HandleTypeDef*& GetDmaTxHandle();
-    DMA_HandleTypeDef*& GetDmaRxHandle();
+    bool LinkDma(DMA& dma);
 
     bool WriteDma(const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
     bool ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true) override;

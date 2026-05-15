@@ -169,34 +169,29 @@ bool USART::Sleep()
 }
 
 /**
- * \brief   Get the handle to the peripheral.
- * \returns The handle to the peripheral.
+ * \brief   Link a configured DMA stream into the USART's Tx or Rx slot.
+ * \param   dma     A DMA object that has been Configure()'d. The peripheral
+ *                  slot to wire (hdmatx / hdmarx) is picked from the DMA's
+ *                  Direction: MemoryToPeripheral wires Tx, PeripheralToMemory
+ *                  wires Rx.
+ * \returns True if the DMA was linked, false if dma was not configured or
+ *          its Direction is not Tx/Rx (e.g. MemoryToMemory).
  */
-const UART_HandleTypeDef* USART::GetPeripheralHandle() const
+bool USART::LinkDma(DMA& dma)
 {
-    return &mHandle;
-}
+    if (!dma.IsConfigured()) { return false; }
 
-/**
- * \brief   Get the pointer to the Dma Tx handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dma Tx handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& USART::GetDmaTxHandle()
-{
-    return mHandle.hdmatx;
-}
-
-/**
- * \brief   Get the pointer to the Dma Rx handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dma Rx handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& USART::GetDmaRxHandle()
-{
-    return mHandle.hdmarx;
+    switch (dma.GetDirection())
+    {
+        case DMA::Direction::MemoryToPeripheral:
+            __HAL_LINKDMA(&mHandle, hdmatx, *dma.Handle());
+            return true;
+        case DMA::Direction::PeripheralToMemory:
+            __HAL_LINKDMA(&mHandle, hdmarx, *dma.Handle());
+            return true;
+        default:
+            return false;
+    }
 }
 
 /**

@@ -28,6 +28,7 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "drivers/DMA/DMA.hpp"
 #include "interfaces/IInitable.hpp"
 #include "interfaces/ISPI.hpp"
 #include "stm32f4xx_hal.h"
@@ -109,9 +110,7 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    const SPI_HandleTypeDef* GetPeripheralHandle() const;
-    DMA_HandleTypeDef*& GetDmaTxHandle();
-    DMA_HandleTypeDef*& GetDmaRxHandle();
+    bool LinkDma(DMA& dma);
 
     bool WriteDMA(const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
     bool WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;

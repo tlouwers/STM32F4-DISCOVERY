@@ -145,18 +145,23 @@ public:
     ~DMA();
 
     bool Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width = DataWidth::Byte, Priority priority = Priority::Low, HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled);
-    bool Link(const void* parent, DMA_HandleTypeDef*& handle);
+
+    bool IsConfigured() const;
+    Direction GetDirection() const;
+    DMA_HandleTypeDef* Handle();
 
     bool IsHalfBufferInterruptEnabled() const;
 
 private:
     DMA_HandleTypeDef   mHandle = {};
     Stream              mStream;
+    Direction           mDirection;
     HalfBufferInterrupt mHalfBufferInterrupt;
+    bool                mConfigured;
 
     DMA_Stream_TypeDef* GetInstance(Stream stream);
     uint32_t GetChannel(Channel channel);
-    uint32_t GetDirection(Direction direction);
+    uint32_t GetHalDirection(Direction direction);
     uint32_t GetMemDataAlign(DataWidth width);
     uint32_t GetPriority(Priority priority);
     IRQn_Type GetIRQn(Stream stream);
