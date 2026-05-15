@@ -189,6 +189,7 @@ private:
     UsartInstance      mInstance;
     UART_HandleTypeDef mHandle = {};
     UsartCallbacks&    mUsartCallbacks;
+    DMA*               mDmaRx = nullptr;
     bool               mInitialized;
 
     void SetInstance(const UsartInstance& instance);

@@ -214,6 +214,7 @@ bool I2C::LinkDma(DMA& dma)
             return true;
         case DMA::Direction::PeripheralToMemory:
             __HAL_LINKDMA(&mHandle, hdmarx, *dma.Handle());
+            mDmaRx = &dma;
             return true;
         default:
             return false;
@@ -268,7 +269,12 @@ bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::func
 
     mI2CCallbacks.callbackRx = handler;
 
-    return (HAL_I2C_Master_Receive_DMA(&mHandle, slave, dest, length) == HAL_OK);
+    if (HAL_I2C_Master_Receive_DMA(&mHandle, slave, dest, length) != HAL_OK) { return false; }
+
+    // HAL re-enables DMA_IT_HT regardless of the user's HalfBufferInterrupt
+    // selection; reassert it.
+    mDmaRx->EnforceHalfBufferInterruptSetting();
+    return true;
 }
 
 /**

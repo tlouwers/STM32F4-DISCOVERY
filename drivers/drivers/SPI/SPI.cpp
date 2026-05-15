@@ -181,6 +181,7 @@ bool SPI::LinkDma(DMA& dma)
             return true;
         case DMA::Direction::PeripheralToMemory:
             __HAL_LINKDMA(&mHandle, hdmarx, *dma.Handle());
+            mDmaRx = &dma;
             return true;
         default:
             return false;
@@ -239,7 +240,12 @@ bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const
 
     mSPICallbacks.callbackTxRx = handler;
 
-    return (HAL_SPI_TransmitReceive_DMA(&mHandle, const_cast<uint8_t*>(src), dest, length) == HAL_OK);
+    if (HAL_SPI_TransmitReceive_DMA(&mHandle, const_cast<uint8_t*>(src), dest, length) != HAL_OK) { return false; }
+
+    // HAL re-enables DMA_IT_HT on the Rx slot regardless of the user's
+    // HalfBufferInterrupt selection; reassert it.
+    mDmaRx->EnforceHalfBufferInterruptSetting();
+    return true;
 }
 
 /**
@@ -264,7 +270,12 @@ bool SPI::ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& h
 
     mSPICallbacks.callbackTxRx = handler;
 
-    return (HAL_SPI_Receive_DMA(&mHandle, dest, length) == HAL_OK);
+    if (HAL_SPI_Receive_DMA(&mHandle, dest, length) != HAL_OK) { return false; }
+
+    // HAL re-enables DMA_IT_HT regardless of the user's HalfBufferInterrupt
+    // selection; reassert it.
+    mDmaRx->EnforceHalfBufferInterruptSetting();
+    return true;
 }
 
 /**

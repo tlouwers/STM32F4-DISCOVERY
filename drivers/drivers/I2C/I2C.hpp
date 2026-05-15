@@ -134,6 +134,7 @@ private:
     I2CInstance       mInstance;
     I2C_HandleTypeDef mHandle = {};
     I2CCallbacks&     mI2CCallbacks;
+    DMA*              mDmaRx = nullptr;
     bool              mInitialized;
 
     void SetInstance(const I2CInstance& instance);

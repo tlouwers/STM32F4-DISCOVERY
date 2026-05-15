@@ -141,6 +141,8 @@ private:
     ChannelConfig     mChannel2 = {};
     Waveform          mWaveformChannel1 = {};
     Waveform          mWaveformChannel2 = {};
+    DMA*              mDmaCh1 = nullptr;
+    DMA*              mDmaCh2 = nullptr;
 
     void CheckAndEnablePeripheralClock();
     void CheckAndDisablePeripheralClock();

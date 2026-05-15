@@ -116,9 +116,11 @@ bool Dac::LinkDma(const Channel& channel, DMA& dma)
     {
         case Channel::CHANNEL_1:
             __HAL_LINKDMA(&mHandle, DMA_Handle1, *dma.Handle());
+            mDmaCh1 = &dma;
             return true;
         case Channel::CHANNEL_2:
             __HAL_LINKDMA(&mHandle, DMA_Handle2, *dma.Handle());
+            mDmaCh2 = &dma;
             return true;
         default:
             ASSERT(false);
@@ -244,6 +246,9 @@ bool Dac::StartWaveform(const Channel& channel)
                         reinterpret_cast<uint32_t*>(mWaveformChannel1.mValues), mWaveformChannel1.mLength,
                         GetAlignment(mChannel1.mPrecision)) == HAL_OK)
                 {
+                    // HAL_DAC_Start_DMA re-enables DMA_IT_HT regardless of the
+                    // user's HalfBufferInterrupt selection; reassert it.
+                    mDmaCh1->EnforceHalfBufferInterruptSetting();
                     mChannel1.mStarted = true;
                     return true;
                 }
@@ -258,6 +263,7 @@ bool Dac::StartWaveform(const Channel& channel)
                         reinterpret_cast<uint32_t*>(mWaveformChannel2.mValues), mWaveformChannel2.mLength,
                         GetAlignment(mChannel2.mPrecision)) == HAL_OK)
                 {
+                    mDmaCh2->EnforceHalfBufferInterruptSetting();
                     mChannel2.mStarted = true;
                     return true;
                 }

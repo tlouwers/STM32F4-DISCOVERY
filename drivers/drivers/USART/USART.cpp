@@ -188,6 +188,7 @@ bool USART::LinkDma(DMA& dma)
             return true;
         case DMA::Direction::PeripheralToMemory:
             __HAL_LINKDMA(&mHandle, hdmarx, *dma.Handle());
+            mDmaRx = &dma;
             return true;
         default:
             return false;
@@ -246,7 +247,12 @@ bool USART::ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uin
         __HAL_UART_ENABLE_IT(&mHandle, UART_IT_IDLE);
     }
 
-    return (HAL_UART_Receive_DMA(&mHandle, dest, length) == HAL_OK);
+    if (HAL_UART_Receive_DMA(&mHandle, dest, length) != HAL_OK) { return false; }
+
+    // HAL_UART_Receive_DMA installs a half-complete callback and re-enables
+    // DMA_IT_HT regardless of the user's HalfBufferInterrupt selection; reassert it.
+    mDmaRx->EnforceHalfBufferInterruptSetting();
+    return true;
 }
 
 /**

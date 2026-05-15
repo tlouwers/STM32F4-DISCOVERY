@@ -128,6 +128,7 @@ private:
     SPIInstance       mInstance;
     SPI_HandleTypeDef mHandle = {};
     SPICallbacks&     mSPICallbacks;
+    DMA*              mDmaRx = nullptr;
     bool              mInitialized;
 
     void SetInstance(const SPIInstance& instance);

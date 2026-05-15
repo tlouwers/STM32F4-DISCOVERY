@@ -144,6 +144,23 @@ bool DMA::IsHalfBufferInterruptEnabled() const
     return mHalfBufferInterrupt == HalfBufferInterrupt::Enabled;
 }
 
+/**
+ * \brief   Re-apply the caller's HalfBufferInterrupt preference to the stream.
+ * \details HAL_xxx_Receive_DMA (and HAL_DAC_Start_DMA) install a half-complete
+ *          callback and call HAL_DMA_Start_IT, which unconditionally re-enables
+ *          DMA_IT_HT in the stream CR whenever XferHalfCpltCallback is non-NULL
+ *          - silently undoing the HalfBufferInterrupt::Disabled selection made
+ *          at Configure() time. Peripheral drivers call this after a successful
+ *          receive-start so the user's setting wins.
+ */
+void DMA::EnforceHalfBufferInterruptSetting()
+{
+    if (!IsHalfBufferInterruptEnabled())
+    {
+        __HAL_DMA_DISABLE_IT(&mHandle, DMA_IT_HT);
+    }
+}
+
 
 /************************************************************************/
 /* Private methods                                                      */

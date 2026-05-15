@@ -151,6 +151,7 @@ public:
     DMA_HandleTypeDef* Handle();
 
     bool IsHalfBufferInterruptEnabled() const;
+    void EnforceHalfBufferInterruptSetting();
 
 private:
     DMA_HandleTypeDef   mHandle = {};
