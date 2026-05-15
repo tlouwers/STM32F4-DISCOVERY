@@ -105,6 +105,38 @@ public:
     };
 
     /**
+     * \enum    Prescaler
+     * \brief   ADCCLK prescaler off PCLK2. The F407 datasheet caps ADCCLK
+     *          at 36 MHz -- pick a divider so PCLK2 / N stays at or below
+     *          that for the active Board clock profile.
+     */
+    enum class Prescaler : uint8_t
+    {
+        DIV2,       ///< PCLK2 / 2, default (safe for PCLK2 <= 72 MHz)
+        DIV4,       ///< PCLK2 / 4
+        DIV6,       ///< PCLK2 / 6
+        DIV8        ///< PCLK2 / 8
+    };
+
+    /**
+     * \enum    SamplingTime
+     * \brief   Sample-and-hold time in ADCCLK cycles. RM0090 §13.4: pick
+     *          from the source impedance -- low cycle counts only suit
+     *          low-impedance sources.
+     */
+    enum class SamplingTime : uint8_t
+    {
+        _3_CYCLES,
+        _15_CYCLES,     ///< Default
+        _28_CYCLES,
+        _56_CYCLES,
+        _84_CYCLES,
+        _112_CYCLES,
+        _144_CYCLES,
+        _480_CYCLES
+    };
+
+    /**
      * \struct  Config
      * \brief   Configuration struct for Adc.
      */
@@ -115,16 +147,27 @@ public:
          * \param   interruptPriority   Priority of the interrupt.
          * \param   channel             The channel to capture data from.
          * \param   resolution          The resolution of the captured data.
+         * \param   prescaler           ADCCLK prescaler off PCLK2 -- default
+         *                              DIV2, preserving the previous fixed value.
+         * \param   samplingTime        Sample-and-hold time -- default 15
+         *                              cycles, preserving the previous fixed value.
          */
-        Config(uint8_t interruptPriority, Channel channel, Resolution resolution = Resolution::_12_BIT) :
+        Config(uint8_t interruptPriority, Channel channel,
+               Resolution resolution = Resolution::_12_BIT,
+               Prescaler prescaler = Prescaler::DIV2,
+               SamplingTime samplingTime = SamplingTime::_15_CYCLES) :
             mInterruptPriority(interruptPriority),
             mChannel(channel),
-            mResolution(resolution)
+            mResolution(resolution),
+            mPrescaler(prescaler),
+            mSamplingTime(samplingTime)
         { }
 
-        uint8_t    mInterruptPriority;  ///< Interrupt priority.
-        Channel    mChannel;            ///< Channel to capture data from.
-        Resolution mResolution;         ///< Resolution of the captured data.
+        uint8_t      mInterruptPriority;  ///< Interrupt priority.
+        Channel      mChannel;            ///< Channel to capture data from.
+        Resolution   mResolution;         ///< Resolution of the captured data.
+        Prescaler    mPrescaler;          ///< ADCCLK prescaler off PCLK2.
+        SamplingTime mSamplingTime;       ///< Sample-and-hold time in cycles.
     };
 
 
@@ -149,6 +192,8 @@ private:
     void CheckAndDisableAPB2PeripheralClock(const ADCInstance& instance);
     uint32_t GetChannel(const Channel& channel);
     uint32_t GetResolution(const Resolution& resolution);
+    uint32_t GetPrescaler(const Prescaler& prescaler);
+    uint32_t GetSamplingTime(const SamplingTime& samplingTime);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
     void DisconnectCallbacks();
