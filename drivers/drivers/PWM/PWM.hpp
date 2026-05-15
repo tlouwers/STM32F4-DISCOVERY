@@ -72,17 +72,17 @@ public:
         /**
          * \brief   Constructor of the PWM channel configuration struct.
          * \param   channel     The PWM channel to use.
-         * \param   dutyCycle   Percentage, on time [0..100].
+         * \param   dutyCycle   On time as a fraction of the period, [0.0 .. 1.0].
          * \param   polarity    Polarity of the on time, high (default) or low.
          */
-        ChannelConfig(Channel channel, uint8_t dutyCycle, Polarity polarity = Polarity::High) :
+        ChannelConfig(Channel channel, float dutyCycle, Polarity polarity = Polarity::High) :
             mChannel(channel),
             mDutyCycle(dutyCycle),
             mPolarity(polarity)
         { }
 
         Channel  mChannel;      ///< The PWM channel to use.
-        uint8_t  mDutyCycle;    ///< The duty cycle to use, as percentage.
+        float    mDutyCycle;    ///< Duty cycle as fraction, [0.0 .. 1.0].
         Polarity mPolarity;     ///< Polarity of the on time.
     };
 
@@ -111,6 +111,7 @@ public:
     bool Sleep() override;
 
     bool ConfigureChannel(const ChannelConfig& channelConfig);
+    bool SetDutyCycle(Channel channel, float dutyCycle);
 
     bool Start(Channel channel) override;
     bool Stop(Channel channel) override;
@@ -125,7 +126,7 @@ private:
     void CheckAndDisablePeripheralClock(const PwmTimerInstance& instance);
     uint32_t GetTimerInputClockFreq();
     uint16_t CalculatePeriod(float desiredFrequency);
-    uint32_t CalculatePulse(uint8_t desiredDutyCycle, uint32_t period);
+    uint32_t CalculatePulse(float desiredDutyCycle, uint32_t period);
     uint32_t GetChannel(Channel channel);
     bool StopAllChannels();
 };
