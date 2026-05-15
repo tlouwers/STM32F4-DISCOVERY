@@ -33,10 +33,13 @@ bool Application::Initialize()
 // Perform a CRC calculation:
 uint32_t Application::Example()
 {
-    uint32_t dummy_data = { 0x1234, 0x2345, 0x3456, 0x4567, 0x5678, 0x6789 };
+    const uint32_t dummy_data[] = { 0x1234, 0x2345, 0x3456, 0x4567, 0x5678, 0x6789 };
 
-    uint32_t crc_ result = mCrc.Calculate( dummy_data, (sizeof(dummy_data)/sizeof(dummy_data[0])) );
-
-    return result;
+    uint32_t crc = 0;
+    if (!mCrc.Calculate(dummy_data, sizeof(dummy_data) / sizeof(dummy_data[0]), crc))
+    {
+        // Bad input or peripheral not initialised; handle the failure.
+    }
+    return crc;
 }
 ```

@@ -47,7 +47,7 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    uint32_t Calculate(const uint32_t* buffer, uint32_t length) override;
+    bool Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out) override;
 
 private:
     CRC_HandleTypeDef mHandle = {};

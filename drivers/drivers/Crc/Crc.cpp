@@ -87,25 +87,29 @@ bool Crc::Sleep()
 
 /**
  * \brief   Calculates the CRC32 over the given buffer.
- * \param   buffer  Pointer to the first element in the buffer.
- * \param   length  The length of the buffer to calculate the CRC32 for.
- * \returns The CRC32 if successful, else 0.
+ * \param   buffer  Pointer to the first 32-bit word in the buffer.
+ * \param   length  Number of 32-bit words in the buffer.
+ * \param   out     Output parameter; set to the CRC32 on success, left
+ *                  untouched on failure so a legitimate CRC32 value of 0
+ *                  is not confused with a parameter error.
+ * \returns True if \p out was set, else false.
  * \note    Asserts if buffer is nullptr or length is 0.
  */
-uint32_t Crc::Calculate(const uint32_t* buffer, uint32_t length)
+bool Crc::Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out)
 {
     EXPECT(buffer);
     EXPECT(length > 0);
 
-    if (buffer == nullptr) { return 0; }
-    if (length == 0)       { return 0; }
-    if (!mInitialized)     { return 0; }
+    if (buffer == nullptr) { return false; }
+    if (length == 0)       { return false; }
+    if (!mInitialized)     { return false; }
 
     // HAL_CRC_Calculate's pBuffer parameter is non-const, but the function
     // only reads the buffer (writing the words into CRC->DR). Const-cast at
     // the boundary so callers can pass `const` data without lying to the
     // compiler.
-    return HAL_CRC_Calculate(&mHandle, const_cast<uint32_t*>(buffer), length);
+    out = HAL_CRC_Calculate(&mHandle, const_cast<uint32_t*>(buffer), length);
+    return true;
 }
 
 

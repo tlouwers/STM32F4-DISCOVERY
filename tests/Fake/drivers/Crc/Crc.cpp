@@ -1,28 +1,29 @@
 #include "Crc.hpp"
 
 
-uint32_t Crc::Calculate(const uint32_t* buffer, uint32_t length)
+bool Crc::Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out)
 {
     constexpr uint32_t reference[6] = { 0x01234567, 0x12345678, 0x23456789, 0x34567890, 0x45678901, 0x56789012 };
 
-    if (buffer == nullptr) { return 0; }
-    if (length == 0)       { return 0; }
+    if (buffer == nullptr) { return false; }
+    if (length == 0)       { return false; }
 
     if (length == 6)
     {
-        bool result = true;
+        bool match = true;
         for (uint32_t i = 0; i < length; i++)
         {
             if (buffer[i] != reference[i])
             {
-                result = false;
+                match = false;
             }
         }
 
-        if (result == true)
+        if (match)
         {
-            return 0x63EC482A;
+            out = 0x63EC482A;
+            return true;
         }
     }
-    return 0;
+    return false;
 }
