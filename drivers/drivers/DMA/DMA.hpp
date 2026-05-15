@@ -144,7 +144,13 @@ public:
     explicit DMA(Stream stream);
     ~DMA();
 
-    bool Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width = DataWidth::Byte, Priority priority = Priority::Low, HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled);
+    bool Configure(Channel channel, Direction direction, BufferMode bufferMode,
+                   DataWidth memWidth = DataWidth::Byte,
+                   Priority priority = Priority::Low,
+                   HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled,
+                   DataWidth periphWidth = DataWidth::Byte,
+                   uint32_t preemptPrio = 0,
+                   uint32_t subPrio = 0);
 
     bool IsConfigured() const;
     Direction GetDirection() const;
@@ -164,6 +170,7 @@ private:
     uint32_t GetChannel(Channel channel);
     uint32_t GetHalDirection(Direction direction);
     uint32_t GetMemDataAlign(DataWidth width);
+    uint32_t GetPeriphDataAlign(DataWidth width);
     uint32_t GetPriority(Priority priority);
     IRQn_Type GetIRQn(Stream stream);
     std::function<void()>& GetCallbackSlot(Stream stream);

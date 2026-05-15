@@ -67,13 +67,33 @@ DMA::~DMA()
  * \param   channel             The DMA channel to configure for.
  * \param   direction           The direction of the DMA to use.
  * \param   bufferMode          The buffer mode to use.
- * \param   width               Memory data width to use. Default Byte size.
+ * \param   memWidth            Memory-side data width. Default Byte.
  * \param   priority            DMA priority. Default Low.
- * \param   halfBufferInterrupt Flag, indicating half buffer interrupt is to be used or not. Default true.
+ * \param   halfBufferInterrupt Flag, indicating half buffer interrupt is to be used or not. Default enabled.
+ * \param   periphWidth         Peripheral-side data width. Default Byte.
+ *                              Must match the peripheral's frame size (e.g.
+ *                              HalfWord for 16-bit I2S / SPI / ADC).
+ * \param   preemptPrio         NVIC pre-emption priority for the stream IRQ.
+ *                              Default 0. Under FreeRTOS this must be
+ *                              numerically >= configMAX_SYSCALL_INTERRUPT_PRIORITY
+ *                              for any ISR that calls xQueue...FromISR.
+ * \param   subPrio             NVIC sub-priority for the stream IRQ. Default 0.
  * \returns True if the DMA object could be configured, else false.
- * \note    Peripheral data width is fixed at Byte size.
+ * \note    ES0182 §2.1.13: an RCC peripheral-enable needs a short delay
+ *          before the peripheral is accessible; the __HAL_RCC_DMAx_CLK_ENABLE
+ *          macros perform the dummy-read so no explicit barrier is needed here.
+ * \note    ES0182 §2.8.x: concurrent DMA2 AHB/APB accesses can corrupt data.
+ *          A Direction::MemoryToMemory transfer scheduled on a DMA2 stream
+ *          while another DMA2 stream is active is the classic trigger; keep
+ *          mem-to-mem on DMA2 isolated from concurrent DMA2 peripheral traffic.
  */
-bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width /* = DataWidth::Byte */, Priority priority /* = Priority::Low */, HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */)
+bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
+                    DataWidth memWidth /* = DataWidth::Byte */,
+                    Priority priority /* = Priority::Low */,
+                    HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */,
+                    DataWidth periphWidth /* = DataWidth::Byte */,
+                    uint32_t preemptPrio /* = 0 */,
+                    uint32_t subPrio /* = 0 */)
 {
     mConfigured          = false;
     mDirection           = direction;
@@ -86,8 +106,8 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     mHandle.Init.Direction           = GetHalDirection(direction);
     mHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
     mHandle.Init.MemInc              = DMA_MINC_ENABLE;
-    mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;     // Fixed at Byte size.
-    mHandle.Init.MemDataAlignment    = GetMemDataAlign(width);
+    mHandle.Init.PeriphDataAlignment = GetPeriphDataAlign(periphWidth);
+    mHandle.Init.MemDataAlignment    = GetMemDataAlign(memWidth);
     mHandle.Init.Mode                = (bufferMode == DMA::BufferMode::Circular) ? DMA_CIRCULAR : DMA_NORMAL;
     mHandle.Init.Priority            = GetPriority(priority);
     mHandle.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
@@ -95,7 +115,7 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     if (HAL_DMA_Init(&mHandle) == HAL_OK)
     {
         ConnectInternalCallback(mStream);
-        EnableInterrupt(mStream, 0, 0);
+        EnableInterrupt(mStream, preemptPrio, subPrio);
         mConfigured = true;
         return true;
     }
@@ -256,6 +276,24 @@ uint32_t DMA::GetMemDataAlign(DataWidth width)
         case DataWidth::HalfWord: return DMA_MDATAALIGN_HALFWORD; break;
         case DataWidth::Word:     return DMA_MDATAALIGN_WORD;     break;
         default: ASSERT(false); while(1) { __NOP(); } return DMA_MDATAALIGN_BYTE; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the DMA peripheral-side data alignment as register value.
+ * \param   width   The data width to get the register value for.
+ * \returns The peripheral data alignment as register value.
+ * \note    Returns DMA_PDATAALIGN_* (PSIZE field), not DMA_MDATAALIGN_*; the
+ *          two macro families occupy different bits of the stream CR.
+ */
+uint32_t DMA::GetPeriphDataAlign(DataWidth width)
+{
+    switch (width)
+    {
+        case DataWidth::Byte:     return DMA_PDATAALIGN_BYTE;     break;
+        case DataWidth::HalfWord: return DMA_PDATAALIGN_HALFWORD; break;
+        case DataWidth::Word:     return DMA_PDATAALIGN_WORD;     break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_PDATAALIGN_BYTE; break;    // Impossible selection
     }
 }
 
