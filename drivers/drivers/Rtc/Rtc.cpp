@@ -34,6 +34,7 @@
 /* Constants                                                            */
 /************************************************************************/
 static constexpr uint16_t YEAR_OFFSET = 2000;
+static constexpr uint16_t YEAR_MAX    = 2099;   // RTC year register is BCD 00..99
 
 
 /************************************************************************/
@@ -113,13 +114,30 @@ bool Rtc::Sleep()
 /**
  * \brief   Set the date and time to the indicated values.
  * \param   dateTime    The date and time to set.
- * \returns True if the data and time could be set, else false.
- * \note    Year must be equal or larger than YEAR_OFFSET.
+ * \returns True if the date and time could be set, else false.
+ * \note    Fields are range-checked per IRtc::DateTime: year [2000..2099],
+ *          month [1..12], day [1..31], hour [0..23], minute / second
+ *          [0..59]. Day-of-month is not cross-checked against month, the
+ *          RTC peripheral itself handles invalid calendar combinations.
  */
 bool Rtc::SetDateTime(const DateTime& dateTime)
 {
-    if (!mInitialized)               { return false; }
-    if (dateTime.year < YEAR_OFFSET) { return false; }
+    EXPECT(dateTime.year   >= YEAR_OFFSET);
+    EXPECT(dateTime.year   <= YEAR_MAX);
+    EXPECT(dateTime.month  >= 1 && dateTime.month  <= 12);
+    EXPECT(dateTime.day    >= 1 && dateTime.day    <= 31);
+    EXPECT(dateTime.hour   <= 23);
+    EXPECT(dateTime.minute <= 59);
+    EXPECT(dateTime.second <= 59);
+
+    if (!mInitialized)                                 { return false; }
+    if (dateTime.year   < YEAR_OFFSET)                 { return false; }
+    if (dateTime.year   > YEAR_MAX)                    { return false; }
+    if (dateTime.month  < 1 || dateTime.month  > 12)   { return false; }
+    if (dateTime.day    < 1 || dateTime.day    > 31)   { return false; }
+    if (dateTime.hour   > 23)                          { return false; }
+    if (dateTime.minute > 59)                          { return false; }
+    if (dateTime.second > 59)                          { return false; }
 
     RTC_TimeTypeDef sTime = {};
     sTime.Hours   = dateTime.hour;
