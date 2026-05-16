@@ -28,6 +28,7 @@
 #include <functional>
 #include "interfaces/IInitable.hpp"
 #include "interfaces/IGenericTimer.hpp"
+#include "drivers/TimerIRQ/TimerIRQ.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -58,10 +59,13 @@ enum class GenericTimerInstance : uint8_t
 /************************************************************************/
 /**
  * \struct  GenericTimerCallbacks
- * \brief   Data structure to contain callback for a GenericTimer instance.
+ * \brief   Data structure to contain the elapsed callback for a GenericTimer
+ *          instance.
+ * \note    The interrupt vector itself is owned by TimerIRQ; this only holds
+ *          the user-facing elapsed handler that HAL_TIM_PeriodElapsedCallback
+ *          demuxes to.
  */
 struct GenericTimerCallbacks {
-    std::function<void()> callbackIRQ = nullptr;        ///< Callback to call when IRQ occurs.
     std::function<void()> callbackElapsed = nullptr;    ///< Callback to call when timer elapsed event occurs.
 };
 
@@ -118,8 +122,8 @@ private:
     uint32_t GetTimerInputClockFreq(const GenericTimerInstance& instance);
     uint16_t CalculatePeriod(float desiredFrequency);
     IRQn_Type GetIRQn(const GenericTimerInstance& instance);
+    TimerIRQ::Slot GetSlot(const GenericTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
-    void CallbackIRQ();
     void DisconnectCallbacks();
 };
 

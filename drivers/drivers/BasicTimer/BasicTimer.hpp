@@ -28,6 +28,7 @@
 #include <functional>
 #include "interfaces/IInitable.hpp"
 #include "interfaces/IBasicTimer.hpp"
+#include "drivers/TimerIRQ/TimerIRQ.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -42,18 +43,6 @@ enum class BasicTimerInstance : uint8_t
 {
     TIMER_6 = 6,
     TIMER_7 = 7
-};
-
-
-/************************************************************************/
-/* Structures                                                           */
-/************************************************************************/
-/**
- * \struct  BasicTimerCallback
- * \brief   Data structure to contain callback for a BasicTimer instance.
- */
-struct BasicTimerCallback {
-    std::function<void()> callbackIRQ = nullptr;    ///< Callback to call when IRQ occurs.
 };
 
 
@@ -99,7 +88,6 @@ public:
 private:
     BasicTimerInstance  mInstance;
     TIM_HandleTypeDef   mHandle = {};
-    BasicTimerCallback& mBasicTimerCallback;
     bool                mInitialized;
     bool                mStarted;
 
@@ -109,8 +97,8 @@ private:
     static uint32_t GetTimerInputClockFreq();
     uint16_t CalculatePeriod(uint16_t desiredFrequency);
     IRQn_Type GetIRQn(const BasicTimerInstance& instance);
+    TimerIRQ::Slot GetSlot(const BasicTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
-    void CallbackIRQ();
     void DisconnectCallbacks();
 };
 

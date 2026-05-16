@@ -44,18 +44,6 @@ static GenericTimerCallbacks timer14_callback {};
 /* Static functions                                                     */
 /************************************************************************/
 /**
- * \brief   Call the callbackIRQ, if configured.
- * \param   timer_callback  Structure containing the callbackIRQ to call.
- */
-static void CallbackIRQ(const GenericTimerCallbacks& timer_callback)
-{
-    if (timer_callback.callbackIRQ)
-    {
-        timer_callback.callbackIRQ();
-    }
-}
-
-/**
  * \brief   Call the callbackElapsed, if configured.
  * \param   timer_callback  Structure containing the callbackElapsed to call.
  */
@@ -126,7 +114,6 @@ bool GenericTimer::Init(const IConfig& config)
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
     mHandle.Init.Period            = CalculatePeriod(cfg.mFrequency);    // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     mHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
-    mHandle.Init.RepetitionCounter = 0;
     mHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
 
     if (HAL_TIM_Base_Init(&mHandle) == HAL_OK)
@@ -134,7 +121,8 @@ bool GenericTimer::Init(const IConfig& config)
         // Configure NVIC to generate interrupt
         SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
-        mGenericTimerCallback.callbackIRQ = [this]() { this->CallbackIRQ(); };
+        // Own this timer's vector through the shared TimerIRQ dispatcher.
+        TimerIRQ::Install(GetSlot(mInstance), [this]() { HAL_TIM_IRQHandler(&mHandle); });
 
         mInitialized = true;
         return true;
@@ -379,22 +367,39 @@ void GenericTimer::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPri
 }
 
 /**
- * \brief   Generic GenericTimer IRQ callback. Will propagate other interrupts.
+ * \brief   Get the TimerIRQ dispatcher slot belonging to the GenericTimer.
+ * \param   instance    The GenericTimer instance to get the slot for.
+ * \returns The TimerIRQ slot to which the GenericTimer belongs.
+ * \note    Asserts if not a valid GenericTimer instance provided.
  */
-void GenericTimer::CallbackIRQ()
+TimerIRQ::Slot GenericTimer::GetSlot(const GenericTimerInstance& instance)
 {
-    HAL_TIM_IRQHandler(&mHandle);
+    switch (instance)
+    {
+        case GenericTimerInstance::TIMER_2:  return TimerIRQ::Slot::TIM2;  break;
+        case GenericTimerInstance::TIMER_3:  return TimerIRQ::Slot::TIM3;  break;
+        case GenericTimerInstance::TIMER_4:  return TimerIRQ::Slot::TIM4;  break;
+        case GenericTimerInstance::TIMER_5:  return TimerIRQ::Slot::TIM5;  break;
+        case GenericTimerInstance::TIMER_9:  return TimerIRQ::Slot::TIM9;  break;
+        case GenericTimerInstance::TIMER_10: return TimerIRQ::Slot::TIM10; break;
+        case GenericTimerInstance::TIMER_11: return TimerIRQ::Slot::TIM11; break;
+        case GenericTimerInstance::TIMER_12: return TimerIRQ::Slot::TIM12; break;
+        case GenericTimerInstance::TIMER_13: return TimerIRQ::Slot::TIM13; break;
+        case GenericTimerInstance::TIMER_14: return TimerIRQ::Slot::TIM14; break;
+        default: ASSERT(false); while(1) { __NOP(); } return TimerIRQ::Slot::TIM2; break;      // Impossible selection
+    }
 }
 
 /**
- * \brief   Drop the IRQ and elapsed callbacks for this GenericTimer instance.
+ * \brief   Drop the elapsed callback and release the TimerIRQ slot for this
+ *          GenericTimer instance.
  * \note    Called from Sleep() and as a destructor safety net so no stale
- *          lambda capturing `this` outlives the object on the static
- *          timer{2..14}_callback slot.
+ *          lambda capturing `this` outlives the object on the shared
+ *          TimerIRQ dispatcher slot.
  */
 void GenericTimer::DisconnectCallbacks()
 {
-    mGenericTimerCallback.callbackIRQ     = nullptr;
+    TimerIRQ::Uninstall(GetSlot(mInstance));
     mGenericTimerCallback.callbackElapsed = nullptr;
 }
 
@@ -422,84 +427,4 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* handle)
     if (handle->Instance == TIM12) { CallbackElapsed(timer12_callback); }
     if (handle->Instance == TIM13) { CallbackElapsed(timer13_callback); }
     if (handle->Instance == TIM14) { CallbackElapsed(timer14_callback); }
-}
-
-/**
- * \brief   ISR: route TIM2 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM2_IRQHandler(void)
-{
-    CallbackIRQ(timer2_callback);
-}
-
-/**
- * \brief   ISR: route TIM3 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM3_IRQHandler(void)
-{
-    CallbackIRQ(timer3_callback);
-}
-
-/**
- * \brief   ISR: route TIM4 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM4_IRQHandler(void)
-{
-    CallbackIRQ(timer4_callback);
-}
-
-/**
- * \brief   ISR: route TIM5 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM5_IRQHandler(void)
-{
-    CallbackIRQ(timer5_callback);
-}
-
-/**
- * \brief   ISR: route TIM9 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM1_BRK_TIM9_IRQHandler(void)
-{
-    CallbackIRQ(timer9_callback);
-}
-
-/**
- * \brief   ISR: route TIM10 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM1_UP_TIM10_IRQHandler(void)
-{
-    CallbackIRQ(timer10_callback);
-}
-
-/**
- * \brief   ISR: route TIM11 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM1_TRG_COM_TIM11_IRQHandler(void)
-{
-    CallbackIRQ(timer11_callback);
-}
-
-/**
- * \brief   ISR: route TIM12 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM8_BRK_TIM12_IRQHandler(void)
-{
-    CallbackIRQ(timer12_callback);
-}
-
-/**
- * \brief   ISR: route TIM13 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM8_UP_TIM13_IRQHandler(void)
-{
-    CallbackIRQ(timer13_callback);
-}
-
-/**
- * \brief   ISR: route TIM14 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM8_TRG_COM_TIM14_IRQHandler(void)
-{
-    CallbackIRQ(timer14_callback);
 }
