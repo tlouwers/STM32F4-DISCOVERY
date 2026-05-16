@@ -31,6 +31,7 @@
 class ICrc
 {
 public:
+    virtual ~ICrc() = default;
     /**
      * \brief   Calculate a CRC over the given buffer.
      * \param   buffer  Pointer to the first 32-bit word in the buffer.

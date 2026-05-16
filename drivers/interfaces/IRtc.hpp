@@ -49,6 +49,7 @@ struct DateTime
 class IRtc
 {
 public:
+    virtual ~IRtc() = default;
     virtual bool SetDateTime(const DateTime& dateTime) = 0;
     virtual bool GetDateTime(DateTime& dateTime) = 0;
 };

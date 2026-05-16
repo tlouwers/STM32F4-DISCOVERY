@@ -46,6 +46,7 @@
 class II2C
 {
 public:
+    virtual ~II2C() = default;
     virtual bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler) = 0;
     virtual bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler) = 0;
 

@@ -44,6 +44,7 @@
 class IUSART
 {
 public:
+    virtual ~IUSART() = default;
     virtual bool WriteDma(const uint8_t* src, uint16_t length, const std::function<void()>& handler) = 0;
     virtual bool ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true) = 0;
 

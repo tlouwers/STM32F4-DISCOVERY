@@ -44,6 +44,7 @@
 class ISPI
 {
 public:
+    virtual ~ISPI() = default;
     virtual bool WriteDMA(const uint8_t* src, uint16_t length, const std::function<void()>& handler) = 0;
     virtual bool WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler) = 0;
     virtual bool ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& handler) = 0;
