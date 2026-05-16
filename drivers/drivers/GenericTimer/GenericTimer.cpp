@@ -376,17 +376,17 @@ TimerIRQ::Slot GenericTimer::GetSlot(const GenericTimerInstance& instance)
 {
     switch (instance)
     {
-        case GenericTimerInstance::TIMER_2:  return TimerIRQ::Slot::TIM2;  break;
-        case GenericTimerInstance::TIMER_3:  return TimerIRQ::Slot::TIM3;  break;
-        case GenericTimerInstance::TIMER_4:  return TimerIRQ::Slot::TIM4;  break;
-        case GenericTimerInstance::TIMER_5:  return TimerIRQ::Slot::TIM5;  break;
-        case GenericTimerInstance::TIMER_9:  return TimerIRQ::Slot::TIM9;  break;
-        case GenericTimerInstance::TIMER_10: return TimerIRQ::Slot::TIM10; break;
-        case GenericTimerInstance::TIMER_11: return TimerIRQ::Slot::TIM11; break;
-        case GenericTimerInstance::TIMER_12: return TimerIRQ::Slot::TIM12; break;
-        case GenericTimerInstance::TIMER_13: return TimerIRQ::Slot::TIM13; break;
-        case GenericTimerInstance::TIMER_14: return TimerIRQ::Slot::TIM14; break;
-        default: ASSERT(false); while(1) { __NOP(); } return TimerIRQ::Slot::TIM2; break;      // Impossible selection
+        case GenericTimerInstance::TIMER_2:  return TimerIRQ::Slot::TIMER_2;  break;
+        case GenericTimerInstance::TIMER_3:  return TimerIRQ::Slot::TIMER_3;  break;
+        case GenericTimerInstance::TIMER_4:  return TimerIRQ::Slot::TIMER_4;  break;
+        case GenericTimerInstance::TIMER_5:  return TimerIRQ::Slot::TIMER_5;  break;
+        case GenericTimerInstance::TIMER_9:  return TimerIRQ::Slot::TIMER_9;  break;
+        case GenericTimerInstance::TIMER_10: return TimerIRQ::Slot::TIMER_10; break;
+        case GenericTimerInstance::TIMER_11: return TimerIRQ::Slot::TIMER_11; break;
+        case GenericTimerInstance::TIMER_12: return TimerIRQ::Slot::TIMER_12; break;
+        case GenericTimerInstance::TIMER_13: return TimerIRQ::Slot::TIMER_13; break;
+        case GenericTimerInstance::TIMER_14: return TimerIRQ::Slot::TIMER_14; break;
+        default: ASSERT(false); while(1) { __NOP(); } return TimerIRQ::Slot::TIMER_2; break;      // Impossible selection
     }
 }
 

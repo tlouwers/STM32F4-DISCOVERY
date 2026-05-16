@@ -295,9 +295,9 @@ TimerIRQ::Slot BasicTimer::GetSlot(const BasicTimerInstance& instance)
 {
     switch (instance)
     {
-        case BasicTimerInstance::TIMER_6: return TimerIRQ::Slot::TIM6; break;
-        case BasicTimerInstance::TIMER_7: return TimerIRQ::Slot::TIM7; break;
-        default: ASSERT(false); while(1) { __NOP(); } return TimerIRQ::Slot::TIM6; break;      // Impossible selection
+        case BasicTimerInstance::TIMER_6: return TimerIRQ::Slot::TIMER_6; break;
+        case BasicTimerInstance::TIMER_7: return TimerIRQ::Slot::TIMER_7; break;
+        default: ASSERT(false); while(1) { __NOP(); } return TimerIRQ::Slot::TIMER_6; break;      // Impossible selection
     }
 }
 

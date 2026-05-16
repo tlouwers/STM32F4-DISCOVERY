@@ -59,26 +59,31 @@ namespace TimerIRQ
  *          slot mapped to it, and the registered handler is expected to be
  *          HAL_TIM_IRQHandler(&handle), which already demuxes by the
  *          enabled+pending flag, so a no-op on the timer that did not fire
- *          is safe. TIM1/TIM8 slots are reserved for a future advanced-timer
- *          PWM and are simply unregistered (no-op) until then.
+ *          is safe. TIMER_1/TIMER_8 slots are reserved for a future
+ *          advanced-timer PWM and are simply unregistered (no-op) until then.
+ * \note    Enumerators are TIMER_n / DAC_UNDERRUN, not TIMn / DAC: CMSIS
+ *          stm32f407xx.h bare-defines TIM1..TIM14 and DAC as peripheral
+ *          pointer macros, so an enumerator literally named TIM2 would
+ *          preprocess into nonsense (same rule as the driver-class naming
+ *          note in CLAUDE.md).
  */
 enum class Slot : uint8_t
 {
-    TIM1,
-    TIM2,
-    TIM3,
-    TIM4,
-    TIM5,
-    TIM6,
-    TIM7,
-    TIM8,
-    TIM9,
-    TIM10,
-    TIM11,
-    TIM12,
-    TIM13,
-    TIM14,
-    DAC
+    TIMER_1,
+    TIMER_2,
+    TIMER_3,
+    TIMER_4,
+    TIMER_5,
+    TIMER_6,
+    TIMER_7,
+    TIMER_8,
+    TIMER_9,
+    TIMER_10,
+    TIMER_11,
+    TIMER_12,
+    TIMER_13,
+    TIMER_14,
+    DAC_UNDERRUN
 };
 
 

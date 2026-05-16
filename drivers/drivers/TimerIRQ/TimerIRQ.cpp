@@ -27,7 +27,7 @@
 /************************************************************************/
 /* Static variables                                                     */
 /************************************************************************/
-static constexpr uint8_t SLOT_COUNT = static_cast<uint8_t>(TimerIRQ::Slot::DAC) + 1U;
+static constexpr uint8_t SLOT_COUNT = static_cast<uint8_t>(TimerIRQ::Slot::DAC_UNDERRUN) + 1U;
 
 static std::function<void()> sSlots[SLOT_COUNT];
 
@@ -98,8 +98,8 @@ using TimerIRQ::Slot;
  */
 extern "C" void TIM1_BRK_TIM9_IRQHandler(void)
 {
-    Dispatch(Slot::TIM1);
-    Dispatch(Slot::TIM9);
+    Dispatch(Slot::TIMER_1);
+    Dispatch(Slot::TIMER_9);
 }
 
 /**
@@ -107,8 +107,8 @@ extern "C" void TIM1_BRK_TIM9_IRQHandler(void)
  */
 extern "C" void TIM1_UP_TIM10_IRQHandler(void)
 {
-    Dispatch(Slot::TIM1);
-    Dispatch(Slot::TIM10);
+    Dispatch(Slot::TIMER_1);
+    Dispatch(Slot::TIMER_10);
 }
 
 /**
@@ -116,8 +116,8 @@ extern "C" void TIM1_UP_TIM10_IRQHandler(void)
  */
 extern "C" void TIM1_TRG_COM_TIM11_IRQHandler(void)
 {
-    Dispatch(Slot::TIM1);
-    Dispatch(Slot::TIM11);
+    Dispatch(Slot::TIMER_1);
+    Dispatch(Slot::TIMER_11);
 }
 
 /**
@@ -125,7 +125,7 @@ extern "C" void TIM1_TRG_COM_TIM11_IRQHandler(void)
  */
 extern "C" void TIM1_CC_IRQHandler(void)
 {
-    Dispatch(Slot::TIM1);
+    Dispatch(Slot::TIMER_1);
 }
 
 /**
@@ -133,7 +133,7 @@ extern "C" void TIM1_CC_IRQHandler(void)
  */
 extern "C" void TIM2_IRQHandler(void)
 {
-    Dispatch(Slot::TIM2);
+    Dispatch(Slot::TIMER_2);
 }
 
 /**
@@ -141,7 +141,7 @@ extern "C" void TIM2_IRQHandler(void)
  */
 extern "C" void TIM3_IRQHandler(void)
 {
-    Dispatch(Slot::TIM3);
+    Dispatch(Slot::TIMER_3);
 }
 
 /**
@@ -149,7 +149,7 @@ extern "C" void TIM3_IRQHandler(void)
  */
 extern "C" void TIM4_IRQHandler(void)
 {
-    Dispatch(Slot::TIM4);
+    Dispatch(Slot::TIMER_4);
 }
 
 /**
@@ -157,7 +157,7 @@ extern "C" void TIM4_IRQHandler(void)
  */
 extern "C" void TIM5_IRQHandler(void)
 {
-    Dispatch(Slot::TIM5);
+    Dispatch(Slot::TIMER_5);
 }
 
 /**
@@ -165,8 +165,8 @@ extern "C" void TIM5_IRQHandler(void)
  */
 extern "C" void TIM6_DAC_IRQHandler(void)
 {
-    Dispatch(Slot::TIM6);
-    Dispatch(Slot::DAC);
+    Dispatch(Slot::TIMER_6);
+    Dispatch(Slot::DAC_UNDERRUN);
 }
 
 /**
@@ -174,7 +174,7 @@ extern "C" void TIM6_DAC_IRQHandler(void)
  */
 extern "C" void TIM7_IRQHandler(void)
 {
-    Dispatch(Slot::TIM7);
+    Dispatch(Slot::TIMER_7);
 }
 
 /**
@@ -182,8 +182,8 @@ extern "C" void TIM7_IRQHandler(void)
  */
 extern "C" void TIM8_BRK_TIM12_IRQHandler(void)
 {
-    Dispatch(Slot::TIM8);
-    Dispatch(Slot::TIM12);
+    Dispatch(Slot::TIMER_8);
+    Dispatch(Slot::TIMER_12);
 }
 
 /**
@@ -191,8 +191,8 @@ extern "C" void TIM8_BRK_TIM12_IRQHandler(void)
  */
 extern "C" void TIM8_UP_TIM13_IRQHandler(void)
 {
-    Dispatch(Slot::TIM8);
-    Dispatch(Slot::TIM13);
+    Dispatch(Slot::TIMER_8);
+    Dispatch(Slot::TIMER_13);
 }
 
 /**
@@ -200,8 +200,8 @@ extern "C" void TIM8_UP_TIM13_IRQHandler(void)
  */
 extern "C" void TIM8_TRG_COM_TIM14_IRQHandler(void)
 {
-    Dispatch(Slot::TIM8);
-    Dispatch(Slot::TIM14);
+    Dispatch(Slot::TIMER_8);
+    Dispatch(Slot::TIMER_14);
 }
 
 /**
@@ -209,5 +209,5 @@ extern "C" void TIM8_TRG_COM_TIM14_IRQHandler(void)
  */
 extern "C" void TIM8_CC_IRQHandler(void)
 {
-    Dispatch(Slot::TIM8);
+    Dispatch(Slot::TIMER_8);
 }
