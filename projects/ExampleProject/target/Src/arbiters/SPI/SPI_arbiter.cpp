@@ -96,34 +96,15 @@ bool SPI_arbiter::Sleep()
 }
 
 /**
- * \brief   Get the handle to the peripheral.
- * \returns The handle to the peripheral.
+ * \brief   Link a DMA channel to the SPI peripheral.
+ * \details Direction (Tx or Rx) is inferred from the DMA's Configure() call.
+ *          Must be called after DMA::Configure() and before SPI::Init().
+ * \param   dma     Configured DMA channel to link.
+ * \returns True if link successful, else false.
  */
-const SPI_HandleTypeDef* SPI_arbiter::GetPeripheralHandle() const
+bool SPI_arbiter::LinkDma(DMA& dma)
 {
-    return mSpiMaster.GetPeripheralHandle();
-}
-
-/**
- * \brief   Get the pointer to the Dma Tx handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dma Tx handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& SPI_arbiter::GetDmaTxHandle()
-{
-    return const_cast<DMA_HandleTypeDef*&>(mSpiMaster.GetPeripheralHandle()->hdmatx);
-}
-
-/**
- * \brief   Get the pointer to the Dma Rx handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dma Rx handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& SPI_arbiter::GetDmaRxHandle()
-{
-    return const_cast<DMA_HandleTypeDef*&>(mSpiMaster.GetPeripheralHandle()->hdmarx);
+    return mSpiMaster.LinkDma(dma);
 }
 
 /**
