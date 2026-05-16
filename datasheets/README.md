@@ -18,3 +18,10 @@ This folder contains reference documents for the STM32F407G-DISC1 board and MCU.
 - `an4031-dma.pdf` — AN4031: DMA controller usage
 - `an4899-gpio-lowpower.pdf` — AN4899: GPIO and low-power considerations
 - `tn1235-stlink.pdf` — TN1235: ST-Link overview
+
+## Component datasheets
+
+Datasheets for the external peripherals driven by `drivers/components/`.
+
+- `lis3dsh-datasheet.pdf` — LIS3DSH 3-axis MEMS accelerometer (drivers/components/LIS3DSH)
+- `hi-m1388ar-datasheet.pdf` — HI-M1388AR 8x8 LED matrix module / MAX7219 (drivers/components/HI-M1388AR)
