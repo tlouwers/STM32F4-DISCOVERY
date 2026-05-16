@@ -43,13 +43,13 @@ static constexpr uint8_t MAX_LOG_LINE_SIZE = 128;   ///< In bytes, including clo
 /* Functions                                                            */
 /************************************************************************/
 /**
- * \brief   Handler for expect_log().
+ * \brief   Handler for Assert_ExpectLog().
  * \details Add log entry of the EXPECT() occurrence with some details.
  * \param   expr    The failing expression, as string.
  * \param   line    The line number at which the expect occurred.
  * \param   file    The file in which the expect occurred.
  */
-void _expect_log(const char* expr, int line, const char* file)
+void Assert_ExpectLog(const char* expr, int line, const char* file)
 {
     char messBuff[MAX_LOG_LINE_SIZE] = {};
     if (snprintf(messBuff, MAX_LOG_LINE_SIZE, "EXPECT: [%s], line: [%d], file: [%s]", expr, line, file) > 0)
@@ -60,35 +60,35 @@ void _expect_log(const char* expr, int line, const char* file)
 }
 
 /**
- * \brief   Handler for expect_breakpoint().
+ * \brief   Handler for Assert_ExpectBreakpoint().
  * \details If a debugger is attached, BKPT halts execution at this
  *          instruction; if not, the CPU takes the HardFault exception and
  *          execution stops in the default fault handler.
  */
-void _expect_breakpoint(void)
+void Assert_ExpectBreakpoint(void)
 {
     __asm volatile("BKPT #01");     // Break into the debugger
 }
 
 /**
- * \brief   Handler for assert_breakpoint().
+ * \brief   Handler for Assert_Breakpoint().
  * \details If a debugger is attached, BKPT halts execution at this
  *          instruction; if not, the CPU takes the HardFault exception and
  *          execution stops in the default fault handler.
  */
-void _assert_breakpoint(void)
+void Assert_Breakpoint(void)
 {
     __asm volatile("BKPT #01");     // Break into the debugger
 }
 
 /**
- * \brief   Handler for the assert_reset.
+ * \brief   Handler for Assert_Reset().
  * \details Save state, reset, log after reboot.
  * \param   expr    The failing expression, as string.
  * \param   line    The line number at which the assert occurred.
  * \param   file    The file in which the assert occurred.
  */
-__attribute__((noreturn)) void _assert_reset(const char* expr, int line, const char* file)
+__attribute__((noreturn)) void Assert_Reset(const char* expr, int line, const char* file)
 {
     // Preserve state, log on bootup, ...
 

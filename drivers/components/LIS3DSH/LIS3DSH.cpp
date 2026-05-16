@@ -548,7 +548,7 @@ uint8_t LIS3DSH::GetFifoModeAsFMODE(FifoMode fifoMode)
         case FifoMode::Stream:           fmodeVal = 0x40; break;
         case FifoMode::StreamThenFifo:   fmodeVal = 0x60; break;
         case FifoMode::BypassThenStream: fmodeVal = 0x80; break;
-        case FifoMode::BypassThenFifo:   fmodeVal = 0xC0; break;
+        case FifoMode::BypassThenFifo:   fmodeVal = 0xE0; break;
     }
 
     return fmodeVal;

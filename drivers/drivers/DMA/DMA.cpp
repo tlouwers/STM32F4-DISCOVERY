@@ -104,7 +104,9 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
 
     mHandle.Init.Channel             = GetChannel(channel);
     mHandle.Init.Direction           = GetHalDirection(direction);
-    mHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
+    // For mem-to-mem the peripheral port (PAR) holds the source buffer, so it
+    // must increment too; for peripheral transfers it stays fixed on the FIFO/DR.
+    mHandle.Init.PeriphInc           = (direction == Direction::MemoryToMemory) ? DMA_PINC_ENABLE : DMA_PINC_DISABLE;
     mHandle.Init.MemInc              = DMA_MINC_ENABLE;
     mHandle.Init.PeriphDataAlignment = GetPeriphDataAlign(periphWidth);
     mHandle.Init.MemDataAlignment    = GetMemDataAlign(memWidth);

@@ -43,10 +43,10 @@ extern "C" {
 /************************************************************************/
 /* Function declarations                                                */
 /************************************************************************/
-void _expect_log(const char* expr, int line, const char* file);
-void _expect_breakpoint(void);
-void _assert_breakpoint(void);
-__attribute__((noreturn)) void _assert_reset(const char* expr, int line, const char* file);
+void Assert_ExpectLog(const char* expr, int line, const char* file);
+void Assert_ExpectBreakpoint(void);
+void Assert_Breakpoint(void);
+__attribute__((noreturn)) void Assert_Reset(const char* expr, int line, const char* file);
 
 
 /************************************************************************/
@@ -65,10 +65,10 @@ __attribute__((noreturn)) void _assert_reset(const char* expr, int line, const c
 #  define EXPECT(expr)  do { (void)(expr); } while (0)
 
 #elif (EXPECT_MODE == HANDLE_BY_LOGGING)
-#  define EXPECT(expr)  do { if (!(expr)) { _expect_log(#expr, __LINE__, __FILE__); } } while (0)
+#  define EXPECT(expr)  do { if (!(expr)) { Assert_ExpectLog(#expr, __LINE__, __FILE__); } } while (0)
 
 #elif (EXPECT_MODE == HANDLE_BY_BREAKPOINT)
-#  define EXPECT(expr)  do { if (!(expr)) { _expect_breakpoint(); } } while (0)
+#  define EXPECT(expr)  do { if (!(expr)) { Assert_ExpectBreakpoint(); } } while (0)
 
 #else
 #  error EXPECT_MODE has unsupported value
@@ -84,10 +84,10 @@ __attribute__((noreturn)) void _assert_reset(const char* expr, int line, const c
 #  define ASSERT(expr)  do { (void)(expr); } while (0)
 
 #elif (ASSERT_MODE == HANDLE_BY_BREAKPOINT)
-#  define ASSERT(expr)  do { if (!(expr)) { _assert_breakpoint(); } } while (0)
+#  define ASSERT(expr)  do { if (!(expr)) { Assert_Breakpoint(); } } while (0)
 
 #elif (ASSERT_MODE == HANDLE_BY_RESETTING)
-#  define ASSERT(expr)  do { if (!(expr)) { _assert_reset(#expr, __LINE__, __FILE__); } } while (0)
+#  define ASSERT(expr)  do { if (!(expr)) { Assert_Reset(#expr, __LINE__, __FILE__); } } while (0)
 
 #else
 #  error ASSERT_MODE has an unsupported value
