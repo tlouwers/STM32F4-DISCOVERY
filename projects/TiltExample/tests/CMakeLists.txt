@@ -17,17 +17,20 @@ target_sources(TestRunner
         Fake/drivers/Pin/Pin.cpp
         Fake/utility/Assert/Assert.cpp
         Fake/stm32f4xx_hal.c
-        # Test subjects
-        ../target/Src/components/HI-M1388AR/HI-M1388AR.cpp
-        ../target/Src/components/LIS3DSH/LIS3DSH.cpp
+        # Test subjects (canonical drivers tree)
+        ../../../drivers/components/HI-M1388AR/HI-M1388AR.cpp
+        ../../../drivers/components/LIS3DSH/LIS3DSH.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )
 
-# Include the real and Fake source directories
+# Include the real and Fake source directories.
+# Fake comes first so its Pin/Assert/HAL stubs shadow the canonical headers for
+# the same paths; canonical comes second for components/, interfaces/, etc.
 target_include_directories(TestRunner PRIVATE
-    ../target/Src
     ./Fake
+    ../../../drivers       # canonical: components/, interfaces/, utility/ (non-faked)
+    ../target/Src          # project-specific: board/BoardConfig.hpp, config.h, hal_conf
 )
 
 # Link in Google Mock (which also includes Google Test)
