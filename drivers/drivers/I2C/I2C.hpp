@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <functional>
 #include "drivers/DMA/DMA.hpp"
+#include "drivers/Pin/Pin.hpp"
 #include "interfaces/IInitable.hpp"
 #include "interfaces/II2C.hpp"
 #include "stm32f4xx_hal.h"
@@ -108,6 +109,8 @@ public:
     bool Init(const IConfig& config) override;
     bool IsInit() const override;
     bool Sleep() override;
+
+    bool RecoverBus(PinIdPort scl, PinIdPort sda);
 
     bool LinkDma(DMA& dma);
 
