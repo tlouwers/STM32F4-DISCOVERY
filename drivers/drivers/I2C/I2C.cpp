@@ -178,8 +178,13 @@ bool I2C::IsInit() const
  */
 bool I2C::Sleep()
 {
-    // For Int. and DMA started transfers. Not handling result as to reach DeInit().
-    HAL_I2C_Master_Abort_IT(&mHandle, mHandle.Devaddress);
+    // Abort only an in-flight master transfer; in any other state
+    // HAL_I2C_Master_Abort_IT is a no-op. Result ignored so DeInit() runs.
+    const HAL_I2C_StateTypeDef state = HAL_I2C_GetState(&mHandle);
+    if ((state == HAL_I2C_STATE_BUSY_TX) || (state == HAL_I2C_STATE_BUSY_RX))
+    {
+        HAL_I2C_Master_Abort_IT(&mHandle, mHandle.Devaddress);
+    }
 
     if (HAL_I2C_DeInit(&mHandle) != HAL_OK) { return false; }
 
