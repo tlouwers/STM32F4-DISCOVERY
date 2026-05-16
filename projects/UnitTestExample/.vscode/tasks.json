@@ -85,6 +85,8 @@
                 "--object-directory",                                       // Override normal working directory detection
                 "${workspaceFolder}/build/tests/CMakeFiles/TestRunner.dir", // Directory where the *.gcda filles are located
                 "--gcov-ignore-errors=source_not_found",                    // tolerate stale .gcda referencing deleted files
+                "--filter", "^drivers/",                                    // include canonical drivers tree
+                "--filter", "^projects/UnitTestExample/target/Src/",       // include this project's sources
                 "--html-details",                                           // --html, or --xml-pretty
                 "-o",                                                       // Specify we want a particular output file
                 "${workspaceFolder}/build/coverage.html",                   // Full path and name of the output file to create
