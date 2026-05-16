@@ -66,6 +66,12 @@ target_compile_options(stm32_hal PRIVATE
     -g3
 )
 
+# Canonical reusable drivers as an isolated static library — OUR code, so
+# compiled with the strict warning set (definition lives in the shared
+# drivers/drivers.cmake; see that file to add or change a driver).
+include(${CMAKE_SOURCE_DIR}/../../../drivers/drivers.cmake)
+stm32_add_drivers_library()
+
 # Our executable (name)
 set(EXECUTABLE ${PROJECT_NAME}.out)
 
@@ -114,7 +120,7 @@ target_compile_options(${EXECUTABLE} PRIVATE
     $<$<CONFIG:Release>:-flto>
 )
 
-target_link_libraries(${EXECUTABLE} PRIVATE stm32_hal freertos)
+target_link_libraries(${EXECUTABLE} PRIVATE stm32_drivers stm32_hal freertos)
 
 # Add link options required by the target
 target_link_options(${EXECUTABLE} PRIVATE

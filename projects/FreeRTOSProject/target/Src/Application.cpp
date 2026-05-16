@@ -119,10 +119,12 @@ bool Application::Init()
     result = mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
-    result = mDMA_SPI_Tx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaTxHandle());
+    // SPI infers Tx/Rx from each DMA's configured Direction; full-duplex
+    // links both. Must follow Configure() (LinkDma checks IsConfigured()).
+    result = mSPI.LinkDma(mDMA_SPI_Tx);
     ASSERT(result);
 
-    result = mDMA_SPI_Rx.Link(mSPI.GetPeripheralHandle(), mSPI.GetDmaRxHandle());
+    result = mSPI.LinkDma(mDMA_SPI_Rx);
     ASSERT(result);
 
     result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
