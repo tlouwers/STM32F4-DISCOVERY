@@ -34,7 +34,7 @@ TEST_F(LIS3DSH_Test, Init_IsInit_Sleep)
 {
     EXPECT_FALSE(mSubject.IsInit());
 
-    EXPECT_TRUE(mSubject.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz,
+    EXPECT_TRUE(mSubject.Init(LIS3DSH::Config(false, LIS3DSH::SampleFrequency::_50_Hz,
                                               LIS3DSH::Scale::_2_G,
                                               LIS3DSH::AntiAliasingFilter::_200_Hz)));
 
@@ -49,7 +49,7 @@ TEST_F(LIS3DSH_Test, Enable)
 {
     EXPECT_FALSE(mSubject.Enable());   // Not initialized yet
 
-    EXPECT_TRUE(mSubject.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz,
+    EXPECT_TRUE(mSubject.Init(LIS3DSH::Config(false, LIS3DSH::SampleFrequency::_50_Hz,
                                               LIS3DSH::Scale::_2_G,
                                               LIS3DSH::AntiAliasingFilter::_200_Hz)));
 
@@ -60,7 +60,7 @@ TEST_F(LIS3DSH_Test, Disable)
 {
     EXPECT_FALSE(mSubject.Disable());   // Not initialized yet
 
-    EXPECT_TRUE(mSubject.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz,
+    EXPECT_TRUE(mSubject.Init(LIS3DSH::Config(false, LIS3DSH::SampleFrequency::_50_Hz,
                                               LIS3DSH::Scale::_2_G,
                                               LIS3DSH::AntiAliasingFilter::_200_Hz)));
 
@@ -69,7 +69,7 @@ TEST_F(LIS3DSH_Test, Disable)
 
 TEST_F(LIS3DSH_Test, RetrieveAxesData)
 {
-    EXPECT_TRUE(mSubject.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz,
+    EXPECT_TRUE(mSubject.Init(LIS3DSH::Config(true, LIS3DSH::SampleFrequency::_50_Hz,
                                               LIS3DSH::Scale::_2_G,
                                               LIS3DSH::AntiAliasingFilter::_200_Hz)));
 

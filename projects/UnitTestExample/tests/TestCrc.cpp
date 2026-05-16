@@ -31,17 +31,21 @@ protected:
 
 TEST_F(Crc_Test, Calculate_buffer_nullptr)
 {
-    EXPECT_EQ(0, mSubject.Calculate(nullptr, 1));
+    uint32_t out = 0;
+    EXPECT_FALSE(mSubject.Calculate(nullptr, 1, out));
 }
 
 TEST_F(Crc_Test, Calculate_length_null)
 {
-    EXPECT_EQ(0, mSubject.Calculate(const_cast<uint32_t*>(buffer), 0));
+    uint32_t out = 0;
+    EXPECT_FALSE(mSubject.Calculate(buffer, 0, out));
 }
 
 TEST_F(Crc_Test, Calculate)
 {
-    EXPECT_EQ(0x63EC482A, mSubject.Calculate(const_cast<uint32_t*>(buffer), 6));
+    uint32_t out = 0;
+    EXPECT_TRUE(mSubject.Calculate(buffer, 6, out));
+    EXPECT_EQ(0x63EC482A, out);
 }
 
 

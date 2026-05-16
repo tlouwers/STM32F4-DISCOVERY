@@ -17,7 +17,7 @@ public:
     Crc() {}
     virtual ~Crc() {}
 
-    uint32_t Calculate(uint32_t* buffer, uint32_t length) override;
+    bool Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out) override;
 };
 
 
