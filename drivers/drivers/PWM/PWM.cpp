@@ -56,7 +56,10 @@ bool PWM::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     // Start the timer as clock for PWM. No channels are configured yet.
     // Prescaler stays at 0 (divide-by-1) so CK_CNT is the full timer input
@@ -124,6 +127,25 @@ bool PWM::ConfigureChannel(const ChannelConfig& channelConfig)
         return true;
     }
     return false;
+}
+
+/**
+ * \brief   Update only the duty cycle of an already-configured channel.
+ * \param   channel     The PWM channel to update.
+ * \param   dutyCycle   New duty cycle as a fraction of the period, [0.0 .. 1.0].
+ * \returns True if the duty cycle was applied, false if PWM is not initialised.
+ * \details Writes only the channel's CCR via __HAL_TIM_SET_COMPARE -- a single
+ *          MMIO store -- without re-running HAL_TIM_PWM_ConfigChannel's full
+ *          CCMR/CCER/CCR rewrite. Safe to call from any context, including ISR.
+ *          The channel must already have been set up via ConfigureChannel().
+ */
+bool PWM::SetDutyCycle(Channel channel, float dutyCycle)
+{
+    if (!mInitialized) { return false; }
+
+    const uint32_t pulse = CalculatePulse(dutyCycle, mHandle.Init.Period);
+    __HAL_TIM_SET_COMPARE(&mHandle, GetChannel(channel), pulse);
+    return true;
 }
 
 /**
@@ -256,26 +278,28 @@ uint16_t PWM::CalculatePeriod(float desiredFrequency)
 
 /**
  * \brief   Calculate the PWM pulse value (duty cycle).
- * \param   desiredDutyCycle    The desired duty cycle to use in %.
+ * \param   desiredDutyCycle    The desired duty cycle, as fraction [0.0 .. 1.0].
  * \param   period              The configured period of the PWM (frequency).
  * \returns Pulse value (TIMx_CCRx).
  */
-uint32_t PWM::CalculatePulse(uint8_t desiredDutyCycle, uint32_t period)
+uint32_t PWM::CalculatePulse(float desiredDutyCycle, uint32_t period)
 {
-    EXPECT(desiredDutyCycle <= 100);
-    if (desiredDutyCycle > 100) { desiredDutyCycle = 100; }     // Clip to maximum
+    EXPECT(desiredDutyCycle >= 0.0f);
+    EXPECT(desiredDutyCycle <= 1.0f);
 
-    // 0% must produce CCR=0. The naive formula `(period+1)*0/100 - 1` underflows
-    // to 0xFFFFFFFF, which (truncated to the CCR register width) ends up larger
-    // than ARR -- CNT never reaches CCR, output stays inactive, and with the
-    // inverted OCPolarity below the channel sticks at the user's "ON" level.
-    // I.e. 0% silently turns into 100%. Special-case it.
-    if (desiredDutyCycle == 0) { return 0; }
+    if (desiredDutyCycle < 0.0f) { desiredDutyCycle = 0.0f; }
+    if (desiredDutyCycle > 1.0f) { desiredDutyCycle = 1.0f; }
 
-    // pulse_length = (((timer_period + 1) * duty cycle) / 100) - 1
-    uint32_t pulse_length = (((period + 1) * desiredDutyCycle) / 100) - 1;
+    // 0% must produce CCR=0. Underflow on `0 - 1` would wrap to 0xFFFFFFFF
+    // which (truncated to the CCR register width) ends up larger than ARR;
+    // CNT never reaches CCR, output stays inactive, and with the inverted
+    // OCPolarity below the channel sticks at the user's "ON" level -- i.e.
+    // 0% silently turns into 100%. Special-case it.
+    const uint32_t scaled = static_cast<uint32_t>((period + 1U) * desiredDutyCycle);
+    if (scaled == 0U) { return 0U; }
 
-    return pulse_length;
+    // pulse_length = (timer_period + 1) * duty_cycle - 1
+    return scaled - 1U;
 }
 
 /**

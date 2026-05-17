@@ -3,7 +3,7 @@
 DMA utility class.
 
 ## Description
-Intended use is to provide a plug-n-play DMA object to 'Link' with a peripheral. This way a peripheral can be extended with DMA functionality in a more generic way without modifying the peripheral much. The complexity of DMA configuration is handled within this class.
+Intended use is to provide a plug-n-play DMA object to link with a peripheral via that peripheral's `LinkDma()` method. This way a peripheral can be extended with DMA functionality in a generic way without modifying the peripheral much. The complexity of DMA configuration is handled within this class.
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
@@ -36,11 +36,12 @@ bool Application::Initialize()
     result = mDMA_Usart2_Rx.Configure(DMA::Channel::Channel4, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     assert(result);
 
-    // Link the DMA objects with a previously configured peripheral, for example Usart:
-    result = mDMA_Usart2_Tx.Link(mUsart2.GetPeripheralHandle(), mUsart2.GetDmaTxHandle());
+    // Link the DMA objects with a previously configured peripheral, for example Usart.
+    // The peripheral picks hdmatx / hdmarx from the DMA's configured Direction.
+    result = mUsart2.LinkDma(mDMA_Usart2_Tx);
     assert(result);
 
-    result = mDMA_Usart2_Rx.Link(mUsart2.GetPeripheralHandle(), mUsart2.GetDmaRxHandle());
+    result = mUsart2.LinkDma(mDMA_Usart2_Rx);
     assert(result);
 
     return result;

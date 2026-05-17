@@ -354,7 +354,10 @@ bool LIS3DSH::SelfTest()
  */
 bool LIS3DSH::Configure(const IConfig& config)
 {
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     uint8_t ODR    = GetSampleFrequencyAsODR(cfg.mSampleFrequency);
     uint8_t FSCALE = GetScaleAsFSCALE(cfg.mScale);
@@ -548,7 +551,7 @@ uint8_t LIS3DSH::GetFifoModeAsFMODE(FifoMode fifoMode)
         case FifoMode::Stream:           fmodeVal = 0x40; break;
         case FifoMode::StreamThenFifo:   fmodeVal = 0x60; break;
         case FifoMode::BypassThenStream: fmodeVal = 0x80; break;
-        case FifoMode::BypassThenFifo:   fmodeVal = 0xC0; break;
+        case FifoMode::BypassThenFifo:   fmodeVal = 0xE0; break;
     }
 
     return fmodeVal;

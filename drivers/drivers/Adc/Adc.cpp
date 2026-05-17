@@ -96,20 +96,22 @@ Adc::~Adc()
  * \brief   Initializes the Adc instance with the given configuration.
  * \param   config  The configuration for the Adc instance to use.
  * \returns True if the configuration could be applied, else false.
- * \note    The clock prescaler is fixed at PCLK2/2; the F407 datasheet caps
- *          ADCCLK at 36 MHz, so this driver assumes Board keeps PCLK2 below
- *          72 MHz. The current Board (HSE = 8 MHz, no PLL) yields PCLK2 =
- *          8 MHz which is well within range; switching to the 168 MHz PLL
- *          path drafted in Board.cpp would push ADCCLK to 42 MHz and needs
- *          a configurable prescaler first.
+ * \note    ADCCLK = PCLK2 / Config::mPrescaler. The F407 datasheet caps
+ *          ADCCLK at 36 MHz; the caller must pick a prescaler so that
+ *          PCLK2 / N stays within that for the active Board clock profile
+ *          (DIV2 is fine for the HSE-direct 8 MHz default; the 168 MHz PLL
+ *          path gives PCLK2 = 84 MHz so DIV4 or higher is required there).
  */
 bool Adc::Init(const IConfig& config)
 {
     CheckAndEnableAPB2PeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
 
-    mHandle.Init.ClockPrescaler        = ADC_CLOCK_SYNC_PCLK_DIV2;
+    const Config& cfg = static_cast<const Config&>(config);
+
+    mHandle.Init.ClockPrescaler        = GetPrescaler(cfg.mPrescaler);
     mHandle.Init.Resolution            = GetResolution(cfg.mResolution);
     mHandle.Init.DataAlign             = ADC_DATAALIGN_RIGHT;
     mHandle.Init.ScanConvMode          = DISABLE;
@@ -131,7 +133,7 @@ bool Adc::Init(const IConfig& config)
         adcChannelConfig.Channel      = GetChannel(cfg.mChannel);
         adcChannelConfig.Offset       = 0;
         adcChannelConfig.Rank         = 1;
-        adcChannelConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
+        adcChannelConfig.SamplingTime = GetSamplingTime(cfg.mSamplingTime);
 
         if (HAL_ADC_ConfigChannel(&mHandle, &adcChannelConfig) == HAL_OK)
         {
@@ -322,6 +324,52 @@ uint32_t Adc::GetResolution(const Resolution& resolution)
     }
 
     return resolution_value;
+}
+
+/**
+ * \brief   Get the translated ADCCLK prescaler value.
+ * \param   prescaler   The desired prescaler.
+ * \returns Translated prescaler value.
+ */
+uint32_t Adc::GetPrescaler(const Prescaler& prescaler)
+{
+    uint32_t prescaler_value = ADC_CLOCK_SYNC_PCLK_DIV2;
+
+    switch (prescaler)
+    {
+        case Prescaler::DIV2: { prescaler_value = ADC_CLOCK_SYNC_PCLK_DIV2; } break;
+        case Prescaler::DIV4: { prescaler_value = ADC_CLOCK_SYNC_PCLK_DIV4; } break;
+        case Prescaler::DIV6: { prescaler_value = ADC_CLOCK_SYNC_PCLK_DIV6; } break;
+        case Prescaler::DIV8: { prescaler_value = ADC_CLOCK_SYNC_PCLK_DIV8; } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+
+    return prescaler_value;
+}
+
+/**
+ * \brief   Get the translated sample-and-hold time value.
+ * \param   samplingTime    The desired sampling time.
+ * \returns Translated sampling time value.
+ */
+uint32_t Adc::GetSamplingTime(const SamplingTime& samplingTime)
+{
+    uint32_t sampling_value = ADC_SAMPLETIME_15CYCLES;
+
+    switch (samplingTime)
+    {
+        case SamplingTime::_3_CYCLES:   { sampling_value = ADC_SAMPLETIME_3CYCLES;   } break;
+        case SamplingTime::_15_CYCLES:  { sampling_value = ADC_SAMPLETIME_15CYCLES;  } break;
+        case SamplingTime::_28_CYCLES:  { sampling_value = ADC_SAMPLETIME_28CYCLES;  } break;
+        case SamplingTime::_56_CYCLES:  { sampling_value = ADC_SAMPLETIME_56CYCLES;  } break;
+        case SamplingTime::_84_CYCLES:  { sampling_value = ADC_SAMPLETIME_84CYCLES;  } break;
+        case SamplingTime::_112_CYCLES: { sampling_value = ADC_SAMPLETIME_112CYCLES; } break;
+        case SamplingTime::_144_CYCLES: { sampling_value = ADC_SAMPLETIME_144CYCLES; } break;
+        case SamplingTime::_480_CYCLES: { sampling_value = ADC_SAMPLETIME_480CYCLES; } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+
+    return sampling_value;
 }
 
 /**

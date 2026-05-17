@@ -32,6 +32,7 @@
 class IBasicTimer
 {
 public:
+    virtual ~IBasicTimer() = default;
     virtual bool Start() = 0;
     virtual bool IsStarted() const = 0;
     virtual bool Stop() = 0;

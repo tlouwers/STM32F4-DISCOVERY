@@ -172,7 +172,10 @@ bool HI_M1388AR::WriteDigits(const uint8_t* src)
  */
 bool HI_M1388AR::Configure(const IConfig& config)
 {
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     if (cfg.mBrightness > 0x0F) { return false; }
 

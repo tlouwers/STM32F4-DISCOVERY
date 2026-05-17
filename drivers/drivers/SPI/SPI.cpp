@@ -100,7 +100,10 @@ bool SPI::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     if (cfg.mBusSpeed < 1) { return false; }                            // If BusSpeed too low then return.
     if (cfg.mBusSpeed > GetPeripheralClockFreq()) { return false; }     // If BusSpeed higher than peripheral clock then return.
@@ -162,34 +165,30 @@ bool SPI::Sleep()
 }
 
 /**
- * \brief   Get the handle to the peripheral.
- * \returns The handle to the peripheral.
+ * \brief   Link a configured DMA stream into the SPI's Tx or Rx slot.
+ * \param   dma     A DMA object that has been Configure()'d. The peripheral
+ *                  slot to wire (hdmatx / hdmarx) is picked from the DMA's
+ *                  Direction: MemoryToPeripheral wires Tx, PeripheralToMemory
+ *                  wires Rx. Call twice for full-duplex SPI.
+ * \returns True if the DMA was linked, false if dma was not configured or
+ *          its Direction is not Tx/Rx (e.g. MemoryToMemory).
  */
-const SPI_HandleTypeDef* SPI::GetPeripheralHandle() const
+bool SPI::LinkDma(DMA& dma)
 {
-    return &mHandle;
-}
+    if (!dma.IsConfigured()) { return false; }
 
-/**
- * \brief   Get the pointer to the Dma Tx handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dma Tx handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& SPI::GetDmaTxHandle()
-{
-    return mHandle.hdmatx;
-}
-
-/**
- * \brief   Get the pointer to the Dma Rx handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dma Rx handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& SPI::GetDmaRxHandle()
-{
-    return mHandle.hdmarx;
+    switch (dma.GetDirection())
+    {
+        case DMA::Direction::MemoryToPeripheral:
+            __HAL_LINKDMA(&mHandle, hdmatx, *dma.Handle());
+            return true;
+        case DMA::Direction::PeripheralToMemory:
+            __HAL_LINKDMA(&mHandle, hdmarx, *dma.Handle());
+            mDmaRx = &dma;
+            return true;
+        default:
+            return false;
+    }
 }
 
 /**
@@ -244,7 +243,12 @@ bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const
 
     mSPICallbacks.callbackTxRx = handler;
 
-    return (HAL_SPI_TransmitReceive_DMA(&mHandle, const_cast<uint8_t*>(src), dest, length) == HAL_OK);
+    if (HAL_SPI_TransmitReceive_DMA(&mHandle, const_cast<uint8_t*>(src), dest, length) != HAL_OK) { return false; }
+
+    // HAL re-enables DMA_IT_HT on the Rx slot regardless of the user's
+    // HalfBufferInterrupt selection; reassert it.
+    mDmaRx->EnforceHalfBufferInterruptSetting();
+    return true;
 }
 
 /**
@@ -269,7 +273,12 @@ bool SPI::ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& h
 
     mSPICallbacks.callbackTxRx = handler;
 
-    return (HAL_SPI_Receive_DMA(&mHandle, dest, length) == HAL_OK);
+    if (HAL_SPI_Receive_DMA(&mHandle, dest, length) != HAL_OK) { return false; }
+
+    // HAL re-enables DMA_IT_HT regardless of the user's HalfBufferInterrupt
+    // selection; reassert it.
+    mDmaRx->EnforceHalfBufferInterruptSetting();
+    return true;
 }
 
 /**

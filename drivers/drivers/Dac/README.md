@@ -62,8 +62,8 @@ bool Application::Initialize()
     bool result = mDMA_DAC_Ch1.Configure(DMA::Channel::Channel7, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Circular, DMA::DataWidth::HalfWord, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     ASSERT(result);
 
-    // Link DMA with the DAC
-    result &= mDMA_DAC_Ch1.Link(mDAC.GetPeripheralHandle(), mDAC.GetDmaChannel1Handle());
+    // Link DMA with the DAC (DAC takes the channel since both channels are outputs)
+    result &= mDAC.LinkDma(Dac::Channel::CHANNEL_1, mDMA_DAC_Ch1);
     ASSERT(result);
 
     // Initialize the BasicTimer

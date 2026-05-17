@@ -31,7 +31,18 @@
 class ICrc
 {
 public:
-    virtual uint32_t Calculate(const uint32_t* buffer, uint32_t length) = 0;
+    virtual ~ICrc() = default;
+    /**
+     * \brief   Calculate a CRC over the given buffer.
+     * \param   buffer  Pointer to the first 32-bit word in the buffer.
+     * \param   length  Number of 32-bit words in the buffer.
+     * \param   out     Output parameter; set to the computed CRC on success,
+     *                  left untouched on failure.
+     * \returns True if the CRC was computed and written to \p out, false on
+     *          bad parameters (null buffer, zero length) or uninitialised
+     *          peripheral.
+     */
+    virtual bool Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out) = 0;
 };
 
 

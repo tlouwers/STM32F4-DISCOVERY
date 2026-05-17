@@ -76,7 +76,10 @@ uint32_t get_used_heap(void)
  */
 uint32_t* get_start_of_heap(void)
 {
-    return (uint32_t*)&end;
+    /* &end is the linker heap-start symbol; newlib/the linker script keep
+       it word-aligned (see the alignment note below). Cast via void* so
+       -Wcast-align does not flag the intentional reinterpretation. */
+    return (uint32_t*)(void*)&end;
 }
 
 /**

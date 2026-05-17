@@ -97,6 +97,27 @@ static void CallbackRxDone(I2CCallbacks& i2c_callbacks, bool success)
     }
 }
 
+/**
+ * \brief   Blocking busy-wait of at least the requested microseconds.
+ * \param   us  Number of microseconds to wait.
+ * \details Uses the Cortex-M4 DWT cycle counter so the delay tracks the
+ *          live core clock (SystemCoreClock) regardless of the board's
+ *          PLL profile. Only the bit-banged bus recovery uses this, where
+ *          ~100 kHz timing is non-critical (a slower clock is harmless).
+ *          DWT->CYCCNT is never reset, so a concurrent DWT consumer (e.g.
+ *          CpuWakeCounter) is left undisturbed; the wait is wrap-safe via
+ *          unsigned subtraction.
+ */
+static void DelayMicroseconds(uint32_t us)
+{
+    if ((CoreDebug->DEMCR & CoreDebug_DEMCR_TRCENA_Msk) == 0) { CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; }
+    if ((DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) == 0)            { DWT->CTRL       |= DWT_CTRL_CYCCNTENA_Msk;      }
+
+    const uint32_t start  = DWT->CYCCNT;
+    const uint32_t cycles = (SystemCoreClock / 1000000U) * us;
+    while ((DWT->CYCCNT - start) < cycles) { }
+}
+
 
 /************************************************************************/
 /* Public Methods                                                       */
@@ -134,7 +155,10 @@ bool I2C::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     mHandle.Init.ClockSpeed      = (cfg.mBusSpeed == BusSpeed::NORMAL) ? 100000 : 400000;
     mHandle.Init.DutyCycle       = (cfg.mBusSpeed == BusSpeed::NORMAL) ? I2C_DUTYCYCLE_2 : I2C_DUTYCYCLE_16_9;
@@ -178,8 +202,13 @@ bool I2C::IsInit() const
  */
 bool I2C::Sleep()
 {
-    // For Int. and DMA started transfers. Not handling result as to reach DeInit().
-    HAL_I2C_Master_Abort_IT(&mHandle, mHandle.Devaddress);
+    // Abort only an in-flight master transfer; in any other state
+    // HAL_I2C_Master_Abort_IT is a no-op. Result ignored so DeInit() runs.
+    const HAL_I2C_StateTypeDef state = HAL_I2C_GetState(&mHandle);
+    if ((state == HAL_I2C_STATE_BUSY_TX) || (state == HAL_I2C_STATE_BUSY_RX))
+    {
+        HAL_I2C_Master_Abort_IT(&mHandle, mHandle.Devaddress);
+    }
 
     if (HAL_I2C_DeInit(&mHandle) != HAL_OK) { return false; }
 
@@ -195,34 +224,108 @@ bool I2C::Sleep()
 }
 
 /**
- * \brief   Get the handle to the peripheral.
- * \returns The handle to the peripheral.
+ * \brief   Recover a wedged I2C bus and restore the peripheral to its
+ *          post-Init() state.
+ * \param   scl     Pin id/port wired to this I2C's SCL line (the same
+ *                  BoardConfig symbol used to set the bus up, e.g.
+ *                  PIN_I2C1_SCL).
+ * \param   sda     Pin id/port wired to this I2C's SDA line.
+ * \returns True if the bus was recovered and the peripheral re-initialised;
+ *          false if SDA stayed low after 9 clocks or re-init failed.
+ * \details Combines two independent recoveries:
+ *           1. Classic bus recovery -- with SCL/SDA driven as GPIO
+ *              open-drain, up to 9 SCL pulses are issued while a slave
+ *              clamps SDA low mid-byte, then a STOP is generated; this
+ *              frees a stuck slave.
+ *           2. STM32F4 ES0182 2.4.7 -- the analog filter can leave the
+ *              BUSY flag stuck, blocking master-mode entry; the documented
+ *              workaround disables PE, releases the lines via GPIO, then
+ *              SWRSTs the peripheral.
+ *          The pins are returned to AF4 open-drain (the I2C alternate
+ *          function on every F407 I2C instance) and HAL_I2C_Init re-applies
+ *          the original timing and re-enables the peripheral, so on success
+ *          the bus is left exactly as after Init().
+ * \note    Blocking; bit-bangs at roughly 100 kHz. Requires the peripheral
+ *          to have been Init()'d -- the clock and handle must be live for
+ *          the SWRST and re-init.
  */
-const I2C_HandleTypeDef* I2C::GetPeripheralHandle() const
+bool I2C::RecoverBus(PinIdPort scl, PinIdPort sda)
 {
-    return &mHandle;
+    if (!mInitialized) { return false; }
+
+    // ES0182 2.4.7 step 1: disable PE so the peripheral releases SCL/SDA.
+    __HAL_I2C_DISABLE(&mHandle);
+
+    // Drive both lines as GPIO open-drain, released high (the board's
+    // external pull-ups float them high when not actively driven low).
+    Pin sclPin(scl);
+    Pin sdaPin(sda);
+    sclPin.Configure(Level::HIGH, Drive::OPEN_DRAIN);
+    sdaPin.Configure(Level::HIGH, Drive::OPEN_DRAIN);
+    DelayMicroseconds(5);
+
+    // Classic recovery: clock SCL until a slave clamping SDA lets go,
+    // up to 9 pulses (one byte + ACK).
+    for (uint8_t i = 0; (i < 9) && (sdaPin.Get() == Level::LOW); ++i)
+    {
+        sclPin.Set(Level::LOW);
+        DelayMicroseconds(5);
+        sclPin.Set(Level::HIGH);
+        DelayMicroseconds(5);
+    }
+
+    const bool sdaReleased = (sdaPin.Get() == Level::HIGH);
+
+    // Generate a STOP (SDA low->high while SCL high) so a slave that was
+    // mid-transfer resynchronises to an idle bus.
+    sdaPin.Set(Level::LOW);
+    DelayMicroseconds(5);
+    sclPin.Set(Level::HIGH);
+    DelayMicroseconds(5);
+    sdaPin.Set(Level::HIGH);
+    DelayMicroseconds(5);
+
+    // Hand the lines back to the I2C peripheral. I2C1/2/3 are all AF4 on
+    // the STM32F407; HIGHZ/OPEN_DRAIN matches the Board pin setup.
+    sclPin.Configure(Alternate::AF4, PullUpDown::HIGHZ, Mode::OPEN_DRAIN);
+    sdaPin.Configure(Alternate::AF4, PullUpDown::HIGHZ, Mode::OPEN_DRAIN);
+
+    // ES0182 2.4.7: software reset clears the stuck BUSY flag.
+    SET_BIT(mHandle.Instance->CR1, I2C_CR1_SWRST);
+    CLEAR_BIT(mHandle.Instance->CR1, I2C_CR1_SWRST);
+
+    // Re-apply the original configuration; HAL_I2C_Init ends by enabling
+    // the peripheral, leaving the bus exactly as after Init().
+    if (HAL_I2C_Init(&mHandle) != HAL_OK) { return false; }
+
+    return sdaReleased;
 }
 
 /**
- * \brief   Get the pointer to the Dma Tx handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dma Tx handle as reference-to-pointer.
+ * \brief   Link a configured DMA stream into the I2C's Tx or Rx slot.
+ * \param   dma     A DMA object that has been Configure()'d. The peripheral
+ *                  slot to wire (hdmatx / hdmarx) is picked from the DMA's
+ *                  Direction: MemoryToPeripheral wires Tx, PeripheralToMemory
+ *                  wires Rx.
+ * \returns True if the DMA was linked, false if dma was not configured or
+ *          its Direction is not Tx/Rx (e.g. MemoryToMemory).
  */
-DMA_HandleTypeDef*& I2C::GetDmaTxHandle()
+bool I2C::LinkDma(DMA& dma)
 {
-    return mHandle.hdmatx;
-}
+    if (!dma.IsConfigured()) { return false; }
 
-/**
- * \brief   Get the pointer to the Dma Rx handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dma Rx handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& I2C::GetDmaRxHandle()
-{
-    return mHandle.hdmarx;
+    switch (dma.GetDirection())
+    {
+        case DMA::Direction::MemoryToPeripheral:
+            __HAL_LINKDMA(&mHandle, hdmatx, *dma.Handle());
+            return true;
+        case DMA::Direction::PeripheralToMemory:
+            __HAL_LINKDMA(&mHandle, hdmarx, *dma.Handle());
+            mDmaRx = &dma;
+            return true;
+        default:
+            return false;
+    }
 }
 
 /**
@@ -273,7 +376,12 @@ bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::func
 
     mI2CCallbacks.callbackRx = handler;
 
-    return (HAL_I2C_Master_Receive_DMA(&mHandle, slave, dest, length) == HAL_OK);
+    if (HAL_I2C_Master_Receive_DMA(&mHandle, slave, dest, length) != HAL_OK) { return false; }
+
+    // HAL re-enables DMA_IT_HT regardless of the user's HalfBufferInterrupt
+    // selection; reassert it.
+    mDmaRx->EnforceHalfBufferInterruptSetting();
+    return true;
 }
 
 /**

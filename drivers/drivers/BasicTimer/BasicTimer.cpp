@@ -26,29 +26,6 @@
 
 
 /************************************************************************/
-/* Static variables                                                     */
-/************************************************************************/
-static BasicTimerCallback timer6_callback {};
-static BasicTimerCallback timer7_callback {};
-
-
-/************************************************************************/
-/* Static functions                                                     */
-/************************************************************************/
-/**
- * \brief   Call the callbackIRQ, if configured.
- * \param   timer_callback  Structure containing the callbackIRQ to call.
- */
-static void CallbackIRQ(const BasicTimerCallback& timer_callback)
-{
-    if (timer_callback.callbackIRQ)
-    {
-        timer_callback.callbackIRQ();
-    }
-}
-
-
-/************************************************************************/
 /* Public Methods                                                       */
 /************************************************************************/
 /**
@@ -57,7 +34,6 @@ static void CallbackIRQ(const BasicTimerCallback& timer_callback)
  */
 BasicTimer::BasicTimer(const BasicTimerInstance& instance) :
     mInstance(instance),
-    mBasicTimerCallback( (instance == BasicTimerInstance::TIMER_6) ? (timer6_callback) : (timer7_callback) ),
     mInitialized(false),
     mStarted(false)
 {
@@ -87,7 +63,10 @@ bool BasicTimer::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     EXPECT(cfg.mFrequency > 0);
     if (cfg.mFrequency == 0) { return false; }
@@ -97,7 +76,6 @@ bool BasicTimer::Init(const IConfig& config)
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
     mHandle.Init.Period            = CalculatePeriod(cfg.mFrequency); // (Freq. desired) = (Freq. CNT_CLK) / (TIM_ARR + 1)
     mHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
-    mHandle.Init.RepetitionCounter = 0;
     mHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
 
     if (HAL_TIM_Base_Init(&mHandle) == HAL_OK)
@@ -110,7 +88,10 @@ bool BasicTimer::Init(const IConfig& config)
             // Configure NVIC to generate interrupt
             SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
-            mBasicTimerCallback.callbackIRQ = [this]() { this->CallbackIRQ(); };
+            // Own this timer's vector through the shared TimerIRQ dispatcher.
+            // Note: Start() uses HAL_TIM_Base_Start (no UDIE), so this slot is
+            // wired but currently never fires -- see BasicTimer IRQ deferral.
+            TimerIRQ::Install(GetSlot(mInstance), [this]() { HAL_TIM_IRQHandler(&mHandle); });
 
             mInitialized = true;
             return true;
@@ -308,40 +289,28 @@ void BasicTimer::SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio)
 }
 
 /**
- * \brief   Generic BasicTimer IRQ callback. Will propagate other interrupts.
+ * \brief   Get the TimerIRQ dispatcher slot belonging to the BasicTimer.
+ * \param   instance    The BasicTimer instance to get the slot for.
+ * \returns The TimerIRQ slot to which the BasicTimer belongs.
+ * \note    Asserts if not a valid BasicTimer instance provided.
  */
-void BasicTimer::CallbackIRQ()
+TimerIRQ::Slot BasicTimer::GetSlot(const BasicTimerInstance& instance)
 {
-    HAL_TIM_IRQHandler(&mHandle);
+    switch (instance)
+    {
+        case BasicTimerInstance::TIMER_6: return TimerIRQ::Slot::TIMER_6; break;
+        case BasicTimerInstance::TIMER_7: return TimerIRQ::Slot::TIMER_7; break;
+        default: ASSERT(false); while(1) { __NOP(); } return TimerIRQ::Slot::TIMER_6; break;      // Impossible selection
+    }
 }
 
 /**
- * \brief   Drop the IRQ callback std::function for this BasicTimer instance.
+ * \brief   Release the TimerIRQ slot for this BasicTimer instance.
  * \note    Called from Sleep() and as a destructor safety net so no stale
- *          lambda capturing `this` outlives the object on the static
- *          timer{6,7}_callback slot.
+ *          lambda capturing `this` outlives the object on the shared
+ *          TimerIRQ dispatcher slot.
  */
 void BasicTimer::DisconnectCallbacks()
 {
-    mBasicTimerCallback.callbackIRQ = nullptr;
-}
-
-
-/************************************************************************/
-/* Interrupts                                                           */
-/************************************************************************/
-/**
- * \brief   ISR: route TIM6 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM6_IRQHandler(void)
-{
-    CallbackIRQ(timer6_callback);
-}
-
-/**
- * \brief   ISR: route TIM7 interrupts to 'CallbackIRQ'.
- */
-extern "C" void TIM7_IRQHandler(void)
-{
-    CallbackIRQ(timer7_callback);
+    TimerIRQ::Uninstall(GetSlot(mInstance));
 }

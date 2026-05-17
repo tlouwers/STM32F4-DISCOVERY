@@ -26,6 +26,7 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "drivers/DMA/DMA.hpp"
 #include "interfaces/IInitable.hpp"
 #include "interfaces/IUSART.hpp"
 #include "stm32f4xx_hal.h"
@@ -163,6 +164,15 @@ public:
         Parity       mParity;                   ///< Parity of the USART.
         StopBits     mStopBits;                 ///< Stop bit mode for the USART.
         OverSampling mOverSampling;             ///< Over sampling of the USART.
+
+        /**
+         * \brief   Unique runtime type tag for this Config.
+         * \returns Address stable and unique to this Config type.
+         */
+        static const void* Id() { static const char sTag = 0; return &sTag; }
+
+        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        const void* ConfigId() const override { return Id(); }
     };
 
 
@@ -173,9 +183,7 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    const UART_HandleTypeDef* GetPeripheralHandle() const;
-    DMA_HandleTypeDef*& GetDmaTxHandle();
-    DMA_HandleTypeDef*& GetDmaRxHandle();
+    bool LinkDma(DMA& dma);
 
     bool WriteDma(const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
     bool ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uint16_t)>& handler, bool useIdleDetection = true) override;
@@ -190,6 +198,7 @@ private:
     UsartInstance      mInstance;
     UART_HandleTypeDef mHandle = {};
     UsartCallbacks&    mUsartCallbacks;
+    DMA*               mDmaRx = nullptr;
     bool               mInitialized;
 
     void SetInstance(const UsartInstance& instance);

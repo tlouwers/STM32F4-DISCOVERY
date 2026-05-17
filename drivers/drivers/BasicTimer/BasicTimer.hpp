@@ -28,6 +28,7 @@
 #include <functional>
 #include "interfaces/IInitable.hpp"
 #include "interfaces/IBasicTimer.hpp"
+#include "drivers/TimerIRQ/TimerIRQ.hpp"
 #include "stm32f4xx_hal.h"
 
 
@@ -42,18 +43,6 @@ enum class BasicTimerInstance : uint8_t
 {
     TIMER_6 = 6,
     TIMER_7 = 7
-};
-
-
-/************************************************************************/
-/* Structures                                                           */
-/************************************************************************/
-/**
- * \struct  BasicTimerCallback
- * \brief   Data structure to contain callback for a BasicTimer instance.
- */
-struct BasicTimerCallback {
-    std::function<void()> callbackIRQ = nullptr;    ///< Callback to call when IRQ occurs.
 };
 
 
@@ -83,6 +72,15 @@ public:
 
         uint8_t  mInterruptPriority;    ///< Interrupt priority.
         uint16_t mFrequency;            ///< Frequency in Hz.
+
+        /**
+         * \brief   Unique runtime type tag for this Config.
+         * \returns Address stable and unique to this Config type.
+         */
+        static const void* Id() { static const char sTag = 0; return &sTag; }
+
+        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        const void* ConfigId() const override { return Id(); }
     };
 
     explicit BasicTimer(const BasicTimerInstance& instance);
@@ -99,7 +97,6 @@ public:
 private:
     BasicTimerInstance  mInstance;
     TIM_HandleTypeDef   mHandle = {};
-    BasicTimerCallback& mBasicTimerCallback;
     bool                mInitialized;
     bool                mStarted;
 
@@ -109,8 +106,8 @@ private:
     static uint32_t GetTimerInputClockFreq();
     uint16_t CalculatePeriod(uint16_t desiredFrequency);
     IRQn_Type GetIRQn(const BasicTimerInstance& instance);
+    TimerIRQ::Slot GetSlot(const BasicTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
-    void CallbackIRQ();
     void DisconnectCallbacks();
 };
 

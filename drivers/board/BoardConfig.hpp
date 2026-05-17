@@ -27,6 +27,38 @@
 
 
 /************************************************************************/
+/* Clock profile                                                        */
+/************************************************************************/
+// BOARD_USE_PLL
+//   0 -- SYSCLK direct from the 8 MHz HSE bypass (ST-LINK MCO). Lowest
+//        power; no USB OTG FS, no I2S audio, ADC limited to ADCCLK = 4 MHz
+//        with the current ADC_CLOCK_SYNC_PCLK_DIV2 setting.
+//   1 -- SYSCLK = 168 MHz via the main PLL. PLL48CK = 48 MHz becomes
+//        available for USB OTG FS, RNG, and SDIO. APB1 = 42 MHz, APB2 =
+//        84 MHz; flash latency = 5 wait-states. Required for any consumer
+//        that depends on PLL48CK.
+// Define on the compiler command line (-DBOARD_USE_PLL=1) in the project
+// CMakeLists.txt to opt in; default stays HSE-direct so existing builds
+// keep their clocking unchanged.
+#ifndef BOARD_USE_PLL
+#define BOARD_USE_PLL 0
+#endif
+
+// BOARD_USE_PLLI2S
+//   0 -- PLLI2S off (default).
+//   1 -- Configure PLLI2S for I2SCLK = 86 MHz, suitable for 8 / 16 / 32 /
+//        48 kHz audio sample rates via the I2S2 (microphone) and I2S3
+//        (CS43L22 DAC) blocks. Requires BOARD_USE_PLL = 1.
+#ifndef BOARD_USE_PLLI2S
+#define BOARD_USE_PLLI2S 0
+#endif
+
+#if BOARD_USE_PLLI2S && !BOARD_USE_PLL
+#error "BOARD_USE_PLLI2S requires BOARD_USE_PLL = 1"
+#endif
+
+
+/************************************************************************/
 /* Constants                                                            */
 /************************************************************************/
 // User button (B1) -- PA0-WKUP, active high

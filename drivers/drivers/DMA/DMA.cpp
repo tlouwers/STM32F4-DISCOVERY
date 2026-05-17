@@ -42,7 +42,9 @@ static std::function<void()> dma2Callbacks[8] {};
  */
 DMA::DMA(Stream stream) :
     mStream(stream),
-    mHalfBufferInterrupt(HalfBufferInterrupt::Enabled)
+    mDirection(Direction::MemoryToPeripheral),
+    mHalfBufferInterrupt(HalfBufferInterrupt::Enabled),
+    mConfigured(false)
 {
     ASSERT(mHandle.Instance == nullptr);
 
@@ -65,33 +67,87 @@ DMA::~DMA()
  * \param   channel             The DMA channel to configure for.
  * \param   direction           The direction of the DMA to use.
  * \param   bufferMode          The buffer mode to use.
- * \param   width               Memory data width to use. Default Byte size.
+ * \param   memWidth            Memory-side data width. Default Byte.
  * \param   priority            DMA priority. Default Low.
- * \param   halfBufferInterrupt Flag, indicating half buffer interrupt is to be used or not. Default true.
+ * \param   halfBufferInterrupt Flag, indicating half buffer interrupt is to be used or not. Default enabled.
+ * \param   periphWidth         Peripheral-side data width. Default Byte.
+ *                              Must match the peripheral's frame size (e.g.
+ *                              HalfWord for 16-bit I2S / SPI / ADC).
+ * \param   preemptPrio         NVIC pre-emption priority for the stream IRQ.
+ *                              Default 0. Under FreeRTOS this must be
+ *                              numerically >= configMAX_SYSCALL_INTERRUPT_PRIORITY
+ *                              for any ISR that calls xQueue...FromISR.
+ * \param   subPrio             NVIC sub-priority for the stream IRQ. Default 0.
+ * \param   fifo                Optional FIFO / burst configuration. Default
+ *                              (FIFO off, single bursts) is the previous
+ *                              hardcoded behaviour, so existing call sites
+ *                              are unaffected.
  * \returns True if the DMA object could be configured, else false.
- * \note    Peripheral data width is fixed at Byte size.
+ * \note    AN4031 §2: FIFO mode + bursts is where AHB throughput is won
+ *          (notably SPI-DMA on the F407). FIFO mode is also mandatory when
+ *          the memory and peripheral data widths differ. When the FIFO is
+ *          disabled the bursts are forced to single here (direct mode,
+ *          RM0090 §10.3.11) so an invalid combination cannot reach
+ *          HAL_DMA_Init. The caller is responsible for a threshold/burst
+ *          pairing valid for the chosen widths (AN4031 §2.2).
+ * \note    ES0182 §2.1.13: an RCC peripheral-enable needs a short delay
+ *          before the peripheral is accessible; the __HAL_RCC_DMAx_CLK_ENABLE
+ *          macros perform the dummy-read so no explicit barrier is needed here.
+ * \note    ES0182 §2.8.x: concurrent DMA2 AHB/APB accesses can corrupt data.
+ *          A Direction::MemoryToMemory transfer scheduled on a DMA2 stream
+ *          while another DMA2 stream is active is the classic trigger; keep
+ *          mem-to-mem on DMA2 isolated from concurrent DMA2 peripheral traffic.
  */
-bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode, DataWidth width /* = DataWidth::Byte */, Priority priority /* = Priority::Low */, HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */)
+bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
+                    DataWidth memWidth /* = DataWidth::Byte */,
+                    Priority priority /* = Priority::Low */,
+                    HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */,
+                    DataWidth periphWidth /* = DataWidth::Byte */,
+                    uint32_t preemptPrio /* = 0 */,
+                    uint32_t subPrio /* = 0 */,
+                    const Fifo& fifo /* = Fifo() */)
 {
+    mConfigured          = false;
+    mDirection           = direction;
     mHalfBufferInterrupt = halfBufferInterrupt;
 
     if (__HAL_RCC_DMA1_IS_CLK_DISABLED()) { __HAL_RCC_DMA1_CLK_ENABLE(); }
     if (__HAL_RCC_DMA2_IS_CLK_DISABLED()) { __HAL_RCC_DMA2_CLK_ENABLE(); }
 
     mHandle.Init.Channel             = GetChannel(channel);
-    mHandle.Init.Direction           = GetDirection(direction);
-    mHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
+    mHandle.Init.Direction           = GetHalDirection(direction);
+    // For mem-to-mem the peripheral port (PAR) holds the source buffer, so it
+    // must increment too; for peripheral transfers it stays fixed on the FIFO/DR.
+    mHandle.Init.PeriphInc           = (direction == Direction::MemoryToMemory) ? DMA_PINC_ENABLE : DMA_PINC_DISABLE;
     mHandle.Init.MemInc              = DMA_MINC_ENABLE;
-    mHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;     // Fixed at Byte size.
-    mHandle.Init.MemDataAlignment    = GetMemDataAlign(width);
+    mHandle.Init.PeriphDataAlignment = GetPeriphDataAlign(periphWidth);
+    mHandle.Init.MemDataAlignment    = GetMemDataAlign(memWidth);
     mHandle.Init.Mode                = (bufferMode == DMA::BufferMode::Circular) ? DMA_CIRCULAR : DMA_NORMAL;
     mHandle.Init.Priority            = GetPriority(priority);
-    mHandle.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+
+    if (fifo.mMode == FifoMode::Enable)
+    {
+        mHandle.Init.FIFOMode      = DMA_FIFOMODE_ENABLE;
+        mHandle.Init.FIFOThreshold = GetFifoThreshold(fifo.mThreshold);
+        mHandle.Init.MemBurst      = GetMemBurst(fifo.mMemBurst);
+        mHandle.Init.PeriphBurst   = GetPeriphBurst(fifo.mPeriphBurst);
+    }
+    else
+    {
+        // Direct mode: a disabled FIFO mandates single beats (RM0090
+        // §10.3.11). Force them so a stray burst on an off-FIFO call
+        // cannot reach HAL_DMA_Init with an invalid combination.
+        mHandle.Init.FIFOMode      = DMA_FIFOMODE_DISABLE;
+        mHandle.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+        mHandle.Init.MemBurst      = DMA_MBURST_SINGLE;
+        mHandle.Init.PeriphBurst   = DMA_PBURST_SINGLE;
+    }
 
     if (HAL_DMA_Init(&mHandle) == HAL_OK)
     {
         ConnectInternalCallback(mStream);
-        EnableInterrupt(mStream, 0, 0);
+        EnableInterrupt(mStream, preemptPrio, subPrio);
+        mConfigured = true;
         return true;
     }
 
@@ -99,23 +155,34 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
 }
 
 /**
- * \brief   Method to 'link' a DMA object with a peripheral.
- * \param   parent  The parent to link with, this is the handle of the peripheral.
- * \param   handle  The DMA handle of the peripheral which is 'swapped' with the configured DMA object.
- * \returns True if the DMA object could be linked, else false.
- * \note    Honouring the HalfBufferInterrupt selection requires the peripheral
- *          driver to consult IsHalfBufferInterruptEnabled() and clear the HT
- *          callback / interrupt after starting DMA, since HAL_xxx_Receive_DMA
- *          unconditionally re-enables DMA_IT_HT in the stream CR.
+ * \brief   Indicates whether Configure() has successfully run on this object.
+ * \returns True if the DMA stream has been configured, else false.
  */
-bool DMA::Link(const void* parent, DMA_HandleTypeDef*& handle)
+bool DMA::IsConfigured() const
 {
-    if (parent == nullptr) { return false; }
+    return mConfigured;
+}
 
-    mHandle.Parent = const_cast<void*>(parent);
-    handle         = &mHandle;
+/**
+ * \brief   Returns the direction the stream was configured for.
+ * \returns The Direction passed to Configure(); value is meaningful only
+ *          when IsConfigured() returns true.
+ */
+DMA::Direction DMA::GetDirection() const
+{
+    return mDirection;
+}
 
-    return true;
+/**
+ * \brief   Access the underlying HAL DMA handle.
+ * \details Used by peripheral drivers in their LinkDma() implementation to
+ *          wire the stream into the peripheral's hdmatx / hdmarx slot via
+ *          __HAL_LINKDMA. Not intended for application code.
+ * \returns Pointer to the underlying DMA_HandleTypeDef. Never nullptr.
+ */
+DMA_HandleTypeDef* DMA::Handle()
+{
+    return &mHandle;
 }
 
 /**
@@ -126,6 +193,23 @@ bool DMA::Link(const void* parent, DMA_HandleTypeDef*& handle)
 bool DMA::IsHalfBufferInterruptEnabled() const
 {
     return mHalfBufferInterrupt == HalfBufferInterrupt::Enabled;
+}
+
+/**
+ * \brief   Re-apply the caller's HalfBufferInterrupt preference to the stream.
+ * \details HAL_xxx_Receive_DMA (and HAL_DAC_Start_DMA) install a half-complete
+ *          callback and call HAL_DMA_Start_IT, which unconditionally re-enables
+ *          DMA_IT_HT in the stream CR whenever XferHalfCpltCallback is non-NULL
+ *          - silently undoing the HalfBufferInterrupt::Disabled selection made
+ *          at Configure() time. Peripheral drivers call this after a successful
+ *          receive-start so the user's setting wins.
+ */
+void DMA::EnforceHalfBufferInterruptSetting()
+{
+    if (!IsHalfBufferInterruptEnabled())
+    {
+        __HAL_DMA_DISABLE_IT(&mHandle, DMA_IT_HT);
+    }
 }
 
 
@@ -197,7 +281,7 @@ uint32_t DMA::GetChannel(Channel channel)
  * \param   direction   The direction to get the register value for.
  * \returns The direction as register value.
  */
-uint32_t DMA::GetDirection(Direction direction)
+uint32_t DMA::GetHalDirection(Direction direction)
 {
     switch (direction)
     {
@@ -227,6 +311,24 @@ uint32_t DMA::GetMemDataAlign(DataWidth width)
 }
 
 /**
+ * \brief   Get the DMA peripheral-side data alignment as register value.
+ * \param   width   The data width to get the register value for.
+ * \returns The peripheral data alignment as register value.
+ * \note    Returns DMA_PDATAALIGN_* (PSIZE field), not DMA_MDATAALIGN_*; the
+ *          two macro families occupy different bits of the stream CR.
+ */
+uint32_t DMA::GetPeriphDataAlign(DataWidth width)
+{
+    switch (width)
+    {
+        case DataWidth::Byte:     return DMA_PDATAALIGN_BYTE;     break;
+        case DataWidth::HalfWord: return DMA_PDATAALIGN_HALFWORD; break;
+        case DataWidth::Word:     return DMA_PDATAALIGN_WORD;     break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_PDATAALIGN_BYTE; break;    // Impossible selection
+    }
+}
+
+/**
  * \brief   Get the DMA priority as register value.
  * \param   priority    The priority to get the register value for.
  * \returns The priority as register value.
@@ -240,6 +342,57 @@ uint32_t DMA::GetPriority(Priority priority)
         case Priority::High:     return DMA_PRIORITY_HIGH;      break;
         case Priority::VeryHigh: return DMA_PRIORITY_VERY_HIGH; break;
         default: ASSERT(false); while(1) { __NOP(); } return DMA_PRIORITY_LOW; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the FIFO threshold as register value.
+ * \param   threshold   The FIFO threshold to get the register value for.
+ * \returns The FIFO threshold as register value.
+ */
+uint32_t DMA::GetFifoThreshold(FifoThreshold threshold)
+{
+    switch (threshold)
+    {
+        case FifoThreshold::Quarter:       return DMA_FIFO_THRESHOLD_1QUARTERFULL;  break;
+        case FifoThreshold::Half:          return DMA_FIFO_THRESHOLD_HALFFULL;      break;
+        case FifoThreshold::ThreeQuarters: return DMA_FIFO_THRESHOLD_3QUARTERSFULL; break;
+        case FifoThreshold::Full:          return DMA_FIFO_THRESHOLD_FULL;          break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_FIFO_THRESHOLD_FULL; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the memory-side burst as register value.
+ * \param   burst   The memory burst to get the register value for.
+ * \returns The memory burst as register value.
+ */
+uint32_t DMA::GetMemBurst(Burst burst)
+{
+    switch (burst)
+    {
+        case Burst::Single:      return DMA_MBURST_SINGLE; break;
+        case Burst::Increment4:  return DMA_MBURST_INC4;   break;
+        case Burst::Increment8:  return DMA_MBURST_INC8;   break;
+        case Burst::Increment16: return DMA_MBURST_INC16;  break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_MBURST_SINGLE; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the peripheral-side burst as register value.
+ * \param   burst   The peripheral burst to get the register value for.
+ * \returns The peripheral burst as register value.
+ */
+uint32_t DMA::GetPeriphBurst(Burst burst)
+{
+    switch (burst)
+    {
+        case Burst::Single:      return DMA_PBURST_SINGLE; break;
+        case Burst::Increment4:  return DMA_PBURST_INC4;   break;
+        case Burst::Increment8:  return DMA_PBURST_INC8;   break;
+        case Burst::Increment16: return DMA_PBURST_INC16;  break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_PBURST_SINGLE; break;    // Impossible selection
     }
 }
 

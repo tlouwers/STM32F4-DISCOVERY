@@ -26,10 +26,12 @@ target_sources(TestRunner
         # Ex: ../target/Src/utility/crc32.cpp
 )
 
-# Include the real and Fake source directories
+# Include the real and Fake source directories.
+# Fake comes first so its Pin/Assert/HAL stubs shadow the canonical headers for
+# the same paths; canonical comes second for components/, interfaces/, etc.
 target_include_directories(TestRunner PRIVATE
-    ../drivers
     ./Fake
+    ../drivers
     .
 )
 

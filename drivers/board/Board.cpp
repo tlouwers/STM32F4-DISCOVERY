@@ -85,10 +85,11 @@ void Board::InitPins()
 /**
  * \brief   Initialize the clock(s) of the system.
  * \returns True if the clock(s) could be set successfully, else false.
- * \note    The current configuration runs SYSCLK directly from the 8 MHz
- *          HSE (from ST-LINK MCO). The main PLL and PLLI2S are left
- *          disabled to minimise power. To run at the 168 MHz maximum and
- *          enable USB / I2S audio, see the commented block below.
+ * \note    The clock profile is selected at compile time via BOARD_USE_PLL
+ *          (and BOARD_USE_PLLI2S for audio) in BoardConfig.hpp. The default
+ *          (BOARD_USE_PLL=0) runs SYSCLK direct from the 8 MHz HSE -- lowest
+ *          power but no USB / I2S / RNG. Set BOARD_USE_PLL=1 to run at the
+ *          168 MHz board maximum with PLL48CK = 48 MHz available.
  */
 bool Board::InitClock()
 {
@@ -108,53 +109,58 @@ bool Board::InitClock()
     RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE | RCC_OSCILLATORTYPE_LSI;
     RCC_OscInitStruct.HSEState       = RCC_HSE_ON;
     RCC_OscInitStruct.LSIState       = RCC_LSI_ON;
-    RCC_OscInitStruct.PLL.PLLState   = RCC_PLL_OFF;
 
-    // --- Alternative: run at 168 MHz via PLL, with 48 MHz for USB OTG FS
-    // and PLLI2S for audio/mic. Uncomment (and switch SYSCLK source to
-    // PLLCLK below, plus set FLASH_LATENCY_5) to enable.
-    //
+#if BOARD_USE_PLL
     // HSE = 8 MHz
-    //   PLLM = 8    -> VCO input   = 1 MHz   (RM0090 recommends 2 MHz, 1 MHz works)
-    //   PLLN = 336  -> VCO         = 336 MHz (range 100..432 MHz)
-    //   PLLP = 2    -> SYSCLK      = 168 MHz (board maximum)
-    //   PLLQ = 7    -> PLL48CK     = 48 MHz  (exact, required for USB OTG FS)
-    //
-    // RCC_OscInitStruct.PLL.PLLState  = RCC_PLL_ON;
-    // RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-    // RCC_OscInitStruct.PLL.PLLM      = 8;
-    // RCC_OscInitStruct.PLL.PLLN      = 336;
-    // RCC_OscInitStruct.PLL.PLLP      = RCC_PLLP_DIV2;
-    // RCC_OscInitStruct.PLL.PLLQ      = 7;
+    //   PLLM = 8    -> VCO input = 1 MHz    (RM0090 recommends 2 MHz, 1 MHz works)
+    //   PLLN = 336  -> VCO       = 336 MHz  (allowed range 100..432 MHz)
+    //   PLLP = 2    -> SYSCLK    = 168 MHz  (board maximum)
+    //   PLLQ = 7    -> PLL48CK   = 48 MHz   (exact, required for USB OTG FS)
+    RCC_OscInitStruct.PLL.PLLState  = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLM      = 8;
+    RCC_OscInitStruct.PLL.PLLN      = 336;
+    RCC_OscInitStruct.PLL.PLLP      = RCC_PLLP_DIV2;
+    RCC_OscInitStruct.PLL.PLLQ      = 7;
+#else
+    RCC_OscInitStruct.PLL.PLLState  = RCC_PLL_OFF;
+#endif
 
     if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
     {
         return false;
     }
 
-    // --- PLLI2S: target 86 MHz I2SCLK for accurate 8/16/32/48 kHz audio
-    // sample rates when used with the I2S driver defaults. Enable together
-    // with the main PLL block above.
-    //
-    //   PLLI2SN = 258, PLLI2SR = 3 -> I2SCLK = (1 MHz * 258) / 3 = 86 MHz
-    //
-    // RCC_PeriphCLKInitTypeDef periph = {};
-    // periph.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-    // periph.PLLI2S.PLLI2SN = 258;
-    // periph.PLLI2S.PLLI2SR = 3;
-    // if (HAL_RCCEx_PeriphCLKConfig(&periph) != HAL_OK) { return false; }
+#if BOARD_USE_PLLI2S
+    // PLLI2SN = 258, PLLI2SR = 3 -> I2SCLK = (1 MHz * 258) / 3 = 86 MHz,
+    // suitable for accurate 8 / 16 / 32 / 48 kHz audio sample rates.
+    RCC_PeriphCLKInitTypeDef periph = {};
+    periph.PeriphClockSelection = RCC_PERIPHCLK_I2S;
+    periph.PLLI2S.PLLI2SN       = 258;
+    periph.PLLI2S.PLLI2SR       = 3;
+    if (HAL_RCCEx_PeriphCLKConfig(&periph) != HAL_OK)
+    {
+        return false;
+    }
+#endif
 
     RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
     RCC_ClkInitStruct.ClockType      = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK |
                                        RCC_CLOCKTYPE_PCLK1  | RCC_CLOCKTYPE_PCLK2;
-    RCC_ClkInitStruct.SYSCLKSource   = RCC_SYSCLKSOURCE_HSE;     // -> RCC_SYSCLKSOURCE_PLLCLK when PLL is enabled
     RCC_ClkInitStruct.AHBCLKDivider  = RCC_SYSCLK_DIV1;
-    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;            // max 42 MHz when SYSCLK = 168 MHz (use _DIV4)
-    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;            // max 84 MHz when SYSCLK = 168 MHz (use _DIV2)
+#if BOARD_USE_PLL
+    RCC_ClkInitStruct.SYSCLKSource   = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;       // 168 / 4 = 42 MHz (APB1 max)
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;       // 168 / 2 = 84 MHz (APB2 max)
+    const uint32_t flashLatency      = FLASH_LATENCY_5;     // required for 168 MHz at VOS1
+#else
+    RCC_ClkInitStruct.SYSCLKSource   = RCC_SYSCLKSOURCE_HSE;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;       // 8 MHz, well under 42 MHz max
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;       // 8 MHz, well under 84 MHz max
+    const uint32_t flashLatency      = FLASH_LATENCY_0;     // sufficient for SYSCLK <= 30 MHz at VOS1
+#endif
 
-    // FLASH_LATENCY_0 is correct for SYSCLK <= 30 MHz at VOS1.
-    // When enabling the PLL path above, use FLASH_LATENCY_5 for 168 MHz.
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, flashLatency) != HAL_OK)
     {
         return false;
     }

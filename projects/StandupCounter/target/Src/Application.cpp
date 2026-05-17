@@ -80,7 +80,7 @@ bool Application::Init()
     result &= mPWM.Init(PWM::Config(500));
     EXPECT(result);
 
-    result &= mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50, PWM::Polarity::High));
+    result &= mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 0.5f, PWM::Polarity::High));
     EXPECT(result);
 
 
@@ -181,7 +181,7 @@ void Application::Process()
  */
 void Application::Error()
 {
-#if (DEBUG)
+#ifdef DEBUG
     __asm volatile("BKPT #01");
 #endif
 

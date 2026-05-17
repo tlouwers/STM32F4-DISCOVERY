@@ -99,34 +99,33 @@ bool Dac::Sleep()
 }
 
 /**
- * \brief   Get the handle to the peripheral.
- * \returns The handle to the peripheral.
+ * \brief   Link a configured DMA stream into the Dac's channel-1 or channel-2 slot.
+ * \param   channel The Dac channel whose DMA slot to wire (CHANNEL_1 → DMA_Handle1,
+ *                  CHANNEL_2 → DMA_Handle2).
+ * \param   dma     A DMA object that has been Configure()'d with Direction
+ *                  MemoryToPeripheral (both Dac channels are outputs).
+ * \returns True if the DMA was linked, false if dma was not configured or
+ *          its Direction is not MemoryToPeripheral.
  */
-const DAC_HandleTypeDef* Dac::GetPeripheralHandle() const
+bool Dac::LinkDma(const Channel& channel, DMA& dma)
 {
-    return &mHandle;
-}
+    if (!dma.IsConfigured())                                            { return false; }
+    if (dma.GetDirection() != DMA::Direction::MemoryToPeripheral)       { return false; }
 
-/**
- * \brief   Get the pointer to the Dac channel 1 DMA handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dac channel 1 DMA handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& Dac::GetDmaChannel1Handle()
-{
-    return mHandle.DMA_Handle1;
-}
-
-/**
- * \brief   Get the pointer to the Dac channel 2 DMA handle.
- * \details This is returned as reference-to-pointer to allow it to be changed
- *          externally, as it needs to be linked to the DMA class.
- * \returns The Dac channel 2 DMA handle as reference-to-pointer.
- */
-DMA_HandleTypeDef*& Dac::GetDmaChannel2Handle()
-{
-    return mHandle.DMA_Handle2;
+    switch (channel)
+    {
+        case Channel::CHANNEL_1:
+            __HAL_LINKDMA(&mHandle, DMA_Handle1, *dma.Handle());
+            mDmaCh1 = &dma;
+            return true;
+        case Channel::CHANNEL_2:
+            __HAL_LINKDMA(&mHandle, DMA_Handle2, *dma.Handle());
+            mDmaCh2 = &dma;
+            return true;
+        default:
+            ASSERT(false);
+            return false;
+    }
 }
 
 /**
@@ -142,7 +141,7 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
     {
         DAC_ChannelConfTypeDef chanConf = {};
 
-        chanConf.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+        chanConf.DAC_OutputBuffer = GetOutputBuffer(channelConfig.mOutputBuffer);
         chanConf.DAC_Trigger      = GetTrigger(channelConfig.mTrigger);
 
         switch (channel)
@@ -230,6 +229,11 @@ bool Dac::SetValue(const Channel& channel, uint16_t value)
 /**
  * \brief   Start the configured waveform on the Dac for the given channel.
  * \param   channel     Channel to output the configured waveform on.
+ * \note    HAL_DAC_Start_DMA() types pData as uint32_t*, but the buffer is
+ *          never dereferenced as uint32_t: the DMA memory data width set
+ *          from the channel Precision/alignment governs the access. The
+ *          uint16_t* buffer is round-tripped through void* to express the
+ *          intentional reinterpretation (and to keep -Wcast-align honest).
  * \returns True if the waveform could be started on the given channel, else false.
  */
 bool Dac::StartWaveform(const Channel& channel)
@@ -244,9 +248,12 @@ bool Dac::StartWaveform(const Channel& channel)
             if (! mChannel1.mStarted)
             {
                 if (HAL_DAC_Start_DMA(&mHandle, DAC_CHANNEL_1,
-                        reinterpret_cast<uint32_t*>(mWaveformChannel1.mValues), mWaveformChannel1.mLength,
+                        static_cast<uint32_t*>(static_cast<void*>(mWaveformChannel1.mValues)), mWaveformChannel1.mLength,
                         GetAlignment(mChannel1.mPrecision)) == HAL_OK)
                 {
+                    // HAL_DAC_Start_DMA re-enables DMA_IT_HT regardless of the
+                    // user's HalfBufferInterrupt selection; reassert it.
+                    mDmaCh1->EnforceHalfBufferInterruptSetting();
                     mChannel1.mStarted = true;
                     return true;
                 }
@@ -258,9 +265,10 @@ bool Dac::StartWaveform(const Channel& channel)
             if (! mChannel2.mStarted)
             {
                 if (HAL_DAC_Start_DMA(&mHandle, DAC_CHANNEL_2,
-                        reinterpret_cast<uint32_t*>(mWaveformChannel2.mValues), mWaveformChannel2.mLength,
+                        static_cast<uint32_t*>(static_cast<void*>(mWaveformChannel2.mValues)), mWaveformChannel2.mLength,
                         GetAlignment(mChannel2.mPrecision)) == HAL_OK)
                 {
+                    mDmaCh2->EnforceHalfBufferInterruptSetting();
                     mChannel2.mStarted = true;
                     return true;
                 }
@@ -298,6 +306,47 @@ bool Dac::StopWaveform(const Channel& channel)
                 return true;
             }
             break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    };
+    return false;
+}
+
+/**
+ * \brief   Advance a software-triggered waveform by one sample.
+ * \details Writes the current waveform sample on the given channel and
+ *          advances the buffer index (wrapping at the configured length).
+ *          This is the CPU-driven counterpart to the DMA StartWaveform()
+ *          path: configure the channel with Trigger::SOFTWARE, call
+ *          ConfigureWaveform(), then call Tick() periodically (e.g. from
+ *          a timer callback) to step the output. Each Tick() is a single
+ *          HAL_DAC_SetValue() write, so it is safe from an ISR once the
+ *          channel is started.
+ * \param   channel     The channel whose waveform to advance.
+ * \returns True if the next sample was output, else false (channel has no
+ *          waveform configured, not initialised, or the write failed).
+ */
+bool Dac::Tick(const Channel& channel)
+{
+    if (!mInitialized) { return false; }
+
+    switch (channel)
+    {
+        case Channel::CHANNEL_1:
+        {
+            if ((mWaveformChannel1.mValues == nullptr) || (mWaveformChannel1.mLength == 0)) { return false; }
+
+            const uint16_t value = mWaveformChannel1.mValues[mWaveformChannel1.mIndex];
+            mWaveformChannel1.mIndex = (mWaveformChannel1.mIndex + 1) % mWaveformChannel1.mLength;
+            return SetValue(Channel::CHANNEL_1, value);
+        }
+        case Channel::CHANNEL_2:
+        {
+            if ((mWaveformChannel2.mValues == nullptr) || (mWaveformChannel2.mLength == 0)) { return false; }
+
+            const uint16_t value = mWaveformChannel2.mValues[mWaveformChannel2.mIndex];
+            mWaveformChannel2.mIndex = (mWaveformChannel2.mIndex + 1) % mWaveformChannel2.mLength;
+            return SetValue(Channel::CHANNEL_2, value);
+        }
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     };
     return false;
@@ -342,6 +391,7 @@ uint32_t Dac::GetTrigger(const Trigger& trigger)
         case Trigger::TIMER_7:    { trigger_value = DAC_TRIGGER_T7_TRGO;  } break;
         case Trigger::TIMER_8:    { trigger_value = DAC_TRIGGER_T8_TRGO;  } break;
         case Trigger::EXT_LINE_9: { trigger_value = DAC_TRIGGER_EXT_IT9;  } break;
+        case Trigger::SOFTWARE:   { trigger_value = DAC_TRIGGER_NONE;     } break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 
@@ -366,6 +416,25 @@ uint32_t Dac::GetAlignment(const Precision& precision)
     }
 
     return alignment;
+}
+
+/**
+ * \brief   Get the translated channel output buffer value.
+ * \param   outputBuffer    The desired output buffer state.
+ * \returns Translated output buffer value.
+ */
+uint32_t Dac::GetOutputBuffer(const OutputBuffer& outputBuffer)
+{
+    uint32_t outputBuffer_value = 0;
+
+    switch (outputBuffer)
+    {
+        case OutputBuffer::ENABLE:  { outputBuffer_value = DAC_OUTPUTBUFFER_ENABLE;  } break;
+        case OutputBuffer::DISABLE: { outputBuffer_value = DAC_OUTPUTBUFFER_DISABLE; } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+
+    return outputBuffer_value;
 }
 
 /**

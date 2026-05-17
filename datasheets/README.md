@@ -1,8 +1,9 @@
-# STM32F4 Reference Documents
+# Reference Documents
 
-This folder contains reference documents for the STM32F407G-DISC1 board and MCU.
+Reference documents for the STM32F407G-DISC1 board/MCU and the external
+components driven by `drivers/components/`.
 
-## Documents
+## `stm32f4/` — STM32F4 board & MCU
 
 - `stm32f407vg-datasheet.pdf` — STM32F407VG device datasheet
 - `rm0090-reference-manual.pdf` — STM32F4 reference manual (registers, peripherals)
@@ -18,3 +19,11 @@ This folder contains reference documents for the STM32F407G-DISC1 board and MCU.
 - `an4031-dma.pdf` — AN4031: DMA controller usage
 - `an4899-gpio-lowpower.pdf` — AN4899: GPIO and low-power considerations
 - `tn1235-stlink.pdf` — TN1235: ST-Link overview
+
+## `components/` — external peripherals
+
+Datasheets for the external parts driven by `drivers/components/`.
+
+- `lis3dsh-datasheet.pdf` — LIS3DSH 3-axis MEMS accelerometer (drivers/components/LIS3DSH)
+- `hi-m1388ar-datasheet.pdf` — HI-M1388AR / REC-M1388ASR 8x8 LED matrix panel (drivers/components/HI-M1388AR)
+- `max7219-max7221.pdf` — MAX7219/MAX7221 LED display driver IC that drives the HI-M1388AR matrix

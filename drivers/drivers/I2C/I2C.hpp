@@ -26,6 +26,8 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
+#include "drivers/DMA/DMA.hpp"
+#include "drivers/Pin/Pin.hpp"
 #include "interfaces/IInitable.hpp"
 #include "interfaces/II2C.hpp"
 #include "stm32f4xx_hal.h"
@@ -99,6 +101,15 @@ public:
 
         uint8_t  mInterruptPriority;    ///< Interrupt priority.
         BusSpeed mBusSpeed;             ///< Speed of the bus.
+
+        /**
+         * \brief   Unique runtime type tag for this Config.
+         * \returns Address stable and unique to this Config type.
+         */
+        static const void* Id() { static const char sTag = 0; return &sTag; }
+
+        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        const void* ConfigId() const override { return Id(); }
     };
 
     explicit I2C(const I2CInstance& instance);
@@ -108,9 +119,9 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    const I2C_HandleTypeDef* GetPeripheralHandle() const;
-    DMA_HandleTypeDef*& GetDmaTxHandle();
-    DMA_HandleTypeDef*& GetDmaRxHandle();
+    bool RecoverBus(PinIdPort scl, PinIdPort sda);
+
+    bool LinkDma(DMA& dma);
 
     bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler) override;
     bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler) override;
@@ -135,6 +146,7 @@ private:
     I2CInstance       mInstance;
     I2C_HandleTypeDef mHandle = {};
     I2CCallbacks&     mI2CCallbacks;
+    DMA*              mDmaRx = nullptr;
     bool              mInitialized;
 
     void SetInstance(const I2CInstance& instance);

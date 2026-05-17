@@ -28,12 +28,24 @@
 #include "utility/Assert/Assert.h"
 #include "stm32f4xx_hal_pwr.h"
 #include "stm32f4xx_hal_rtc.h"
+#include "stm32f4xx_hal_rtc_ex.h"
 
 
 /************************************************************************/
 /* Constants                                                            */
 /************************************************************************/
 static constexpr uint16_t YEAR_OFFSET = 2000;
+static constexpr uint16_t YEAR_MAX    = 2099;   // RTC year register is BCD 00..99
+
+// Sentinel written to backup register BKP_DR0 once the clock has been
+// seeded. Survives a warm/battery-backed reset but not a cold boot, so
+// its absence marks a first/cold boot. Distinctive value ("RTC" + ver).
+static constexpr uint32_t RTC_BKP_MAGIC = 0x52544301;
+
+// Sane placeholder seeded on a cold boot so the calendar is valid (not
+// the 2000-01-01 hardware-reset value). The caller is expected to set
+// the real time from an external source once available.
+static constexpr uint16_t COLD_BOOT_SEED_YEAR = 2021;
 
 
 /************************************************************************/
@@ -43,7 +55,8 @@ static constexpr uint16_t YEAR_OFFSET = 2000;
  * \brief   Constructor.
  */
 Rtc::Rtc() :
-    mInitialized(false)
+    mInitialized(false),
+    mWasColdBoot(false)
 {
     mHandle.Instance = RTC;
 }
@@ -59,9 +72,12 @@ Rtc::~Rtc()
 /**
  * \brief   Initializes the Rtc instance.
  * \returns True if Rtc could be initialized, else false.
- * \note    Init does NOT touch the RTC time/date registers, so a battery-
- *          backed time survives a warm boot. Call SetDateTime explicitly
- *          to seed the clock.
+ * \note    Init does NOT touch a running RTC, so a battery-backed time
+ *          survives a warm boot. On a cold boot (no battery / first-ever
+ *          boot, RTC at the 2000-01-01 reset value) it is detected via a
+ *          magic in backup register BKP_DR0, a sane placeholder time is
+ *          seeded, and the magic is stamped. WasColdBoot() then reports
+ *          which case occurred so the caller can fetch the real time.
  * \note    RCC_BDCR.RTCSEL is write-once after a backup-domain reset (RM0090
  *          §6.3.20). If a previous boot configured a different ClockSource,
  *          this call cannot change it -- the existing source stays in
@@ -70,7 +86,10 @@ Rtc::~Rtc()
  */
 bool Rtc::Init(const IConfig& config)
 {
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     EnablePeripheralClock(cfg.mClockSource);
 
@@ -84,6 +103,30 @@ bool Rtc::Init(const IConfig& config)
     if (HAL_RTC_Init(&mHandle) != HAL_OK) { return false; }
 
     mInitialized = true;
+
+    // First/cold-boot detection. BKP_DR0 holds RTC_BKP_MAGIC once the
+    // clock has been seeded; it survives a warm/battery-backed reset but
+    // not a cold boot. If absent, seed a valid placeholder and stamp the
+    // magic only on success (so a failed seed retries next boot). If
+    // present, a battery-backed RTC is already running -- leave it.
+    if (HAL_RTCEx_BKUPRead(&mHandle, RTC_BKP_DR0) != RTC_BKP_MAGIC)
+    {
+        mWasColdBoot = true;
+
+        DateTime seed;
+        seed.year   = COLD_BOOT_SEED_YEAR;
+        seed.month  = 1;
+        seed.day    = 1;
+        seed.hour   = 0;
+        seed.minute = 0;
+        seed.second = 0;
+
+        if (SetDateTime(seed))
+        {
+            HAL_RTCEx_BKUPWrite(&mHandle, RTC_BKP_DR0, RTC_BKP_MAGIC);
+        }
+    }
+
     return true;
 }
 
@@ -113,13 +156,30 @@ bool Rtc::Sleep()
 /**
  * \brief   Set the date and time to the indicated values.
  * \param   dateTime    The date and time to set.
- * \returns True if the data and time could be set, else false.
- * \note    Year must be equal or larger than YEAR_OFFSET.
+ * \returns True if the date and time could be set, else false.
+ * \note    Fields are range-checked per IRtc::DateTime: year [2000..2099],
+ *          month [1..12], day [1..31], hour [0..23], minute / second
+ *          [0..59]. Day-of-month is not cross-checked against month, the
+ *          RTC peripheral itself handles invalid calendar combinations.
  */
 bool Rtc::SetDateTime(const DateTime& dateTime)
 {
-    if (!mInitialized)               { return false; }
-    if (dateTime.year < YEAR_OFFSET) { return false; }
+    EXPECT(dateTime.year   >= YEAR_OFFSET);
+    EXPECT(dateTime.year   <= YEAR_MAX);
+    EXPECT(dateTime.month  >= 1 && dateTime.month  <= 12);
+    EXPECT(dateTime.day    >= 1 && dateTime.day    <= 31);
+    EXPECT(dateTime.hour   <= 23);
+    EXPECT(dateTime.minute <= 59);
+    EXPECT(dateTime.second <= 59);
+
+    if (!mInitialized)                                 { return false; }
+    if (dateTime.year   < YEAR_OFFSET)                 { return false; }
+    if (dateTime.year   > YEAR_MAX)                    { return false; }
+    if (dateTime.month  < 1 || dateTime.month  > 12)   { return false; }
+    if (dateTime.day    < 1 || dateTime.day    > 31)   { return false; }
+    if (dateTime.hour   > 23)                          { return false; }
+    if (dateTime.minute > 59)                          { return false; }
+    if (dateTime.second > 59)                          { return false; }
 
     RTC_TimeTypeDef sTime = {};
     sTime.Hours   = dateTime.hour;
@@ -162,6 +222,20 @@ bool Rtc::GetDateTime(DateTime &dateTime)
         }
     }
     return false;
+}
+
+/**
+ * \brief   Report whether this power-up was a cold boot.
+ * \details True when Init() found no magic in BKP_DR0 (no battery /
+ *          first-ever boot) and seeded a placeholder time; false when a
+ *          battery-backed RTC was already running and was left untouched.
+ *          Lets the caller decide whether it must fetch the real time
+ *          from an external source. Only meaningful after Init().
+ * \returns True if Init() detected a cold boot, else false.
+ */
+bool Rtc::WasColdBoot() const
+{
+    return mWasColdBoot;
 }
 
 

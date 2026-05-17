@@ -72,18 +72,21 @@
         {
             // https://www.gcovr.com/en/stable/guide.html
             // Note: this will complain about some files not found - ignore them:
-            // gtest.h, gtest-internal.h, gtest-printers.h, gtest-port.h
+            // gtest.h, gtest-internal.h, gtest-printers.h, gtest-port.h, stm32 hal headers
             "label": "Run coverage",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/target/Src"                      // Where to start gcovr
+                "cwd": "${workspaceFolder}/../.."                           // Repo root: covers drivers/ and target/Src/
             },
             "command": "gcovr",
             "args": [
                 "-r",                                                       // Root directory of the source files
-                ".",                                                        // Take the current working dir: where gcovr is started
+                ".",                                                        // Take the current working dir: repo root
                 "--object-directory",                                       // Override normal working directory detection
                 "${workspaceFolder}/build/tests/CMakeFiles/TestRunner.dir", // Directory where the *.gcda filles are located
+                "--gcov-ignore-errors=source_not_found",                    // tolerate stale .gcda referencing deleted files
+                "--filter", "^drivers/",                                    // include canonical drivers tree
+                "--filter", "^projects/UnitTestExample/target/Src/",       // include this project's sources
                 "--html-details",                                           // --html, or --xml-pretty
                 "-o",                                                       // Specify we want a particular output file
                 "${workspaceFolder}/build/coverage.html",                   // Full path and name of the output file to create
