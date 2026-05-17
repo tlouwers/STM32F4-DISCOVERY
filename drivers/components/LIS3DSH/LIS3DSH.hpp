@@ -32,7 +32,7 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
-#include "interfaces/IInitable.hpp"
+#include "interfaces/ILIS3DSH.hpp"
 #include "interfaces/ISPI.hpp"
 #include "drivers/Pin/Pin.hpp"
 
@@ -40,7 +40,7 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class LIS3DSH final : public IConfigInitable
+class LIS3DSH final : public ILIS3DSH
 {
 public:
     /**
@@ -150,11 +150,11 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    bool Enable();
-    bool Disable();
+    bool Enable() override;
+    bool Disable() override;
 
-    void SetHandler(const std::function<void(uint8_t length)>& handler);
-    bool RetrieveAxesData(uint8_t* dest, uint8_t length);
+    void SetHandler(const std::function<void(uint8_t length)>& handler) override;
+    bool RetrieveAxesData(uint8_t* dest, uint8_t length) override;
 
 private:
     ISPI&    mSpi;
