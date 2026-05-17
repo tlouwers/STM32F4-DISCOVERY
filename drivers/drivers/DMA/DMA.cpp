@@ -78,7 +78,18 @@ DMA::~DMA()
  *                              numerically >= configMAX_SYSCALL_INTERRUPT_PRIORITY
  *                              for any ISR that calls xQueue...FromISR.
  * \param   subPrio             NVIC sub-priority for the stream IRQ. Default 0.
+ * \param   fifo                Optional FIFO / burst configuration. Default
+ *                              (FIFO off, single bursts) is the previous
+ *                              hardcoded behaviour, so existing call sites
+ *                              are unaffected.
  * \returns True if the DMA object could be configured, else false.
+ * \note    AN4031 §2: FIFO mode + bursts is where AHB throughput is won
+ *          (notably SPI-DMA on the F407). FIFO mode is also mandatory when
+ *          the memory and peripheral data widths differ. When the FIFO is
+ *          disabled the bursts are forced to single here (direct mode,
+ *          RM0090 §10.3.11) so an invalid combination cannot reach
+ *          HAL_DMA_Init. The caller is responsible for a threshold/burst
+ *          pairing valid for the chosen widths (AN4031 §2.2).
  * \note    ES0182 §2.1.13: an RCC peripheral-enable needs a short delay
  *          before the peripheral is accessible; the __HAL_RCC_DMAx_CLK_ENABLE
  *          macros perform the dummy-read so no explicit barrier is needed here.
@@ -93,7 +104,8 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
                     HalfBufferInterrupt halfBufferInterrupt /* = HalfBufferInterrupt::Enabled */,
                     DataWidth periphWidth /* = DataWidth::Byte */,
                     uint32_t preemptPrio /* = 0 */,
-                    uint32_t subPrio /* = 0 */)
+                    uint32_t subPrio /* = 0 */,
+                    const Fifo& fifo /* = Fifo() */)
 {
     mConfigured          = false;
     mDirection           = direction;
@@ -112,7 +124,24 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     mHandle.Init.MemDataAlignment    = GetMemDataAlign(memWidth);
     mHandle.Init.Mode                = (bufferMode == DMA::BufferMode::Circular) ? DMA_CIRCULAR : DMA_NORMAL;
     mHandle.Init.Priority            = GetPriority(priority);
-    mHandle.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+
+    if (fifo.mMode == FifoMode::Enable)
+    {
+        mHandle.Init.FIFOMode      = DMA_FIFOMODE_ENABLE;
+        mHandle.Init.FIFOThreshold = GetFifoThreshold(fifo.mThreshold);
+        mHandle.Init.MemBurst      = GetMemBurst(fifo.mMemBurst);
+        mHandle.Init.PeriphBurst   = GetPeriphBurst(fifo.mPeriphBurst);
+    }
+    else
+    {
+        // Direct mode: a disabled FIFO mandates single beats (RM0090
+        // §10.3.11). Force them so a stray burst on an off-FIFO call
+        // cannot reach HAL_DMA_Init with an invalid combination.
+        mHandle.Init.FIFOMode      = DMA_FIFOMODE_DISABLE;
+        mHandle.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+        mHandle.Init.MemBurst      = DMA_MBURST_SINGLE;
+        mHandle.Init.PeriphBurst   = DMA_PBURST_SINGLE;
+    }
 
     if (HAL_DMA_Init(&mHandle) == HAL_OK)
     {
@@ -313,6 +342,57 @@ uint32_t DMA::GetPriority(Priority priority)
         case Priority::High:     return DMA_PRIORITY_HIGH;      break;
         case Priority::VeryHigh: return DMA_PRIORITY_VERY_HIGH; break;
         default: ASSERT(false); while(1) { __NOP(); } return DMA_PRIORITY_LOW; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the FIFO threshold as register value.
+ * \param   threshold   The FIFO threshold to get the register value for.
+ * \returns The FIFO threshold as register value.
+ */
+uint32_t DMA::GetFifoThreshold(FifoThreshold threshold)
+{
+    switch (threshold)
+    {
+        case FifoThreshold::Quarter:       return DMA_FIFO_THRESHOLD_1QUARTERFULL;  break;
+        case FifoThreshold::Half:          return DMA_FIFO_THRESHOLD_HALFFULL;      break;
+        case FifoThreshold::ThreeQuarters: return DMA_FIFO_THRESHOLD_3QUARTERSFULL; break;
+        case FifoThreshold::Full:          return DMA_FIFO_THRESHOLD_FULL;          break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_FIFO_THRESHOLD_FULL; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the memory-side burst as register value.
+ * \param   burst   The memory burst to get the register value for.
+ * \returns The memory burst as register value.
+ */
+uint32_t DMA::GetMemBurst(Burst burst)
+{
+    switch (burst)
+    {
+        case Burst::Single:      return DMA_MBURST_SINGLE; break;
+        case Burst::Increment4:  return DMA_MBURST_INC4;   break;
+        case Burst::Increment8:  return DMA_MBURST_INC8;   break;
+        case Burst::Increment16: return DMA_MBURST_INC16;  break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_MBURST_SINGLE; break;    // Impossible selection
+    }
+}
+
+/**
+ * \brief   Get the peripheral-side burst as register value.
+ * \param   burst   The peripheral burst to get the register value for.
+ * \returns The peripheral burst as register value.
+ */
+uint32_t DMA::GetPeriphBurst(Burst burst)
+{
+    switch (burst)
+    {
+        case Burst::Single:      return DMA_PBURST_SINGLE; break;
+        case Burst::Increment4:  return DMA_PBURST_INC4;   break;
+        case Burst::Increment8:  return DMA_PBURST_INC8;   break;
+        case Burst::Increment16: return DMA_PBURST_INC16;  break;
+        default: ASSERT(false); while(1) { __NOP(); } return DMA_PBURST_SINGLE; break;    // Impossible selection
     }
 }
 

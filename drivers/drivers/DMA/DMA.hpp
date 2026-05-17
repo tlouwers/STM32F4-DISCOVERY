@@ -140,6 +140,83 @@ public:
         Disabled
     };
 
+    /**
+     * \enum    FifoMode
+     * \brief   DMA FIFO mode. Disable = direct mode (default, prior
+     *          behaviour); Enable = FIFO mode, required for bursts and
+     *          for differing mem/periph data widths (AN4031 §2.2).
+     */
+    enum class FifoMode : bool
+    {
+        Disable,
+        Enable
+    };
+
+    /**
+     * \enum    FifoThreshold
+     * \brief   FIFO fill level that triggers a memory burst. Only used
+     *          when FifoMode::Enable.
+     */
+    enum class FifoThreshold : uint8_t
+    {
+        Quarter,
+        Half,
+        ThreeQuarters,
+        Full
+    };
+
+    /**
+     * \enum    Burst
+     * \brief   Incremental AHB burst beat count for the memory /
+     *          peripheral side. Single = no burst (default). Only used
+     *          when FifoMode::Enable.
+     */
+    enum class Burst : uint8_t
+    {
+        Single,
+        Increment4,
+        Increment8,
+        Increment16
+    };
+
+    /**
+     * \struct  Fifo
+     * \brief   Optional DMA FIFO / burst configuration.
+     * \details A default-constructed Fifo (FIFO off, single bursts) is
+     *          exactly the previous hardcoded behaviour, so existing
+     *          Configure() call sites are unaffected. Enabling the FIFO
+     *          with bursts is where the real AHB throughput gain lives
+     *          (AN4031 §2), especially for SPI-DMA on the F407. The
+     *          caller must pick a threshold/burst combination valid for
+     *          the chosen data widths (AN4031 §2.2); HAL_DMA_Init
+     *          asserts the gross cases.
+     */
+    struct Fifo
+    {
+        /**
+         * \brief   Constructor of the DMA Fifo configuration struct.
+         * \param   mode        FIFO mode -- default Disable (direct mode),
+         *                      preserving the previous fixed behaviour.
+         * \param   threshold   FIFO threshold -- only used when mode Enable.
+         * \param   memBurst    Memory-side burst -- only used when Enable.
+         * \param   periphBurst Peripheral-side burst -- only used when Enable.
+         */
+        Fifo(FifoMode mode = FifoMode::Disable,
+             FifoThreshold threshold = FifoThreshold::Full,
+             Burst memBurst = Burst::Single,
+             Burst periphBurst = Burst::Single) :
+            mMode(mode),
+            mThreshold(threshold),
+            mMemBurst(memBurst),
+            mPeriphBurst(periphBurst)
+        { }
+
+        FifoMode      mMode;        ///< FIFO mode.
+        FifoThreshold mThreshold;   ///< FIFO threshold (used when mMode Enable).
+        Burst         mMemBurst;    ///< Memory-side burst (used when mMode Enable).
+        Burst         mPeriphBurst; ///< Peripheral-side burst (used when mMode Enable).
+    };
+
 
     explicit DMA(Stream stream);
     ~DMA();
@@ -150,7 +227,8 @@ public:
                    HalfBufferInterrupt halfBufferInterrupt = HalfBufferInterrupt::Enabled,
                    DataWidth periphWidth = DataWidth::Byte,
                    uint32_t preemptPrio = 0,
-                   uint32_t subPrio = 0);
+                   uint32_t subPrio = 0,
+                   const Fifo& fifo = Fifo());
 
     bool IsConfigured() const;
     Direction GetDirection() const;
@@ -172,6 +250,9 @@ private:
     uint32_t GetMemDataAlign(DataWidth width);
     uint32_t GetPeriphDataAlign(DataWidth width);
     uint32_t GetPriority(Priority priority);
+    uint32_t GetFifoThreshold(FifoThreshold threshold);
+    uint32_t GetMemBurst(Burst burst);
+    uint32_t GetPeriphBurst(Burst burst);
     IRQn_Type GetIRQn(Stream stream);
     std::function<void()>& GetCallbackSlot(Stream stream);
 
