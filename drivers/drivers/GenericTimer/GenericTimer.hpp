@@ -129,7 +129,7 @@ private:
     void CheckAndEnablePeripheralClock(const GenericTimerInstance& instance);
     void CheckAndDisablePeripheralClock(const GenericTimerInstance& instance);
     uint32_t GetTimerInputClockFreq(const GenericTimerInstance& instance);
-    uint16_t CalculatePeriod(float desiredFrequency);
+    uint32_t CalculatePeriod(float desiredFrequency);
     IRQn_Type GetIRQn(const GenericTimerInstance& instance);
     TimerIRQ::Slot GetSlot(const GenericTimerInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);

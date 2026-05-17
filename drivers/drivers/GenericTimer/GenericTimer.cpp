@@ -315,8 +315,13 @@ uint32_t GenericTimer::GetTimerInputClockFreq(const GenericTimerInstance& instan
  * \param   desiredFrequency    The desired frequency in Hz to use.
  * \returns Period value (TIM_ARR).
  * \note    The CK_CNT is assumed to be 10 kHz.
+ * \note    TIM2 and TIM5 are 32-bit on the F4 (RM0090 §17.3.1), so their
+ *          ARR may use the full 0xFFFFFFFF range -- allowing far lower
+ *          frequencies than the ~0.153 Hz floor a 16-bit cap imposes.
+ *          Every other GenericTimer instance is 16-bit and stays clamped
+ *          to 0xFFFF (unchanged behaviour).
  */
-uint16_t GenericTimer::CalculatePeriod(float desiredFrequency)
+uint32_t GenericTimer::CalculatePeriod(float desiredFrequency)
 {
     // Freq. CK_CNT is 10 kHz
     // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
@@ -324,9 +329,13 @@ uint16_t GenericTimer::CalculatePeriod(float desiredFrequency)
 
     uint32_t period = (10000 / desiredFrequency) - 1;
 
-    if (period > UINT16_MAX) { period = UINT16_MAX; }
+    const bool is32Bit = (mInstance == GenericTimerInstance::TIMER_2) ||
+                         (mInstance == GenericTimerInstance::TIMER_5);
+    const uint32_t maxPeriod = is32Bit ? 0xFFFFFFFFUL : static_cast<uint32_t>(UINT16_MAX);
 
-    return static_cast<uint16_t>(period);
+    if (period > maxPeriod) { period = maxPeriod; }
+
+    return period;
 }
 
 /**
