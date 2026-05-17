@@ -75,6 +75,20 @@ public:
     };
 
     /**
+     * \enum    OutputBuffer
+     * \brief   Dac channel output buffer state.
+     * \details Enable for normal low-impedance drive (default). Disable
+     *          when feeding a high-impedance load or an external op-amp:
+     *          DS9484 §6.3.22 — a disabled buffer reduces output drive but
+     *          improves linearity near the rails.
+     */
+    enum class OutputBuffer : uint8_t
+    {
+        ENABLE,     ///< Output buffer enabled, default
+        DISABLE     ///< Output buffer disabled (high-impedance / external op-amp)
+    };
+
+    /**
      * \struct  ChannelConfig
      * \brief   Configuration struct for Dac channel.
      */
@@ -82,18 +96,24 @@ public:
     {
         /**
          * \brief   Constructor for the Dac channel configuration struct.
-         * \param   precision   The precision or alignment of the data.
-         * \param   trigger     The trigger for the channel.
+         * \param   precision       The precision or alignment of the data.
+         * \param   trigger         The trigger for the channel.
+         * \param   outputBuffer    Output buffer state -- default Enable,
+         *                          preserving the previous fixed value.
          */
-        ChannelConfig(Precision precision = Precision::_12_BIT_R, Trigger trigger = Trigger::NONE) :
+        ChannelConfig(Precision precision = Precision::_12_BIT_R,
+                      Trigger trigger = Trigger::NONE,
+                      OutputBuffer outputBuffer = OutputBuffer::ENABLE) :
             mStarted(false),
             mPrecision(precision),
-            mTrigger(trigger)
+            mTrigger(trigger),
+            mOutputBuffer(outputBuffer)
         { }
 
-        bool      mStarted;     ///< Flag, indicated the channel is started.
-        Precision mPrecision;   ///< Precision or alignment of the data.
-        Trigger   mTrigger;     ///< Trigger for the channel.
+        bool         mStarted;       ///< Flag, indicated the channel is started.
+        Precision    mPrecision;     ///< Precision or alignment of the data.
+        Trigger      mTrigger;       ///< Trigger for the channel.
+        OutputBuffer mOutputBuffer;  ///< Output buffer state.
     };
 
     /**
@@ -149,6 +169,7 @@ private:
 
     uint32_t GetTrigger(const Trigger& trigger);
     uint32_t GetAlignment(const Precision& precision);
+    uint32_t GetOutputBuffer(const OutputBuffer& outputBuffer);
 
     bool StartChannel(const Channel& channel);
     bool StopChannel(const Channel& channel);

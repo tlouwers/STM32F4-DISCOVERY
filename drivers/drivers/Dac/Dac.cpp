@@ -141,7 +141,7 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
     {
         DAC_ChannelConfTypeDef chanConf = {};
 
-        chanConf.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+        chanConf.DAC_OutputBuffer = GetOutputBuffer(channelConfig.mOutputBuffer);
         chanConf.DAC_Trigger      = GetTrigger(channelConfig.mTrigger);
 
         switch (channel)
@@ -374,6 +374,25 @@ uint32_t Dac::GetAlignment(const Precision& precision)
     }
 
     return alignment;
+}
+
+/**
+ * \brief   Get the translated channel output buffer value.
+ * \param   outputBuffer    The desired output buffer state.
+ * \returns Translated output buffer value.
+ */
+uint32_t Dac::GetOutputBuffer(const OutputBuffer& outputBuffer)
+{
+    uint32_t outputBuffer_value = 0;
+
+    switch (outputBuffer)
+    {
+        case OutputBuffer::ENABLE:  { outputBuffer_value = DAC_OUTPUTBUFFER_ENABLE;  } break;
+        case OutputBuffer::DISABLE: { outputBuffer_value = DAC_OUTPUTBUFFER_DISABLE; } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+
+    return outputBuffer_value;
 }
 
 /**
