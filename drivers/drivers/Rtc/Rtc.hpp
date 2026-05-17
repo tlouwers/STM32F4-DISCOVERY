@@ -89,9 +89,12 @@ public:
     bool SetDateTime(const DateTime& dateTime) override;
     bool GetDateTime(DateTime& dateTime) override;
 
+    bool WasColdBoot() const;
+
 private:
     RTC_HandleTypeDef mHandle = {};
     bool              mInitialized;
+    bool              mWasColdBoot;
 
     void EnablePeripheralClock(const ClockSource& clockSource);
     void DisablePeripheralClock();
