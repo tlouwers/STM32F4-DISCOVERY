@@ -132,6 +132,15 @@ public:
         SampleFrequency    mSampleFrequency;        ///< Sample frequency for accelerometer data.
         Scale              mScale;                  ///< Scale of the accelerometer data.
         AntiAliasingFilter mAntiAliasingFilter;     ///< Anti-aliasing filter bandwidth.
+
+        /**
+         * \brief   Unique runtime type tag for this Config.
+         * \returns Address stable and unique to this Config type.
+         */
+        static const void* Id() { static const char sTag = 0; return &sTag; }
+
+        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        const void* ConfigId() const override { return Id(); }
     };
 
     LIS3DSH(ISPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPort motionInt2);

@@ -60,7 +60,10 @@ bool Watchdog::Init(const IConfig& config)
     // Optional: freeze the independent watchdog timer while debugging
     __HAL_DBGMCU_FREEZE_IWDG();
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     mHandle.Init.Prescaler = CalculatePrescaler(cfg.mTimeout);
     mHandle.Init.Reload    = CalculateReload(cfg.mTimeout);

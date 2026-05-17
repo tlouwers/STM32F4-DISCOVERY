@@ -112,7 +112,10 @@ bool USART::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     mHandle.Init.BaudRate     = static_cast<uint32_t>(cfg.mBaudrate);
     mHandle.Init.WordLength   = (cfg.mWordLength == WordLength::_8_BIT) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;

@@ -106,7 +106,10 @@ bool Adc::Init(const IConfig& config)
 {
     CheckAndEnableAPB2PeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     mHandle.Init.ClockPrescaler        = GetPrescaler(cfg.mPrescaler);
     mHandle.Init.Resolution            = GetResolution(cfg.mResolution);

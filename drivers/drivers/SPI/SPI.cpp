@@ -100,7 +100,10 @@ bool SPI::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     if (cfg.mBusSpeed < 1) { return false; }                            // If BusSpeed too low then return.
     if (cfg.mBusSpeed > GetPeripheralClockFreq()) { return false; }     // If BusSpeed higher than peripheral clock then return.

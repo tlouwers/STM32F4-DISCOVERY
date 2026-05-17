@@ -104,7 +104,10 @@ bool GenericTimer::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     EXPECT(cfg.mFrequency > 0.0f);
     if (cfg.mFrequency <= 0.0f) { return false; }

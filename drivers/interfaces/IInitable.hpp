@@ -41,6 +41,20 @@ class IConfig
 {
 public:
     IConfig() {};
+    virtual ~IConfig() = default;
+
+    /**
+     * \brief   Runtime type identity of the concrete Config.
+     * \details A driver receives its Config as a base `const IConfig&`
+     *          and must downcast it in Init()/Configure(). Comparing
+     *          this tag against the driver's own Config tag before the
+     *          cast turns a caller passing the wrong concrete Config
+     *          from silent undefined behaviour (the old
+     *          reinterpret_cast) into a clean `return false`.
+     * \returns A pointer value unique to, and stable for, the concrete
+     *          Config type.
+     */
+    virtual const void* ConfigId() const = 0;
 };
 
 

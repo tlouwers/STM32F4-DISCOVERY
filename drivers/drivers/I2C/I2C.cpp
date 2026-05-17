@@ -155,7 +155,10 @@ bool I2C::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     mHandle.Init.ClockSpeed      = (cfg.mBusSpeed == BusSpeed::NORMAL) ? 100000 : 400000;
     mHandle.Init.DutyCycle       = (cfg.mBusSpeed == BusSpeed::NORMAL) ? I2C_DUTYCYCLE_2 : I2C_DUTYCYCLE_16_9;

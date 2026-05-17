@@ -101,6 +101,15 @@ public:
 
         uint8_t  mInterruptPriority;    ///< Interrupt priority.
         BusSpeed mBusSpeed;             ///< Speed of the bus.
+
+        /**
+         * \brief   Unique runtime type tag for this Config.
+         * \returns Address stable and unique to this Config type.
+         */
+        static const void* Id() { static const char sTag = 0; return &sTag; }
+
+        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        const void* ConfigId() const override { return Id(); }
     };
 
     explicit I2C(const I2CInstance& instance);

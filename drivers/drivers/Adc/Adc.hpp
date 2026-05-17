@@ -168,6 +168,15 @@ public:
         Resolution   mResolution;         ///< Resolution of the captured data.
         Prescaler    mPrescaler;          ///< ADCCLK prescaler off PCLK2.
         SamplingTime mSamplingTime;       ///< Sample-and-hold time in cycles.
+
+        /**
+         * \brief   Unique runtime type tag for this Config.
+         * \returns Address stable and unique to this Config type.
+         */
+        static const void* Id() { static const char sTag = 0; return &sTag; }
+
+        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        const void* ConfigId() const override { return Id(); }
     };
 
 

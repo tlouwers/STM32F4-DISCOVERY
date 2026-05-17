@@ -71,7 +71,10 @@ Rtc::~Rtc()
  */
 bool Rtc::Init(const IConfig& config)
 {
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     EnablePeripheralClock(cfg.mClockSource);
 

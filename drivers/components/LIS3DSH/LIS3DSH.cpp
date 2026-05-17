@@ -354,7 +354,10 @@ bool LIS3DSH::SelfTest()
  */
 bool LIS3DSH::Configure(const IConfig& config)
 {
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     uint8_t ODR    = GetSampleFrequencyAsODR(cfg.mSampleFrequency);
     uint8_t FSCALE = GetScaleAsFSCALE(cfg.mScale);

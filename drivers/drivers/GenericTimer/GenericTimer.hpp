@@ -96,6 +96,15 @@ public:
 
         uint8_t mInterruptPriority;    ///< Interrupt priority.
         float   mFrequency;            ///< Frequency in Hz.
+
+        /**
+         * \brief   Unique runtime type tag for this Config.
+         * \returns Address stable and unique to this Config type.
+         */
+        static const void* Id() { static const char sTag = 0; return &sTag; }
+
+        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        const void* ConfigId() const override { return Id(); }
     };
 
     explicit GenericTimer(const GenericTimerInstance& instance);

@@ -56,7 +56,10 @@ bool PWM::Init(const IConfig& config)
 {
     CheckAndEnablePeripheralClock(mInstance);
 
-    const Config& cfg = reinterpret_cast<const Config&>(config);
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
 
     // Start the timer as clock for PWM. No channels are configured yet.
     // Prescaler stays at 0 (divide-by-1) so CK_CNT is the full timer input
