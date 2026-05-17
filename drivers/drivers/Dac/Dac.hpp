@@ -71,7 +71,7 @@ public:
         TIMER_7,
         TIMER_8,
         EXT_LINE_9,
-        //SOFTWARE      // Requires HAL_DAC_Start() after loading value in output register
+        SOFTWARE    ///< CPU-driven: no hardware trigger; advance the waveform with Tick()
     };
 
     /**
@@ -153,6 +153,8 @@ public:
 
     bool StartWaveform(const Channel& channel) override;
     bool StopWaveform(const Channel& channel) override;
+
+    bool Tick(const Channel& channel);
 
 private:
     DAC_HandleTypeDef mHandle = {};

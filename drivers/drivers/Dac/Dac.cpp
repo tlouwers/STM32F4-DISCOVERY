@@ -311,6 +311,47 @@ bool Dac::StopWaveform(const Channel& channel)
     return false;
 }
 
+/**
+ * \brief   Advance a software-triggered waveform by one sample.
+ * \details Writes the current waveform sample on the given channel and
+ *          advances the buffer index (wrapping at the configured length).
+ *          This is the CPU-driven counterpart to the DMA StartWaveform()
+ *          path: configure the channel with Trigger::SOFTWARE, call
+ *          ConfigureWaveform(), then call Tick() periodically (e.g. from
+ *          a timer callback) to step the output. Each Tick() is a single
+ *          HAL_DAC_SetValue() write, so it is safe from an ISR once the
+ *          channel is started.
+ * \param   channel     The channel whose waveform to advance.
+ * \returns True if the next sample was output, else false (channel has no
+ *          waveform configured, not initialised, or the write failed).
+ */
+bool Dac::Tick(const Channel& channel)
+{
+    if (!mInitialized) { return false; }
+
+    switch (channel)
+    {
+        case Channel::CHANNEL_1:
+        {
+            if ((mWaveformChannel1.mValues == nullptr) || (mWaveformChannel1.mLength == 0)) { return false; }
+
+            const uint16_t value = mWaveformChannel1.mValues[mWaveformChannel1.mIndex];
+            mWaveformChannel1.mIndex = (mWaveformChannel1.mIndex + 1) % mWaveformChannel1.mLength;
+            return SetValue(Channel::CHANNEL_1, value);
+        }
+        case Channel::CHANNEL_2:
+        {
+            if ((mWaveformChannel2.mValues == nullptr) || (mWaveformChannel2.mLength == 0)) { return false; }
+
+            const uint16_t value = mWaveformChannel2.mValues[mWaveformChannel2.mIndex];
+            mWaveformChannel2.mIndex = (mWaveformChannel2.mIndex + 1) % mWaveformChannel2.mLength;
+            return SetValue(Channel::CHANNEL_2, value);
+        }
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    };
+    return false;
+}
+
 
 /************************************************************************/
 /* Private Methods                                                      */
@@ -350,6 +391,7 @@ uint32_t Dac::GetTrigger(const Trigger& trigger)
         case Trigger::TIMER_7:    { trigger_value = DAC_TRIGGER_T7_TRGO;  } break;
         case Trigger::TIMER_8:    { trigger_value = DAC_TRIGGER_T8_TRGO;  } break;
         case Trigger::EXT_LINE_9: { trigger_value = DAC_TRIGGER_EXT_IT9;  } break;
+        case Trigger::SOFTWARE:   { trigger_value = DAC_TRIGGER_NONE;     } break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 
