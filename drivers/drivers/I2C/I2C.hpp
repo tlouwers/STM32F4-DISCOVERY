@@ -11,7 +11,7 @@
  *
  * \brief   I2C master peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/I2C
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/I2C
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1
@@ -54,10 +54,10 @@ enum class I2CInstance : uint8_t
  * \brief   Data structure to contain callbacks for an I2C instance.
  */
 struct I2CCallbacks {
-    std::function<void()> callbackEvent = nullptr;  ///< Callback to call when Event occurs.
-    std::function<void()> callbackError = nullptr;  ///< Callback to call when Error occurs.
-    std::function<void()> callbackTx    = nullptr;  ///< Callback to call when Tx done.
-    std::function<void()> callbackRx    = nullptr;  ///< Callback to call when Rx done.
+    std::function<void()>     callbackEvent = nullptr;    ///< IRQ propagation lambda for I2Cx_EV_IRQHandler.
+    std::function<void()>     callbackError = nullptr;    ///< IRQ propagation lambda for I2Cx_ER_IRQHandler.
+    std::function<void(bool)> callbackTx    = nullptr;    ///< User handler invoked once when an async Tx ends; bool reports success.
+    std::function<void(bool)> callbackRx    = nullptr;    ///< User handler invoked once when an async Rx ends; bool reports success.
 };
 
 
@@ -112,11 +112,11 @@ public:
     DMA_HandleTypeDef*& GetDmaTxHandle();
     DMA_HandleTypeDef*& GetDmaRxHandle();
 
-    bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
-    bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;
+    bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler) override;
+    bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler) override;
 
-    bool WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler) override;
-    bool ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler) override;
+    bool WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler) override;
+    bool ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler) override;
 
     bool WriteBlocking(uint8_t slave, const uint8_t* src, uint16_t length) override;
     bool ReadBlocking(uint8_t slave, uint8_t* dest, uint16_t length) override;
@@ -138,12 +138,13 @@ private:
     bool              mInitialized;
 
     void SetInstance(const I2CInstance& instance);
-    void CheckAndEnableAHB1PeripheralClock(const I2CInstance& instance);
-    void CheckAndDisableAHB1PeripheralClock(const I2CInstance& instance);
+    void CheckAndEnablePeripheralClock(const I2CInstance& instance);
+    void CheckAndDisablePeripheralClock(const I2CInstance& instance);
     IRQn_Type GetIRQn(const I2CInstance& instance, IRQType type);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackEvent();
     void CallbackError();
+    void DisconnectCallbacks();
 };
 
 

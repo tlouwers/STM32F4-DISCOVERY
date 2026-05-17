@@ -36,11 +36,11 @@ public:
             .WillByDefault(Return(true));
     }
 
-    MOCK_METHOD4(WriteDMA, bool(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler));
-    MOCK_METHOD4(ReadDMA, bool(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler));
+    MOCK_METHOD4(WriteDMA, bool(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler));
+    MOCK_METHOD4(ReadDMA, bool(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler));
 
-    MOCK_METHOD4(WriteInterrupt, bool(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler));
-    MOCK_METHOD4(ReadInterrupt, bool(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler));
+    MOCK_METHOD4(WriteInterrupt, bool(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler));
+    MOCK_METHOD4(ReadInterrupt, bool(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler));
 
     MOCK_METHOD3(WriteBlocking, bool(uint8_t slave, const uint8_t* src, uint16_t length));
     MOCK_METHOD3(ReadBlocking, bool(uint8_t slave, uint8_t* dest, uint16_t length));

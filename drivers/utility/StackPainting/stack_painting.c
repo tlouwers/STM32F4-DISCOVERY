@@ -9,10 +9,10 @@
  *                                                                Terry Louwers
  * \brief   Stack painting functions for ST Cortex-M4.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/utility/StackPainting
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/utility/StackPainting
  *
  * \author  Terry Louwers (terry.louwers@fourtress.nl)
- * \version 1.0
+ * \version 1.1
  * \date    11-2019
  */
 
@@ -32,11 +32,11 @@
 extern uint32_t _estack;
 
 /**
- * \brief   Use bottom of the stack: end of the bss section as specified in
- *          the linker control script. Note that this is the start of the
- *          heap (which may or may not be used yet).
+ * \brief   Use the linker-reserved stack size. The address of this symbol
+ *          encodes the size in bytes (linker-symbol-as-size pattern, same
+ *          as _Min_Heap_Size in HeapCheck).
  */
-extern uint32_t _ebss;
+extern uint32_t _Min_Stack_Size;
 
 
 /************************************************************************/
@@ -47,91 +47,93 @@ extern uint32_t _ebss;
  *          possible a stack value is the same as the number, it is
  *          very unlikely and not repeated for long.
  */
-const uint32_t PAINT_VALUE = 0xC5C5C5C5;
-
-
-/************************************************************************/
-/* Static variables                                                     */
-/************************************************************************/
-static uint32_t total_stack_size = 0;
-static uint32_t used_stack_size  = 0;
+static const uint32_t PAINT_VALUE = 0xC5C5C5C5U;
 
 
 /************************************************************************/
 /* Public functions                                                     */
 /************************************************************************/
 /**
- * \brief   Fills all of the stack with a defined value (PAINT_VALUE).
- * \note    Should be done as one of the first things in main().
+ * \brief   Fills all currently-unused stack with PAINT_VALUE so that
+ *          get_used_stack() can later detect the high-water mark.
+ * \note    Should be done as one of the first things in main(). The painted
+ *          range is exactly [_estack - _Min_Stack_Size, current MSP); the
+ *          live frame at and above MSP is left untouched, and the heap
+ *          region (which sits below the stack on this F407 layout) is
+ *          NOT touched.
  */
 void paint_stack(void)
 {
-    // Top of the stack is the _estack address. The size occupied by the application
-    // is to be subtracted, this we can retrieve by requesting the current stack pointer.
-    const uint32_t application = __get_MSP();
+    // Top of the painted area is the current MSP -- bytes at and above MSP
+    // are the live stack frame (us and our caller) and must not be
+    // overwritten.
+    const uint32_t msp = __get_MSP();
 
-    // Bottom of the stack is the end of the bss section (also: the start of the heap).
-    uint32_t* bottom_of_stack = (uint32_t*)&_ebss;
+    // Bottom of the actual stack region is _estack - _Min_Stack_Size, NOT
+    // _ebss: the heap lives between _ebss and the stack and must not be
+    // painted (would corrupt anything malloc'd by pre-main static-object
+    // ctors, and on a clean boot is just wasted cycles).
+    const uint32_t stack_bottom = (uint32_t)&_estack - (uint32_t)&_Min_Stack_Size;
 
-    // Find out what needs to be 'painted' - in sizeof(uint32_t)
-    uint32_t area_to_paint = (application - (uint32_t)bottom_of_stack) / 4;
+    uint32_t* p = (uint32_t*)stack_bottom;
+    const uint32_t words_to_paint = (msp - stack_bottom) / 4;
 
-    // Paint that area
-    for (uint32_t i = 0; i < area_to_paint; i++)
+    for (uint32_t i = 0; i < words_to_paint; i++)
     {
-        *bottom_of_stack++ = PAINT_VALUE;
+        *p++ = PAINT_VALUE;
     }
 }
 
 /**
- * \brief   Get the total amount of stack available.
+ * \brief   Get the total amount of stack reserved by the linker.
  * \return  Total stack size in bytes.
  */
 uint32_t get_total_stack(void)
 {
-    // Could be we never called 'get_used_stack' before.
-    if (total_stack_size == 0)
-    {
-        get_used_stack();
-    }
-
-    return total_stack_size;
+    return (uint32_t)&_Min_Stack_Size;
 }
 
 /**
- * \brief   Get the (once) used stack size.
- * \return  Used stack size in bytes.
+ * \brief   Get the high-water-mark stack usage.
+ * \details Walks the stack downward from the current MSP looking for the
+ *          first surviving PAINT_VALUE; the offset of that word from
+ *          _estack is the deepest the stack has ever grown.
+ * \note    If the entire painted region has been overwritten (i.e., the
+ *          stack overflowed into the gap below it at some point) the
+ *          loop runs to completion without finding a paint marker and the
+ *          returned value will be the full reserved stack size or larger.
+ *          Treat that as "stack overflow occurred" rather than a literal
+ *          high-water mark.
+ * \return  Used stack size in bytes (high-water mark since paint_stack()).
  */
 uint32_t get_used_stack(void)
 {
-    // Prevent interrupts during this section
-    uint32_t primask_state = __get_PRIMASK();
+    // Prevent interrupts during this section so an ISR's transient pushes
+    // below MSP don't show up as "used stack".
+    const uint32_t primask_state = __get_PRIMASK();
     __disable_irq();
 
-    // Instead of the top of the stack, use the start from the current stack pointer.
-    uint32_t* application = (uint32_t*)__get_MSP();
+    uint32_t* sp = (uint32_t*)__get_MSP();
 
-    // Bottom of the stack is the end of the bss section (also: the start of the heap).
-    const uint32_t* bottom_of_stack = (uint32_t*)&_ebss;
+    // Bottom of the actual stack region (see paint_stack() for rationale).
+    const uint32_t* stack_bottom = (const uint32_t*)((uint32_t)&_estack - (uint32_t)&_Min_Stack_Size);
+    const uint32_t words_to_search = sp - stack_bottom;
 
-    // Find out what needs to be searched - in sizeof(uint32_t)
-    uint32_t area_to_search = (application - bottom_of_stack);
-
-    // Search from top (current stack pointer) to bottom, upto the bss section.
-    for (uint32_t i = 0; i < area_to_search; i++)
+    // Search from current SP downward, stop at the first surviving paint.
+    for (uint32_t i = 0; i < words_to_search; i++)
     {
-        if (*application == PAINT_VALUE)
+        if (*sp == PAINT_VALUE)
         {
             break;
         }
-        application--;
+        sp--;
     }
 
-    // Restore interrupts
-    if (!primask_state) { __enable_irq(); }
+    // Restore interrupts to whatever they were before.
+    __set_PRIMASK(primask_state);
 
-    total_stack_size = (area_to_search * 4);                            // * 4: uint32_t to byte
-    used_stack_size  = (uint32_t)&_estack - (uint32_t)application - 4;  // - 4: stopped on still painted value, top of the stack is the _estack address.
-
-    return used_stack_size;
+    // sp now points at the first painted word; the highest used word is
+    // one above it, so subtract sizeof(uint32_t) to get the byte offset
+    // from _estack of the deepest stack-touched word.
+    return (uint32_t)&_estack - (uint32_t)sp - 4;
 }

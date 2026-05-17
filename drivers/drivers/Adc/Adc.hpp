@@ -145,12 +145,13 @@ private:
     bool              mInitialized;
 
     void SetInstance(const ADCInstance& instance);
-    void CheckAndEnableAHB2PeripheralClock(const ADCInstance& instance);
-    void CheckAndDisableAHB2PeripheralClock(const ADCInstance& instance);
+    void CheckAndEnableAPB2PeripheralClock(const ADCInstance& instance);
+    void CheckAndDisableAPB2PeripheralClock(const ADCInstance& instance);
     uint32_t GetChannel(const Channel& channel);
     uint32_t GetResolution(const Resolution& resolution);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
-    void CallbackIRQ() const;
+    void CallbackIRQ();
+    void DisconnectCallbacks();
 };
 
 

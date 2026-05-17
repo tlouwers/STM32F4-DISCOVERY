@@ -10,7 +10,7 @@
  *
  * \brief   Driver for the LIS3DSH accelerometer.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/components/LIS3DSH
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1
@@ -103,12 +103,12 @@ static constexpr uint8_t OUTS2       = 0x7F;
 /* Constants                                                            */
 /************************************************************************/
 static constexpr uint8_t IDENTIFIER       = 0x3F;
-static constexpr uint8_t READ_MASK        = 0x80;
+static constexpr uint8_t READ_MASK        = 0x80;                               // RW bit: 1 = read
+static constexpr uint8_t MULTI_BYTE_MASK  = 0x40;                               // MS bit: 1 = auto-increment register address (datasheet §5.2.1)
 static constexpr uint8_t SAMPLE_LENGTH    = 0x06;                               // X,Y,Z * int16_t
 static constexpr uint8_t WATERMARK_LEVEL  = 0x19;                               // 25 samples X,Y,Z default - fifo size max = 32
 static constexpr uint8_t READ_BUFFER_SIZE = SAMPLE_LENGTH * WATERMARK_LEVEL;    // X,Y,Z * int16_t * 25 samples (in fifo)
 static constexpr uint8_t AXES_ENABLED     = 0x07;
-static constexpr uint8_t AXES_DISABLED    = 0x00;
 static constexpr uint8_t FIFO_EMPTY       = 0x20;
 
 
@@ -132,10 +132,7 @@ LIS3DSH::LIS3DSH(ISPI& spi, PinIdPort chipSelect, PinIdPort motionInt1, PinIdPor
     mReadBuffer(nullptr),
     mODR(0),
     mUseHardwareFifo(false)
-{
-    mMotionInt1.Interrupt(Trigger::RISING, [this]() { this-> CallbackInt1(); }, false );
-    mMotionInt2.Interrupt(Trigger::RISING, [this]() { this-> CallbackInt2(); }, false );
-}
+{ }
 
 /**
  * \brief   Destructor, configures pins to HIGHZ, deletes read buffer.
@@ -168,7 +165,13 @@ bool LIS3DSH::Init(const IConfig& config)
             result &= ClearFifo();
             EXPECT(result);
 
-            mInitialized = true;
+            if (result)
+            {
+                result &= mMotionInt1.Interrupt(Trigger::RISING, [this]() { this->CallbackInt1(); }, false);
+                EXPECT(result);
+
+                if (result) { mInitialized = true; }
+            }
         }
     }
 
@@ -195,8 +198,6 @@ bool LIS3DSH::Sleep()
     ASSERT(result);
 
     result &= mMotionInt1.InterruptRemove();
-    ASSERT(result);
-    result &= mMotionInt2.InterruptRemove();
     ASSERT(result);
 
     mChipSelect.Configure(PullUpDown::HIGHZ);
@@ -233,7 +234,6 @@ bool LIS3DSH::Enable()
                 val = (val | FMODE);    // Now apply a mode again to start acquisition
 
                 mMotionInt1.InterruptEnable();
-                mMotionInt2.InterruptEnable();
 
                 return WriteRegister(FIFO_CTRL, &val, 1);
             }
@@ -241,7 +241,6 @@ bool LIS3DSH::Enable()
         else
         {
             mMotionInt1.InterruptEnable();
-            mMotionInt2.InterruptEnable();
             return true;
         }
     }
@@ -265,7 +264,6 @@ bool LIS3DSH::Disable()
                 val = val & 0x1F;       // Clear mode: sets it to 'bypass'
 
                 mMotionInt1.InterruptDisable();
-                mMotionInt2.InterruptDisable();
 
                 return WriteRegister(FIFO_CTRL, &val, 1);
             }
@@ -273,7 +271,6 @@ bool LIS3DSH::Disable()
         else
         {
             mMotionInt1.InterruptDisable();
-            mMotionInt2.InterruptDisable();
             return true;
         }
     }
@@ -551,7 +548,7 @@ uint8_t LIS3DSH::GetFifoModeAsFMODE(FifoMode fifoMode)
         case FifoMode::Stream:           fmodeVal = 0x40; break;
         case FifoMode::StreamThenFifo:   fmodeVal = 0x60; break;
         case FifoMode::BypassThenStream: fmodeVal = 0x80; break;
-        case FifoMode::BypassThenFifo:   fmodeVal = 0xE0; break;
+        case FifoMode::BypassThenFifo:   fmodeVal = 0xC0; break;
     }
 
     return fmodeVal;
@@ -591,6 +588,8 @@ bool LIS3DSH::WriteRegister(uint8_t reg, const uint8_t* src, uint16_t length)
     EXPECT(src);
     EXPECT(length > 0);
 
+    if (length > 1) { reg |= MULTI_BYTE_MASK; }
+
     mChipSelect.Set(Level::LOW);
     bool result = mSpi.WriteBlocking(&reg, 1);
     EXPECT(result);
@@ -617,7 +616,8 @@ bool LIS3DSH::ReadRegister(uint8_t reg, uint8_t* dest, uint16_t length)
     EXPECT(dest);
     EXPECT(length > 0);
 
-    reg = reg | READ_MASK;
+    reg |= READ_MASK;
+    if (length > 1) { reg |= MULTI_BYTE_MASK; }
 
     mChipSelect.Set(Level::LOW);
     bool result = mSpi.WriteBlocking(&reg, 1);
@@ -642,7 +642,7 @@ void LIS3DSH::CallbackInt1()
 
     if ((mReadBuffer != nullptr) && (bufferSize > 0))
     {
-        uint8_t reg = (OUT_X_L | READ_MASK);
+        uint8_t reg = OUT_X_L | READ_MASK | MULTI_BYTE_MASK;
 
         mChipSelect.Set(Level::LOW);
         bool result = mSpi.WriteBlocking(&reg, 1);
@@ -652,17 +652,11 @@ void LIS3DSH::CallbackInt1()
             result &= mSpi.ReadDMA(mReadBuffer, bufferSize, [this]() { this->ReadAxesCompleted(); } );
             EXPECT(result);
         }
-        else
+        if (!result)
         {
+            // ReadAxesCompleted raises CS on the success path; raise it here when
+            // the address write or the DMA start failed so the bus is not left low.
             mChipSelect.Set(Level::HIGH);
         }
     }
-}
-
-/**
- * \brief   INT2 pin interrupt handler.
- */
-void LIS3DSH::CallbackInt2()
-{
-    __NOP();    // Not used yet, enable in CTRL_REG3 with bit INT2_EN.
 }

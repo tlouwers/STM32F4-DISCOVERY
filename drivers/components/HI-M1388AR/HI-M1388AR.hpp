@@ -11,7 +11,7 @@
  *
  * \brief   Driver for the HI-M1388AR 8x8 LED matrix display.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/HI-M1388AR
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/components/HI-M1388AR
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -57,9 +57,9 @@ public:
     HI_M1388AR(ISPI& spi, PinIdPort chipSelect);
     virtual ~HI_M1388AR();
 
-    bool Init(const IConfig& config);
-    bool IsInit() const;
-    bool Sleep();
+    bool Init(const IConfig& config) override;
+    bool IsInit() const override;
+    bool Sleep() override;
 
     bool ClearDisplay();
     bool WriteDigits(const uint8_t* src);
@@ -70,6 +70,7 @@ private:
     bool  mInitialized;
 
     bool Configure(const IConfig& config);
+    bool ClearDigitRegisters();
 
     bool WriteRegister(uint8_t reg, uint8_t value);
 };

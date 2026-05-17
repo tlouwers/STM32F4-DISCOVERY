@@ -11,7 +11,7 @@
  *
  * \brief   I2C master peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/drivers/I2C
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/I2C
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1
@@ -62,26 +62,38 @@ static void CallbackError(const I2CCallbacks& i2c_callbacks)
 }
 
 /**
- * \brief   Call the callbackTx, if configured.
+ * \brief   Fire and clear the callbackTx slot.
  * \param   i2c_callbacks   Structure containing the callbackTx to call.
+ * \param   success         True if the transfer completed successfully,
+ *                          false on bus error or aborted transfer.
+ * \details The slot is cleared before invocation so the user handler is
+ *          guaranteed to fire at most once per transfer, even if multiple
+ *          HAL paths converge (e.g. ErrorCallback after a partial DMA).
  */
-static void CallbackTxDone(const I2CCallbacks& i2c_callbacks)
+static void CallbackTxDone(I2CCallbacks& i2c_callbacks, bool success)
 {
     if (i2c_callbacks.callbackTx)
     {
-        i2c_callbacks.callbackTx();
+        std::function<void(bool)> handler;
+        handler.swap(i2c_callbacks.callbackTx);
+        handler(success);
     }
 }
 
 /**
- * \brief   Call the callbackRx, if configured.
+ * \brief   Fire and clear the callbackRx slot.
  * \param   i2c_callbacks   Structure containing the callbackRx to call.
+ * \param   success         True if the transfer completed successfully,
+ *                          false on bus error or aborted transfer.
+ * \details See CallbackTxDone for the once-per-transfer guarantee.
  */
-static void CallbackRxDone(const I2CCallbacks& i2c_callbacks)
+static void CallbackRxDone(I2CCallbacks& i2c_callbacks, bool success)
 {
     if (i2c_callbacks.callbackRx)
     {
-        i2c_callbacks.callbackRx();
+        std::function<void(bool)> handler;
+        handler.swap(i2c_callbacks.callbackRx);
+        handler(success);
     }
 }
 
@@ -99,17 +111,18 @@ I2C::I2C(const I2CInstance& instance) :
     mInitialized(false)
 {
     SetInstance(instance);
-
-    mI2CCallbacks.callbackEvent = [this]() { this->CallbackEvent(); };
-    mI2CCallbacks.callbackError = [this]() { this->CallbackError(); };
 }
 
 /**
- * \brief   Destructor, disabled interrupts.
+ * \brief   Destructor, disables interrupts.
+ * \note    DisconnectCallbacks is also invoked unconditionally here as a
+ *          safety net so a stale lambda capturing this object's `this`
+ *          cannot be dispatched after destruction.
  */
 I2C::~I2C()
 {
     Sleep();
+    DisconnectCallbacks();
 }
 
 /**
@@ -119,7 +132,7 @@ I2C::~I2C()
  */
 bool I2C::Init(const IConfig& config)
 {
-    CheckAndEnableAHB1PeripheralClock(mInstance);
+    CheckAndEnablePeripheralClock(mInstance);
 
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
@@ -139,6 +152,9 @@ bool I2C::Init(const IConfig& config)
 
         // Configure NVIC to generate interrupt on Error
         SetIRQn(GetIRQn(mInstance, IRQType::Error), cfg.mInterruptPriority, 0);
+
+        mI2CCallbacks.callbackEvent = [this]() { this->CallbackEvent(); };
+        mI2CCallbacks.callbackError = [this]() { this->CallbackError(); };
 
         mInitialized = true;
         return true;
@@ -165,18 +181,17 @@ bool I2C::Sleep()
     // For Int. and DMA started transfers. Not handling result as to reach DeInit().
     HAL_I2C_Master_Abort_IT(&mHandle, mHandle.Devaddress);
 
+    if (HAL_I2C_DeInit(&mHandle) != HAL_OK) { return false; }
+
     mInitialized = false;
 
-    // Disable interrupts
     HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::Event) );
     HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::Error) );
 
-    if (HAL_I2C_DeInit(&mHandle) == HAL_OK)
-    {
-        CheckAndDisableAHB1PeripheralClock(mInstance);
-        return true;
-    }
-    return false;
+    DisconnectCallbacks();
+
+    CheckAndDisablePeripheralClock(mInstance);
+    return true;
 }
 
 /**
@@ -219,7 +234,7 @@ DMA_HandleTypeDef*& I2C::GetDmaRxHandle()
  * \returns True if the transaction could be started, else false. Returns false if no DMA is setup for Tx.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool I2C::WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler)
+bool I2C::WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler)
 {
     EXPECT(src);
     EXPECT(length > 0);
@@ -245,7 +260,7 @@ bool I2C::WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std
  *          if no DMA is setup for Rx.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
+bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler)
 {
     EXPECT(dest);
     EXPECT(length > 0);
@@ -270,7 +285,7 @@ bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::func
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if src is nullptr or length invalid.
  */
-bool I2C::WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler)
+bool I2C::WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler)
 {
     EXPECT(src);
     EXPECT(length > 0);
@@ -294,7 +309,7 @@ bool I2C::WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, con
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if dest is nullptr or length invalid.
  */
-bool I2C::ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
+bool I2C::ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler)
 {
     EXPECT(dest);
     EXPECT(length > 0);
@@ -372,35 +387,35 @@ void I2C::SetInstance(const I2CInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the I2C
- *          instance is enabled, if not enable it.
+ * \brief   Enable the peripheral clock for the given I2C instance.
  * \param   instance    The I2C instance to enable the clock for.
+ * \note    I2C1/2/3 all sit on APB1; the underlying __HAL_RCC_I2Cx_CLK_ENABLE
+ *          macros target the correct bus.
  * \note    Asserts if not a valid I2C instance provided.
  */
-void I2C::CheckAndEnableAHB1PeripheralClock(const I2CInstance& instance)
+void I2C::CheckAndEnablePeripheralClock(const I2CInstance& instance)
 {
     switch (instance)
     {
-        case I2CInstance::I2C_1: if (__HAL_RCC_I2C1_IS_CLK_DISABLED()) { __HAL_RCC_I2C1_CLK_ENABLE(); } break;
-        case I2CInstance::I2C_2: if (__HAL_RCC_I2C2_IS_CLK_DISABLED()) { __HAL_RCC_I2C2_CLK_ENABLE(); } break;
-        case I2CInstance::I2C_3: if (__HAL_RCC_I2C3_IS_CLK_DISABLED()) { __HAL_RCC_I2C3_CLK_ENABLE(); } break;
+        case I2CInstance::I2C_1: __HAL_RCC_I2C1_CLK_ENABLE(); break;
+        case I2CInstance::I2C_2: __HAL_RCC_I2C2_CLK_ENABLE(); break;
+        case I2CInstance::I2C_3: __HAL_RCC_I2C3_CLK_ENABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the I2C
- *          instance is enabled, if so disable it.
+ * \brief   Disable the peripheral clock for the given I2C instance.
  * \param   instance    The I2C instance to disable the clock for.
  * \note    Asserts if not a valid I2C instance provided.
  */
-void I2C::CheckAndDisableAHB1PeripheralClock(const I2CInstance& instance)
+void I2C::CheckAndDisablePeripheralClock(const I2CInstance& instance)
 {
     switch (instance)
     {
-        case I2CInstance::I2C_1: if (__HAL_RCC_I2C1_IS_CLK_ENABLED()) { __HAL_RCC_I2C1_CLK_DISABLE(); } break;
-        case I2CInstance::I2C_2: if (__HAL_RCC_I2C2_IS_CLK_ENABLED()) { __HAL_RCC_I2C2_CLK_DISABLE(); } break;
-        case I2CInstance::I2C_3: if (__HAL_RCC_I2C3_IS_CLK_ENABLED()) { __HAL_RCC_I2C3_CLK_DISABLE(); } break;
+        case I2CInstance::I2C_1: __HAL_RCC_I2C1_CLK_DISABLE(); break;
+        case I2CInstance::I2C_2: __HAL_RCC_I2C2_CLK_DISABLE(); break;
+        case I2CInstance::I2C_3: __HAL_RCC_I2C3_CLK_DISABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
@@ -468,40 +483,96 @@ void I2C::CallbackError()
     HAL_I2C_ER_IRQHandler(&mHandle);
 }
 
+/**
+ * \brief   Clear every callback slot for this instance.
+ * \details Called from Sleep() and from ~I2C() so a stale lambda capturing
+ *          this object's `this` cannot be dispatched after the object goes
+ *          away. Also clears any in-flight Tx/Rx user handler.
+ */
+void I2C::DisconnectCallbacks()
+{
+    mI2CCallbacks.callbackEvent = nullptr;
+    mI2CCallbacks.callbackError = nullptr;
+    mI2CCallbacks.callbackTx    = nullptr;
+    mI2CCallbacks.callbackRx    = nullptr;
+}
+
 
 /************************************************************************/
 /* Interrupts                                                           */
 /************************************************************************/
 /**
- * \brief   ISR: handler to dispatch the I2C TX completed interrupt into a TX
- *          callback.
+ * \brief   ISR: dispatch the I2C TX completed interrupt to the user handler.
  * \param   handle  The I2C handle from which the TX ISR came.
+ * \details Checks ErrorCode defensively: HAL normally fires this callback
+ *          only on success and routes failures to HAL_I2C_ErrorCallback,
+ *          but we forward the actual outcome regardless so the contract
+ *          documented on II2C holds even if HAL behaviour drifts.
  */
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef* handle)
 {
     ASSERT(handle);
 
-    // ToDo: check for error
+    const bool success = (handle->ErrorCode == HAL_I2C_ERROR_NONE);
 
-    if (handle->Instance == I2C1) { CallbackTxDone(i2c1_callbacks); }
-    if (handle->Instance == I2C2) { CallbackTxDone(i2c2_callbacks); }
-    if (handle->Instance == I2C3) { CallbackTxDone(i2c3_callbacks); }
+    if      (handle->Instance == I2C1) { CallbackTxDone(i2c1_callbacks, success); }
+    else if (handle->Instance == I2C2) { CallbackTxDone(i2c2_callbacks, success); }
+    else if (handle->Instance == I2C3) { CallbackTxDone(i2c3_callbacks, success); }
 }
 
 /**
- * \brief   ISR: handler to dispatch the I2C RX completed interrupt into a RX
- *          callback.
+ * \brief   ISR: dispatch the I2C RX completed interrupt to the user handler.
  * \param   handle  The I2C handle from which the RX ISR came.
+ * \details See HAL_I2C_MasterTxCpltCallback for the ErrorCode rationale.
  */
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef* handle)
 {
     ASSERT(handle);
 
-    // ToDo: check for error
+    const bool success = (handle->ErrorCode == HAL_I2C_ERROR_NONE);
 
-    if (handle->Instance == I2C1) { CallbackRxDone(i2c1_callbacks); }
-    if (handle->Instance == I2C2) { CallbackRxDone(i2c2_callbacks); }
-    if (handle->Instance == I2C3) { CallbackRxDone(i2c3_callbacks); }
+    if      (handle->Instance == I2C1) { CallbackRxDone(i2c1_callbacks, success); }
+    else if (handle->Instance == I2C2) { CallbackRxDone(i2c2_callbacks, success); }
+    else if (handle->Instance == I2C3) { CallbackRxDone(i2c3_callbacks, success); }
+}
+
+/**
+ * \brief   ISR: dispatch a bus-error completion to whichever async handler
+ *          is in flight, with success=false.
+ * \param   handle  The I2C handle from which the error ISR came.
+ * \details HAL routes failed transfers here instead of the success
+ *          callbacks, so without this override the user's handler would
+ *          never fire after a NACK/AF/BERR and the caller would deadlock
+ *          waiting on it. In normal sequential flow only one of the Tx/Rx
+ *          slots is non-null at a time (each is cleared after firing), so
+ *          we dispatch both unconditionally.
+ */
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef* handle)
+{
+    ASSERT(handle);
+
+    if      (handle->Instance == I2C1) { CallbackTxDone(i2c1_callbacks, false); CallbackRxDone(i2c1_callbacks, false); }
+    else if (handle->Instance == I2C2) { CallbackTxDone(i2c2_callbacks, false); CallbackRxDone(i2c2_callbacks, false); }
+    else if (handle->Instance == I2C3) { CallbackTxDone(i2c3_callbacks, false); CallbackRxDone(i2c3_callbacks, false); }
+}
+
+/**
+ * \brief   ISR: dispatch an aborted transfer to whichever async handler
+ *          is in flight, with success=false.
+ * \param   handle  The I2C handle from which the abort completion came.
+ * \details Sleep() calls HAL_I2C_Master_Abort_IT, which fires this
+ *          callback rather than the Cplt or Error paths. The handler
+ *          fires with success=false so the caller is not stranded; if
+ *          DisconnectCallbacks has already cleared the slots (the abort
+ *          completes after Sleep tears down) the dispatch is a no-op.
+ */
+void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef* handle)
+{
+    ASSERT(handle);
+
+    if      (handle->Instance == I2C1) { CallbackTxDone(i2c1_callbacks, false); CallbackRxDone(i2c1_callbacks, false); }
+    else if (handle->Instance == I2C2) { CallbackTxDone(i2c2_callbacks, false); CallbackRxDone(i2c2_callbacks, false); }
+    else if (handle->Instance == I2C3) { CallbackTxDone(i2c3_callbacks, false); CallbackRxDone(i2c3_callbacks, false); }
 }
 
 /**
@@ -529,7 +600,7 @@ extern "C" void I2C2_EV_IRQHandler(void)
 }
 
 /**
- * \brief   ISR: route I2C3 Error interrupts to 'CallbackError'.
+ * \brief   ISR: route I2C2 Error interrupts to 'CallbackError'.
  */
 extern "C" void I2C2_ER_IRQHandler(void)
 {

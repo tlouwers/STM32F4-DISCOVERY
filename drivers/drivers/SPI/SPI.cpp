@@ -13,7 +13,7 @@
  *
  * \note    The ChipSelect must be toggled outside this driver.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/SPI
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/SPI
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1
@@ -77,16 +77,18 @@ SPI::SPI(const SPIInstance& instance) :
     mInitialized(false)
 {
     SetInstance(instance);
-
-    mSPICallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
 }
 
 /**
- * \brief   Destructor, disabled interrupts.
+ * \brief   Destructor, disables interrupts.
+ * \note    DisconnectCallbacks is also invoked unconditionally here as a
+ *          safety net so a stale lambda capturing this object's `this`
+ *          cannot be dispatched after destruction.
  */
 SPI::~SPI()
 {
     Sleep();
+    DisconnectCallbacks();
 }
 
 /**
@@ -96,12 +98,12 @@ SPI::~SPI()
  */
 bool SPI::Init(const IConfig& config)
 {
-    CheckAndEnableAHBPeripheralClock(mInstance);
+    CheckAndEnablePeripheralClock(mInstance);
 
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
-    if (cfg.mBusSpeed < 1) { return false; }                         // If BusSpeed too low then return.
-    if (cfg.mBusSpeed > HAL_RCC_GetPCLK1Freq()) { return false; }    // If BusSpeed higher than peripheral clock then return.
+    if (cfg.mBusSpeed < 1) { return false; }                            // If BusSpeed too low then return.
+    if (cfg.mBusSpeed > GetPeripheralClockFreq()) { return false; }     // If BusSpeed higher than peripheral clock then return.
 
     mHandle.Init.Mode              = SPI_MODE_MASTER;
     mHandle.Init.Direction         = SPI_DIRECTION_2LINES;
@@ -119,6 +121,8 @@ bool SPI::Init(const IConfig& config)
     {
         // Configure NVIC to generate interrupt
         SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
+
+        mSPICallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
 
         mInitialized = true;
         return true;
@@ -145,14 +149,16 @@ bool SPI::Sleep()
     // For Int. and DMA started transfers. Not handling result as to reach DeInit().
     HAL_SPI_Abort(&mHandle);
 
+    if (HAL_SPI_DeInit(&mHandle) != HAL_OK) { return false; }
+
     mInitialized = false;
 
-    if (HAL_SPI_DeInit(&mHandle) == HAL_OK)
-    {
-        CheckAndDisableAHBPeripheralClock(mInstance);
-        return true;
-    }
-    return false;
+    HAL_NVIC_DisableIRQ(GetIRQn(mInstance));
+
+    DisconnectCallbacks();
+
+    CheckAndDisablePeripheralClock(mInstance);
+    return true;
 }
 
 /**
@@ -220,7 +226,7 @@ bool SPI::WriteDMA(const uint8_t* src, uint16_t length, const std::function<void
  *          if no DMA is setup for Rx.
  * \note    Asserts if src or dest is nullptr or length invalid.
  * \note    Write and Read happen at the same time, hence both buffers are the
- *          same sime.
+ *          same size.
  */
 bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
 {
@@ -298,7 +304,7 @@ bool SPI::WriteInterrupt(const uint8_t* src, uint16_t length, const std::functio
  * \returns True if the transaction could be started, else false.
  * \note    Asserts if src or dest is nullptr or length invalid.
  * \note    Write and Read happen at the same time, hence both buffers are the
- *          same sime.
+ *          same size.
  */
 bool SPI::WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length, const std::function<void()>& handler)
 {
@@ -368,7 +374,7 @@ bool SPI::WriteBlocking(const uint8_t* src, uint16_t length)
  * \returns True if the read was successful, else false.
  * \note    Asserts if src or dest is nullptr or length invalid.
  * \note    Write and Read happen at the same time, hence both buffers are the
- *          same sime.
+ *          same size.
  */
 bool SPI::WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length)
 {
@@ -426,37 +432,53 @@ void SPI::SetInstance(const SPIInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB peripheral clock for the SPI
- *          instance is enabled, if not enable it.
+ * \brief   Enable the peripheral clock for the given SPI instance.
  * \param   instance    The SPI instance to enable the clock for.
+ * \note    SPI1 sits on APB2, SPI2/3 sit on APB1; the underlying
+ *          __HAL_RCC_SPIx_CLK_ENABLE macros target the correct bus.
  * \note    Asserts if not a valid SPI instance provided.
  */
-void SPI::CheckAndEnableAHBPeripheralClock(const SPIInstance& instance)
+void SPI::CheckAndEnablePeripheralClock(const SPIInstance& instance)
 {
     switch (instance)
     {
-        case SPIInstance::SPI_1: if (__HAL_RCC_SPI1_IS_CLK_DISABLED()) { __HAL_RCC_SPI1_CLK_ENABLE(); } break;
-        case SPIInstance::SPI_2: if (__HAL_RCC_SPI2_IS_CLK_DISABLED()) { __HAL_RCC_SPI2_CLK_ENABLE(); } break;
-        case SPIInstance::SPI_3: if (__HAL_RCC_SPI3_IS_CLK_DISABLED()) { __HAL_RCC_SPI3_CLK_ENABLE(); } break;
+        case SPIInstance::SPI_1: __HAL_RCC_SPI1_CLK_ENABLE(); break;
+        case SPIInstance::SPI_2: __HAL_RCC_SPI2_CLK_ENABLE(); break;
+        case SPIInstance::SPI_3: __HAL_RCC_SPI3_CLK_ENABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
 /**
- * \brief   Check if the appropriate AHB peripheral clock for the SPI
- *          instance is enabled, if so disable it.
+ * \brief   Disable the peripheral clock for the given SPI instance.
  * \param   instance    The SPI instance to disable the clock for.
+ * \note    SPI1 sits on APB2, SPI2/3 sit on APB1; the underlying
+ *          __HAL_RCC_SPIx_CLK_DISABLE macros target the correct bus.
  * \note    Asserts if not a valid SPI instance provided.
  */
-void SPI::CheckAndDisableAHBPeripheralClock(const SPIInstance& instance)
+void SPI::CheckAndDisablePeripheralClock(const SPIInstance& instance)
 {
     switch (instance)
     {
-        case SPIInstance::SPI_1: if (__HAL_RCC_SPI1_IS_CLK_ENABLED()) { __HAL_RCC_SPI1_CLK_DISABLE(); } break;
-        case SPIInstance::SPI_2: if (__HAL_RCC_SPI2_IS_CLK_ENABLED()) { __HAL_RCC_SPI2_CLK_DISABLE(); } break;
-        case SPIInstance::SPI_3: if (__HAL_RCC_SPI3_IS_CLK_ENABLED()) { __HAL_RCC_SPI3_CLK_DISABLE(); } break;
+        case SPIInstance::SPI_1: __HAL_RCC_SPI1_CLK_DISABLE(); break;
+        case SPIInstance::SPI_2: __HAL_RCC_SPI2_CLK_DISABLE(); break;
+        case SPIInstance::SPI_3: __HAL_RCC_SPI3_CLK_DISABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
+}
+
+/**
+ * \brief   Get the peripheral clock frequency for this SPI instance.
+ * \returns PCLK2 frequency for SPI1, PCLK1 frequency for SPI2/3.
+ * \note    SPI1 sits on APB2 (PCLK2), SPI2/3 sit on APB1 (PCLK1). At
+ *          168 MHz with the drafted PLL config the two buses run at
+ *          84 MHz and 42 MHz respectively, so picking the wrong PCLK
+ *          source under-counts SPI1's clock by 2x and clocks the bus
+ *          twice as fast as the caller asked for.
+ */
+uint32_t SPI::GetPeripheralClockFreq() const
+{
+    return (mInstance == SPIInstance::SPI_1) ? HAL_RCC_GetPCLK2Freq() : HAL_RCC_GetPCLK1Freq();
 }
 
 /**
@@ -504,12 +526,15 @@ uint32_t SPI::GetPhase(const Mode& mode)
 /**
  * \brief   Calculate the SPI bus prescale value.
  * \param   busSpeed    The desired bus speed to use.
- * \returns Prescaler which takes the peripheral clock into account and tries
- *          to get the closest prescaler value to meet that speed.
+ * \returns Prescaler which takes the per-instance peripheral clock (APB2
+ *          for SPI1, APB1 for SPI2/3) into account and tries to get the
+ *          closest prescaler value at or below the requested speed.
+ *          Falls through to SPI_BAUDRATEPRESCALER_2 (the fastest valid
+ *          value) when the request exceeds PCLK/2.
  */
 uint32_t SPI::CalculatePrescaler(uint32_t busSpeed)
 {
-    uint32_t prescaler = HAL_RCC_GetPCLK1Freq() / busSpeed;
+    uint32_t prescaler = GetPeripheralClockFreq() / busSpeed;
          if (prescaler >= 256) { prescaler = SPI_BAUDRATEPRESCALER_256; }
     else if (prescaler >= 128) { prescaler = SPI_BAUDRATEPRESCALER_128; }
     else if (prescaler >=  64) { prescaler = SPI_BAUDRATEPRESCALER_64;  }
@@ -517,8 +542,7 @@ uint32_t SPI::CalculatePrescaler(uint32_t busSpeed)
     else if (prescaler >=  16) { prescaler = SPI_BAUDRATEPRESCALER_16;  }
     else if (prescaler >=   8) { prescaler = SPI_BAUDRATEPRESCALER_8;   }
     else if (prescaler >=   4) { prescaler = SPI_BAUDRATEPRESCALER_4;   }
-    else if (prescaler >=   2) { prescaler = SPI_BAUDRATEPRESCALER_2;   }
-    else                       { prescaler = 1;                         }
+    else                       { prescaler = SPI_BAUDRATEPRESCALER_2;   }
 
     return prescaler;
 }
@@ -564,6 +588,18 @@ void SPI::CallbackIRQ()
     HAL_SPI_IRQHandler(&mHandle);
 }
 
+/**
+ * \brief   Drop both callback std::functions for this SPI instance.
+ * \note    Called from Sleep() and as a destructor safety net so no stale
+ *          lambda capturing `this` outlives the object on the dedicated
+ *          SPIx_IRQn line.
+ */
+void SPI::DisconnectCallbacks()
+{
+    mSPICallbacks.callbackIRQ  = nullptr;
+    mSPICallbacks.callbackTxRx = nullptr;
+}
+
 
 /************************************************************************/
 /* Interrupts                                                           */
@@ -579,9 +615,9 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* handle)
 
     // ToDo: check for error
 
-    if (handle->Instance == SPI1) { CallbackTxRxDone(spi1_callbacks); }
-    if (handle->Instance == SPI2) { CallbackTxRxDone(spi2_callbacks); }
-    if (handle->Instance == SPI3) { CallbackTxRxDone(spi3_callbacks); }
+    if      (handle->Instance == SPI1) { CallbackTxRxDone(spi1_callbacks); }
+    else if (handle->Instance == SPI2) { CallbackTxRxDone(spi2_callbacks); }
+    else if (handle->Instance == SPI3) { CallbackTxRxDone(spi3_callbacks); }
 }
 
 /**
@@ -595,9 +631,28 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef* handle)
 
     // ToDo: check for error
 
-    if (handle->Instance == SPI1) { CallbackTxRxDone(spi1_callbacks); }
-    if (handle->Instance == SPI2) { CallbackTxRxDone(spi2_callbacks); }
-    if (handle->Instance == SPI3) { CallbackTxRxDone(spi3_callbacks); }
+    if      (handle->Instance == SPI1) { CallbackTxRxDone(spi1_callbacks); }
+    else if (handle->Instance == SPI2) { CallbackTxRxDone(spi2_callbacks); }
+    else if (handle->Instance == SPI3) { CallbackTxRxDone(spi3_callbacks); }
+}
+
+/**
+ * \brief   ISR: handler to dispatch the SPI TX/RX completed interrupt into the
+ *          shared callback.
+ * \param   handle  The SPI handle from which the TxRx ISR came.
+ * \note    HAL fires this callback (not TxCplt or RxCplt) on completion of
+ *          HAL_SPI_TransmitReceive_DMA / _IT. Without this override the
+ *          WriteRead* paths' user handler would never run.
+ */
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* handle)
+{
+    ASSERT(handle);
+
+    // ToDo: check for error
+
+    if      (handle->Instance == SPI1) { CallbackTxRxDone(spi1_callbacks); }
+    else if (handle->Instance == SPI2) { CallbackTxRxDone(spi2_callbacks); }
+    else if (handle->Instance == SPI3) { CallbackTxRxDone(spi3_callbacks); }
 }
 
 /**

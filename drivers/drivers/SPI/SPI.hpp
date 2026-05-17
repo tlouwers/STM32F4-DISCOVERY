@@ -13,7 +13,7 @@
  *
  * \note    The ChipSelect must be toggled outside this driver.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/SPI
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/SPI
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1
@@ -132,14 +132,16 @@ private:
     bool              mInitialized;
 
     void SetInstance(const SPIInstance& instance);
-    void CheckAndEnableAHBPeripheralClock(const SPIInstance& instance);
-    void CheckAndDisableAHBPeripheralClock(const SPIInstance& instance);
+    void CheckAndEnablePeripheralClock(const SPIInstance& instance);
+    void CheckAndDisablePeripheralClock(const SPIInstance& instance);
+    uint32_t GetPeripheralClockFreq() const;
     uint32_t GetPolarity(const Mode& mode);
     uint32_t GetPhase(const Mode& mode);
     uint32_t CalculatePrescaler(uint32_t busSpeed);
     IRQn_Type GetIRQn(const SPIInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
+    void DisconnectCallbacks();
 };
 
 #endif  // SPI_HPP_

@@ -10,7 +10,7 @@
  *
  * \brief   USART peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Usart
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/USART
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.2
@@ -88,16 +88,19 @@ USART::USART(const UsartInstance& instance) :
     mInitialized(false)
 {
     SetInstance(instance);
-
-    mUsartCallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
 }
 
 /**
- * \brief   Destructor, disabled interrupts.
+ * \brief   Destructor, disables interrupts.
+ * \note    DisconnectCallbacks is also invoked unconditionally here as a
+ *          safety net so a stale lambda capturing this object's `this`
+ *          cannot be dispatched by a residual or re-pending interrupt
+ *          after destruction.
  */
 USART::~USART()
 {
     Sleep();
+    DisconnectCallbacks();
 }
 
 /**
@@ -107,7 +110,7 @@ USART::~USART()
  */
 bool USART::Init(const IConfig& config)
 {
-    CheckAndEnableAHB1PeripheralClock(mInstance);
+    CheckAndEnablePeripheralClock(mInstance);
 
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
@@ -125,6 +128,8 @@ bool USART::Init(const IConfig& config)
         SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
         __HAL_UART_CLEAR_FLAG(&mHandle, UART_FLAG_IDLE);
+
+        mUsartCallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
 
         mInitialized = true;
         return true;
@@ -151,14 +156,16 @@ bool USART::Sleep()
     // For Int. and DMA started transfers. Not handling result as to reach DeInit().
     HAL_UART_Abort(&mHandle);
 
+    if (HAL_UART_DeInit(&mHandle) != HAL_OK) { return false; }
+
     mInitialized = false;
 
-    if (HAL_UART_DeInit(&mHandle) == HAL_OK)
-    {
-        CheckAndDisableAHB1PeripheralClock(mInstance);
-        return true;
-    }
-    return false;
+    HAL_NVIC_DisableIRQ(GetIRQn(mInstance));
+
+    DisconnectCallbacks();
+
+    CheckAndDisablePeripheralClock(mInstance);
+    return true;
 }
 
 /**
@@ -357,37 +364,39 @@ void USART::SetInstance(const UsartInstance& instance)
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the USART
- *          instance is enabled, if not enable it.
+ * \brief   Enable the peripheral clock for the given USART instance.
  * \param   instance    The USART instance to enable the clock for.
+ * \note    USART1/6 sit on APB2, USART2/3 sit on APB1; the underlying
+ *          __HAL_RCC_USARTx_CLK_ENABLE macros target the correct bus.
  * \note    Asserts if not a valid USART instance provided.
  */
-void USART::CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance)
+void USART::CheckAndEnablePeripheralClock(const UsartInstance& instance)
 {
     switch (instance)
     {
-        case UsartInstance::USART_1: if (__HAL_RCC_USART1_IS_CLK_DISABLED()) { __HAL_RCC_USART1_CLK_ENABLE(); } break;
-        case UsartInstance::USART_2: if (__HAL_RCC_USART2_IS_CLK_DISABLED()) { __HAL_RCC_USART2_CLK_ENABLE(); } break;
-        case UsartInstance::USART_3: if (__HAL_RCC_USART3_IS_CLK_DISABLED()) { __HAL_RCC_USART3_CLK_ENABLE(); } break;
-        case UsartInstance::USART_6: if (__HAL_RCC_USART6_IS_CLK_DISABLED()) { __HAL_RCC_USART6_CLK_ENABLE(); } break;
+        case UsartInstance::USART_1: __HAL_RCC_USART1_CLK_ENABLE(); break;
+        case UsartInstance::USART_2: __HAL_RCC_USART2_CLK_ENABLE(); break;
+        case UsartInstance::USART_3: __HAL_RCC_USART3_CLK_ENABLE(); break;
+        case UsartInstance::USART_6: __HAL_RCC_USART6_CLK_ENABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the USART
- *          instance is enabled, if so disable it.
+ * \brief   Disable the peripheral clock for the given USART instance.
  * \param   instance    The USART instance to disable the clock for.
+ * \note    USART1/6 sit on APB2, USART2/3 sit on APB1; the underlying
+ *          __HAL_RCC_USARTx_CLK_DISABLE macros target the correct bus.
  * \note    Asserts if not a valid USART instance provided.
  */
-void USART::CheckAndDisableAHB1PeripheralClock(const UsartInstance& instance)
+void USART::CheckAndDisablePeripheralClock(const UsartInstance& instance)
 {
     switch (instance)
     {
-        case UsartInstance::USART_1: if (__HAL_RCC_USART1_IS_CLK_ENABLED()) { __HAL_RCC_USART1_CLK_DISABLE(); } break;
-        case UsartInstance::USART_2: if (__HAL_RCC_USART2_IS_CLK_ENABLED()) { __HAL_RCC_USART2_CLK_DISABLE(); } break;
-        case UsartInstance::USART_3: if (__HAL_RCC_USART3_IS_CLK_ENABLED()) { __HAL_RCC_USART3_CLK_DISABLE(); } break;
-        case UsartInstance::USART_6: if (__HAL_RCC_USART6_IS_CLK_ENABLED()) { __HAL_RCC_USART6_CLK_DISABLE(); } break;
+        case UsartInstance::USART_1: __HAL_RCC_USART1_CLK_DISABLE(); break;
+        case UsartInstance::USART_2: __HAL_RCC_USART2_CLK_DISABLE(); break;
+        case UsartInstance::USART_3: __HAL_RCC_USART3_CLK_DISABLE(); break;
+        case UsartInstance::USART_6: __HAL_RCC_USART6_CLK_DISABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
@@ -465,6 +474,19 @@ void USART::CallbackIRQ()
     HAL_UART_IRQHandler(&mHandle);
 }
 
+/**
+ * \brief   Drop all callback std::functions for this USART instance.
+ * \note    Called from Sleep() and as a destructor safety net so no stale
+ *          lambda capturing `this` outlives the object on the dedicated
+ *          USARTx_IRQn line.
+ */
+void USART::DisconnectCallbacks()
+{
+    mUsartCallbacks.callbackIRQ = nullptr;
+    mUsartCallbacks.callbackTx  = nullptr;
+    mUsartCallbacks.callbackRx  = nullptr;
+}
+
 
 /************************************************************************/
 /* Interrupts                                                           */
@@ -480,10 +502,10 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef* handle)
 
     // ToDo: check for error
 
-    if (handle->Instance == USART1) { CallbackTxDone(usart1_callbacks); }
-    if (handle->Instance == USART2) { CallbackTxDone(usart2_callbacks); }
-    if (handle->Instance == USART3) { CallbackTxDone(usart3_callbacks); }
-    if (handle->Instance == USART6) { CallbackTxDone(usart6_callbacks); }
+    if      (handle->Instance == USART1) { CallbackTxDone(usart1_callbacks); }
+    else if (handle->Instance == USART2) { CallbackTxDone(usart2_callbacks); }
+    else if (handle->Instance == USART3) { CallbackTxDone(usart3_callbacks); }
+    else if (handle->Instance == USART6) { CallbackTxDone(usart6_callbacks); }
 }
 
 /**
@@ -515,10 +537,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* handle)
         // To be able to use both Interrupt and DMA while DMA is configured, both RxXferCount and NTDR are used in received byte calculation.
         uint16_t bytesReceived = static_cast<uint16_t>(handle->RxXferSize - handle->RxXferCount - ((handle->hdmarx) ? __HAL_DMA_GET_COUNTER(handle->hdmarx) : 0));
 
-        if (handle->Instance == USART1) { CallbackRxDone(usart1_callbacks, bytesReceived); }
-        if (handle->Instance == USART2) { CallbackRxDone(usart2_callbacks, bytesReceived); }
-        if (handle->Instance == USART3) { CallbackRxDone(usart3_callbacks, bytesReceived); }
-        if (handle->Instance == USART6) { CallbackRxDone(usart6_callbacks, bytesReceived); }
+        if      (handle->Instance == USART1) { CallbackRxDone(usart1_callbacks, bytesReceived); }
+        else if (handle->Instance == USART2) { CallbackRxDone(usart2_callbacks, bytesReceived); }
+        else if (handle->Instance == USART3) { CallbackRxDone(usart3_callbacks, bytesReceived); }
+        else if (handle->Instance == USART6) { CallbackRxDone(usart6_callbacks, bytesReceived); }
     }
 
     handle->RxXferSize = 0;

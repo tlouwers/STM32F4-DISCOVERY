@@ -48,8 +48,15 @@ void Application::CheckForStackOverflow()
 
 ## Modification
 To use the 'end_of_heap_overrun()', a modification in the function '_sbrk()' needs to be made. For ST this is in the file 'sysmem.c', around line 79. A flag needs to be added to mark the end of the heap.
+
+Two requirements that are easy to get wrong and silently break the check:
+1. The marker write must be guarded by `if (incr > 0)`. `end_of_heap_overrun()` queries the heap top via `_sbrk(0)`; if `_sbrk` writes the marker on every call, the query overwrites the marker an instant before the check reads it -- the check would always pass, even after a stack overflow corrupted the marker.
+2. The boundary check must reserve `sizeof(uint32_t)` past `incr` so the marker write itself does not land in stack territory on a tightly-fitting allocation.
+
 ```cpp
 // Modified '_sbrk()' function:
+#include "utility/HeapCheck/heap_check.h"   // for HEAP_END_MARKER
+
 void *_sbrk(ptrdiff_t incr)
 {
   extern uint8_t _end; /* Symbol defined in the linker script */
@@ -65,8 +72,10 @@ void *_sbrk(ptrdiff_t incr)
     __sbrk_heap_end = &_end;
   }
 
-  /* Protect heap from growing into the reserved MSP stack */
-  if (__sbrk_heap_end + incr > max_heap)
+  /* Protect heap from growing into the reserved MSP stack.
+   * Reserve sizeof(uint32_t) extra so the marker write below does not
+   * spill into the stack region on an exact-fit allocation. */
+  if (__sbrk_heap_end + incr + sizeof(uint32_t) > max_heap)
   {
     errno = ENOMEM;
     return (void *)-1;
@@ -74,7 +83,13 @@ void *_sbrk(ptrdiff_t incr)
 
   prev_heap_end = __sbrk_heap_end;
   __sbrk_heap_end += incr;
-  *((uint32_t*)((void*)__sbrk_heap_end)) = 0xFAFBFCFD;   // Mark end of heap to detect stack overflow
+
+  /* Only write the marker on real allocations -- writing on _sbrk(0)
+   * queries would defeat end_of_heap_overrun()'s check. */
+  if (incr > 0)
+  {
+    *((uint32_t*)((void*)__sbrk_heap_end)) = HEAP_END_MARKER;
+  }
 
   return (void *)prev_heap_end;
 }

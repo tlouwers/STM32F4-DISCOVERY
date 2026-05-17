@@ -11,7 +11,7 @@
  *
  * \brief   Crc peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Crc
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Crc
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -52,7 +52,7 @@ Crc::~Crc()
  */
 bool Crc::Init()
 {
-    CheckAndEnableAHBPeripheralClock();
+    CheckAndEnablePeripheralClock();
 
     if (HAL_CRC_Init(&mHandle) == HAL_OK)
     {
@@ -77,14 +77,12 @@ bool Crc::IsInit() const
  */
 bool Crc::Sleep()
 {
+    if (HAL_CRC_DeInit(&mHandle) != HAL_OK) { return false; }
+
     mInitialized = false;
 
-    if (HAL_CRC_DeInit(&mHandle) == HAL_OK)
-    {
-        CheckAndDisableAHBPeripheralClock();
-        return true;
-    }
-    return false;
+    CheckAndDisablePeripheralClock();
+    return true;
 }
 
 /**
@@ -94,7 +92,7 @@ bool Crc::Sleep()
  * \returns The CRC32 if successful, else 0.
  * \note    Asserts if buffer is nullptr or length is 0.
  */
-uint32_t Crc::Calculate(uint32_t* buffer, uint32_t length)
+uint32_t Crc::Calculate(const uint32_t* buffer, uint32_t length)
 {
     EXPECT(buffer);
     EXPECT(length > 0);
@@ -103,7 +101,11 @@ uint32_t Crc::Calculate(uint32_t* buffer, uint32_t length)
     if (length == 0)       { return 0; }
     if (!mInitialized)     { return 0; }
 
-    return HAL_CRC_Calculate(&mHandle, buffer, length);
+    // HAL_CRC_Calculate's pBuffer parameter is non-const, but the function
+    // only reads the buffer (writing the words into CRC->DR). Const-cast at
+    // the boundary so callers can pass `const` data without lying to the
+    // compiler.
+    return HAL_CRC_Calculate(&mHandle, const_cast<uint32_t*>(buffer), length);
 }
 
 
@@ -111,19 +113,20 @@ uint32_t Crc::Calculate(uint32_t* buffer, uint32_t length)
 /* Private Methods                                                      */
 /************************************************************************/
 /**
- * \brief   Check if the appropriate AHB peripheral clock for the Crc
- *          instance is enabled, if not enable it.
+ * \brief   Enable the peripheral clock for the Crc instance.
+ * \note    The Crc peripheral sits on AHB1 (RCC_AHB1ENR.CRCEN); the
+ *          underlying CLK_ENABLE macro is idempotent so no
+ *          IS_CLK_DISABLED guard is needed.
  */
-void Crc::CheckAndEnableAHBPeripheralClock()
-{ 
-    if (__HAL_RCC_CRC_IS_CLK_DISABLED()) { __HAL_RCC_CRC_CLK_ENABLE(); }
+void Crc::CheckAndEnablePeripheralClock()
+{
+    __HAL_RCC_CRC_CLK_ENABLE();
 }
 
 /**
- * \brief   Check if the appropriate AHB peripheral clock for the Crc
- *          instance is enabled, if so disable it.
+ * \brief   Disable the peripheral clock for the Crc instance.
  */
-void Crc::CheckAndDisableAHBPeripheralClock()
+void Crc::CheckAndDisablePeripheralClock()
 {
-    if (__HAL_RCC_CRC_IS_CLK_ENABLED()) { __HAL_RCC_CRC_CLK_DISABLE(); };
+    __HAL_RCC_CRC_CLK_DISABLE();
 }

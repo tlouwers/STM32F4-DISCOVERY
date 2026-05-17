@@ -16,7 +16,7 @@
  *          Alternative is to use the HSE clock or the LSI clock (default), but
  *          these are less accurate.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Rtc
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Rtc
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0

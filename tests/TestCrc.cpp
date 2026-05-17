@@ -36,12 +36,12 @@ TEST_F(Crc_Test, Calculate_buffer_nullptr)
 
 TEST_F(Crc_Test, Calculate_length_null)
 {
-    EXPECT_EQ(0, mSubject.Calculate(const_cast<uint32_t*>(buffer), 0));
+    EXPECT_EQ(0, mSubject.Calculate(buffer, 0));
 }
 
 TEST_F(Crc_Test, Calculate)
 {
-    EXPECT_EQ(0x63EC482A, mSubject.Calculate(const_cast<uint32_t*>(buffer), 6));
+    EXPECT_EQ(0x63EC482A, mSubject.Calculate(buffer, 6));
 }
 
 

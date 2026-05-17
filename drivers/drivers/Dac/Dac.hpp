@@ -143,8 +143,8 @@ private:
     Waveform          mWaveformChannel1 = {};
     Waveform          mWaveformChannel2 = {};
 
-    void CheckAndEnableAHB1PeripheralClock();
-    void CheckAndDisableAHB1PeripheralClock();
+    void CheckAndEnablePeripheralClock();
+    void CheckAndDisablePeripheralClock();
 
     uint32_t GetTrigger(const Trigger& trigger);
     uint32_t GetAlignment(const Precision& precision);

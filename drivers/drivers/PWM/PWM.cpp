@@ -10,7 +10,7 @@
  *
  * \brief   Helper class using Timer2..4 to provide PWM functionality.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/PWM
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/PWM
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1
@@ -54,11 +54,13 @@ PWM::~PWM()
  */
 bool PWM::Init(const IConfig& config)
 {
-    CheckAndEnableAHB1PeripheralClock(mInstance);
+    CheckAndEnablePeripheralClock(mInstance);
 
     const Config& cfg = reinterpret_cast<const Config&>(config);
 
     // Start the timer as clock for PWM. No channels are configured yet.
+    // Prescaler stays at 0 (divide-by-1) so CK_CNT is the full timer input
+    // clock; CalculatePeriod reads that input clock dynamically.
     mHandle.Init.Prescaler         = 0;
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
     mHandle.Init.Period            = CalculatePeriod(cfg.mFrequency);    // (Freq. desired) = (Freq. CK_CNT) / (TIMx_ARR + 1)
@@ -90,17 +92,14 @@ bool PWM::IsInit() const
  */
 bool PWM::Sleep()
 {
-    bool result = StopAllChannels();
-    EXPECT(result);
+    StopAllChannels();
+
+    if (HAL_TIM_PWM_DeInit(&mHandle) != HAL_OK) { return false; }
 
     mInitialized = false;
 
-    if (HAL_TIM_PWM_DeInit(&mHandle) == HAL_OK)
-    {
-        CheckAndDisbleAHB1PeripheralClock(mInstance);
-        return result;
-    }
-    return false;
+    CheckAndDisablePeripheralClock(mInstance);
+    return true;
 }
 
 /**
@@ -177,68 +176,75 @@ void PWM::SetInstance(const PwmTimerInstance& instance)
         case PwmTimerInstance::TIMER_4: mHandle.Instance = TIM4; break;
         case PwmTimerInstance::TIMER_5: mHandle.Instance = TIM5; break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
-    };
+    }
 }
 
 /**
- * \brief   Check if the APB1 peripheral clock for the PWM timer is started,
- *          if so enable it.
+ * \brief   Enable the peripheral clock for the PWM timer instance.
  * \param   instance    The PWM timer instance to enable the clock for.
- * \note    Asserts if not a valid PWM timer instance provided.
+ * \note    TIM2/3/4/5 sit on APB1; the underlying CLK_ENABLE macros are
+ *          idempotent so no IS_CLK_DISABLED guard is needed.
  */
-void PWM::CheckAndEnableAHB1PeripheralClock(const PwmTimerInstance& instance)
+void PWM::CheckAndEnablePeripheralClock(const PwmTimerInstance& instance)
 {
     switch (instance)
     {
-        case PwmTimerInstance::TIMER_2: if (__HAL_RCC_TIM2_IS_CLK_DISABLED())  { __HAL_RCC_TIM2_CLK_ENABLE();  } break;
-        case PwmTimerInstance::TIMER_3: if (__HAL_RCC_TIM3_IS_CLK_DISABLED())  { __HAL_RCC_TIM3_CLK_ENABLE();  } break;
-        case PwmTimerInstance::TIMER_4: if (__HAL_RCC_TIM4_IS_CLK_DISABLED())  { __HAL_RCC_TIM4_CLK_ENABLE();  } break;
-        case PwmTimerInstance::TIMER_5: if (__HAL_RCC_TIM5_IS_CLK_DISABLED())  { __HAL_RCC_TIM5_CLK_ENABLE();  } break;
+        case PwmTimerInstance::TIMER_2: __HAL_RCC_TIM2_CLK_ENABLE(); break;
+        case PwmTimerInstance::TIMER_3: __HAL_RCC_TIM3_CLK_ENABLE(); break;
+        case PwmTimerInstance::TIMER_4: __HAL_RCC_TIM4_CLK_ENABLE(); break;
+        case PwmTimerInstance::TIMER_5: __HAL_RCC_TIM5_CLK_ENABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
 
 /**
- * \brief   Check if the appropriate AHB1 peripheral clock for the PWM timer
- *          instance is enabled, if so disable it.
+ * \brief   Disable the peripheral clock for the PWM timer instance.
  * \param   instance    The PWM timer instance to disable the clock for.
- * \note    Asserts if not a valid PWM timer instance provided.
  */
-void PWM::CheckAndDisbleAHB1PeripheralClock(const PwmTimerInstance& instance)
+void PWM::CheckAndDisablePeripheralClock(const PwmTimerInstance& instance)
 {
     switch (instance)
     {
-        case PwmTimerInstance::TIMER_2: if (__HAL_RCC_TIM2_IS_CLK_ENABLED())  { __HAL_RCC_TIM2_CLK_DISABLE();  } break;
-        case PwmTimerInstance::TIMER_3: if (__HAL_RCC_TIM3_IS_CLK_ENABLED())  { __HAL_RCC_TIM3_CLK_DISABLE();  } break;
-        case PwmTimerInstance::TIMER_4: if (__HAL_RCC_TIM4_IS_CLK_ENABLED())  { __HAL_RCC_TIM4_CLK_DISABLE();  } break;
-        case PwmTimerInstance::TIMER_5: if (__HAL_RCC_TIM5_IS_CLK_ENABLED())  { __HAL_RCC_TIM5_CLK_DISABLE();  } break;
+        case PwmTimerInstance::TIMER_2: __HAL_RCC_TIM2_CLK_DISABLE(); break;
+        case PwmTimerInstance::TIMER_3: __HAL_RCC_TIM3_CLK_DISABLE(); break;
+        case PwmTimerInstance::TIMER_4: __HAL_RCC_TIM4_CLK_DISABLE(); break;
+        case PwmTimerInstance::TIMER_5: __HAL_RCC_TIM5_CLK_DISABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
+}
+
+/**
+ * \brief   Return the input clock feeding the PWM timer instance.
+ * \details TIM2/3/4/5 are clocked from APB1. Per RM0090 §6.2 the timer
+ *          input clock equals APB1 when the APB1 prescaler is 1, otherwise
+ *          twice APB1.
+ * \returns Timer input clock in Hz.
+ */
+uint32_t PWM::GetTimerInputClockFreq()
+{
+    const uint32_t apb1 = HAL_RCC_GetPCLK1Freq();
+    return ((RCC->CFGR & RCC_CFGR_PPRE1) >= RCC_CFGR_PPRE1_DIV2) ? (apb1 * 2U) : apb1;
 }
 
 /**
  * \brief   Calculate the PWM period value.
  * \param   desiredFrequency    The desired frequency in Hz to use.
  * \returns Period value (TIMx_ARR).
- * \note    The CK_CNT is assumed to be 8 MHz.
+ * \note    Reads the actual timer input clock so the period is correct
+ *          regardless of board clock tree.
  */
 uint16_t PWM::CalculatePeriod(float desiredFrequency)
 {
-    EXPECT(desiredFrequency > 0.1);
-    EXPECT(desiredFrequency <= 8000000.0);
+    EXPECT(desiredFrequency > 0.1f);
 
-    // The timer tick frequency is set with: timer_tick_frequency = timer_default_frequency / (prescaler + 1)
-    // We use the max frequency for the timer: set prescaler to 0 and the timer will have the max tick frequency.
-    // timer_tick_frequency = 8000000 / (0 + 1) = 8000000 Hz
+    const uint32_t tick = GetTimerInputClockFreq();
 
-    // Given the desired PWM_frequency, we calculate the timer_period:
     // timer_period = (timer_tick_frequency / PWM_frequency) - 1
 
-    uint32_t timer_period = (8000000 / desiredFrequency) - 1;
+    uint32_t timer_period = (tick / desiredFrequency) - 1;
 
-    // Check if the timer_period is within valid range: UINT16_MAX. For timer 2 and 5 this can be 32 bit,
-    // but as preperation for future use with timer 3 and 4 we use 16 bit max.
-    // If the value is too large we can use the prescaler.
+    // Cap at UINT16_MAX. TIM2/5 ARR is 32-bit but TIM3/4 is 16-bit; use the
+    // common cap so the same Config range applies on every supported instance.
     if ((timer_period == 0) || (timer_period > UINT16_MAX))
     {
         timer_period = UINT16_MAX;
@@ -259,12 +265,15 @@ uint32_t PWM::CalculatePulse(uint8_t desiredDutyCycle, uint32_t period)
     EXPECT(desiredDutyCycle <= 100);
     if (desiredDutyCycle > 100) { desiredDutyCycle = 100; }     // Clip to maximum
 
-    // We calculate the pulse_length by using the given duty cycle - which here is in percent [0..100%]
+    // 0% must produce CCR=0. The naive formula `(period+1)*0/100 - 1` underflows
+    // to 0xFFFFFFFF, which (truncated to the CCR register width) ends up larger
+    // than ARR -- CNT never reaches CCR, output stays inactive, and with the
+    // inverted OCPolarity below the channel sticks at the user's "ON" level.
+    // I.e. 0% silently turns into 100%. Special-case it.
+    if (desiredDutyCycle == 0) { return 0; }
+
     // pulse_length = (((timer_period + 1) * duty cycle) / 100) - 1
-
     uint32_t pulse_length = (((period + 1) * desiredDutyCycle) / 100) - 1;
-
-    // Remember: if pulse_length is larger than timer_period, you will have output HIGH all the time
 
     return pulse_length;
 }

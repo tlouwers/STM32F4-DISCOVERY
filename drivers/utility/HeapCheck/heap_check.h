@@ -9,10 +9,10 @@
  *                                                                Terry Louwers
  * \brief   Heap check functions for ST Cortex-M4.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/master/utility/HeapCheck
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/utility/HeapCheck
  *
  * \author  Terry Louwers (terry.louwers@fourtress.nl)
- * \version 1.0
+ * \version 1.1
  * \date    11-2019
  */
 
@@ -29,6 +29,21 @@ extern "C" {
 /************************************************************************/
 #include <stdint.h>
 #include <stdbool.h>
+
+
+/************************************************************************/
+/* Constants                                                            */
+/************************************************************************/
+/**
+ * \brief   Magic value the user's _sbrk() must write at __sbrk_heap_end on
+ *          every real allocation (incr > 0). end_of_heap_overrun() reads
+ *          this word back; if a stack-into-heap overrun has corrupted it,
+ *          the function reports true.
+ * \note    Single source of truth: both heap_check.c and the user's
+ *          _sbrk() reference this macro so the two cannot drift. See
+ *          README.md "Modification" for the required _sbrk shape.
+ */
+#define HEAP_END_MARKER  0xFAFBFCFDU
 
 
 /************************************************************************/

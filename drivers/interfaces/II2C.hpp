@@ -12,7 +12,9 @@
  *          The Asynchronous methods are to be implemented using peripheral
  *          DMA or interrupts, meaning can be called and return immediately.
  *          The transaction is handled, once complete this is signaled
- *          by the callback.
+ *          by the callback. The bool argument reports the outcome: true on
+ *          successful completion, false on bus error or aborted transfer.
+ *          The handler is invoked exactly once per started transfer.
  *
  * \note    The data pointers (src, dest) can be 'nullptr'.
  *          Sending a length of 0 is permitted, but is to return false.
@@ -44,11 +46,11 @@
 class II2C
 {
 public:
-    virtual bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler) = 0;
-    virtual bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler) = 0;
+    virtual bool WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler) = 0;
+    virtual bool ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler) = 0;
 
-    virtual bool WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void()>& handler) = 0;
-    virtual bool ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void()>& handler) = 0;
+    virtual bool WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, const std::function<void(bool)>& handler) = 0;
+    virtual bool ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std::function<void(bool)>& handler) = 0;
 
     virtual bool WriteBlocking(uint8_t slave, const uint8_t* src, uint16_t length) = 0;
     virtual bool ReadBlocking(uint8_t slave, uint8_t* dest, uint16_t length) = 0;

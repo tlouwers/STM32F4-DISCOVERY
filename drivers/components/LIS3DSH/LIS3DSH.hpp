@@ -17,7 +17,7 @@
  *          available at the configured sample frequency. Sample is read via
  *          SPI + DMA as well.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/components/LIS3DSH
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/components/LIS3DSH
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.1
@@ -174,7 +174,6 @@ private:
     bool ReadRegister(uint8_t reg, uint8_t* dest, uint16_t length);
 
     void CallbackInt1();
-    void CallbackInt2();
 };
 
 

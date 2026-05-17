@@ -9,7 +9,7 @@
  *                                                                Terry Louwers
  * \brief   Generic interface for Rng peripheral driver.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/interfaces
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/interfaces
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -31,7 +31,7 @@
 class IRng
 {
 public:
-    virtual uint32_t GetRandom() = 0;
+    virtual bool GetRandom(uint32_t& out) = 0;
 };
 
 

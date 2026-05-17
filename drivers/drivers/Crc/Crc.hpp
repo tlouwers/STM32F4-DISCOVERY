@@ -15,7 +15,7 @@
  *          X32 + X26 + X23 + X22 + X16 + X12 + X11 + X10 +X8 + X7 + X5 + X4 + X2+ X + 1
  *          The calculation is for 32 bit only and done via the hardware peripheral.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Crc
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Crc
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -47,14 +47,14 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    uint32_t Calculate(uint32_t* buffer, uint32_t length) override;
+    uint32_t Calculate(const uint32_t* buffer, uint32_t length) override;
 
 private:
     CRC_HandleTypeDef mHandle = {};
     bool              mInitialized;
 
-    void CheckAndEnableAHBPeripheralClock();
-    void CheckAndDisableAHBPeripheralClock();
+    void CheckAndEnablePeripheralClock();
+    void CheckAndDisablePeripheralClock();
 };
 
 

@@ -11,7 +11,7 @@
  *
  * \brief   USART peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Usart
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/USART
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.2
@@ -76,11 +76,11 @@ public:
         _9600  =    9600,     ///<   9600
         _19200 =   19200,     ///<  19200
         _38400 =   38400,     ///<  38400
-        _57600 =   57600,     ///<  57400
+        _57600 =   57600,     ///<  57600
         _115K2 =  115200,     ///< 115200
         _230K4 =  230400,     ///< 230400
         _460K8 =  460800,     ///< 460800
-        _912K6 =  912600      ///< 912600
+        _921K6 =  921600      ///< 921600
     };
 
     /**
@@ -193,12 +193,13 @@ private:
     bool               mInitialized;
 
     void SetInstance(const UsartInstance& instance);
-    void CheckAndEnableAHB1PeripheralClock(const UsartInstance& instance);
-    void CheckAndDisableAHB1PeripheralClock(const UsartInstance& instance);
+    void CheckAndEnablePeripheralClock(const UsartInstance& instance);
+    void CheckAndDisablePeripheralClock(const UsartInstance& instance);
     uint32_t GetParity(const Parity& parity);
     IRQn_Type GetIRQn(const UsartInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
+    void DisconnectCallbacks();
 };
 
 
