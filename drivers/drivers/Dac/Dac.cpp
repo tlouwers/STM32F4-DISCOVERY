@@ -229,6 +229,11 @@ bool Dac::SetValue(const Channel& channel, uint16_t value)
 /**
  * \brief   Start the configured waveform on the Dac for the given channel.
  * \param   channel     Channel to output the configured waveform on.
+ * \note    HAL_DAC_Start_DMA() types pData as uint32_t*, but the buffer is
+ *          never dereferenced as uint32_t: the DMA memory data width set
+ *          from the channel Precision/alignment governs the access. The
+ *          uint16_t* buffer is round-tripped through void* to express the
+ *          intentional reinterpretation (and to keep -Wcast-align honest).
  * \returns True if the waveform could be started on the given channel, else false.
  */
 bool Dac::StartWaveform(const Channel& channel)
@@ -243,7 +248,7 @@ bool Dac::StartWaveform(const Channel& channel)
             if (! mChannel1.mStarted)
             {
                 if (HAL_DAC_Start_DMA(&mHandle, DAC_CHANNEL_1,
-                        reinterpret_cast<uint32_t*>(mWaveformChannel1.mValues), mWaveformChannel1.mLength,
+                        static_cast<uint32_t*>(static_cast<void*>(mWaveformChannel1.mValues)), mWaveformChannel1.mLength,
                         GetAlignment(mChannel1.mPrecision)) == HAL_OK)
                 {
                     // HAL_DAC_Start_DMA re-enables DMA_IT_HT regardless of the
@@ -260,7 +265,7 @@ bool Dac::StartWaveform(const Channel& channel)
             if (! mChannel2.mStarted)
             {
                 if (HAL_DAC_Start_DMA(&mHandle, DAC_CHANNEL_2,
-                        reinterpret_cast<uint32_t*>(mWaveformChannel2.mValues), mWaveformChannel2.mLength,
+                        static_cast<uint32_t*>(static_cast<void*>(mWaveformChannel2.mValues)), mWaveformChannel2.mLength,
                         GetAlignment(mChannel2.mPrecision)) == HAL_OK)
                 {
                     mDmaCh2->EnforceHalfBufferInterruptSetting();

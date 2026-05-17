@@ -96,6 +96,7 @@ target_compile_options(${EXECUTABLE} PRIVATE
     -Wundef
     -Wformat=2
     -Wcast-qual
+    -Wcast-align
     -Wlogical-op
     -Wnull-dereference
     -Wmisleading-indentation
