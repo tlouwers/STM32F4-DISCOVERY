@@ -25,8 +25,8 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include <atomic>
 #include "config.h"
+#include "AppLogic.hpp"
 #include "arbiters/SPI/SPI_arbiter.hpp"
 #include "components/LIS3DSH/LIS3DSH.hpp"
 #include "components/LIS3DSH/FakeLIS3DSH.hpp"
@@ -80,10 +80,7 @@ private:
     FakeLIS3DSH    mLIS3DSH;
 #endif
 
-    std::atomic<bool> mMotionDataAvailable;
-    uint8_t mMotionLength;
-
-    void MotionDataReceived(uint8_t length);
+    AppLogic mLogic;
 
     void CallbackLedGreenToggle();
     void CallbackLedRedToggle();
