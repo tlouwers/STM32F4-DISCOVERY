@@ -25,8 +25,8 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include <atomic>
 #include "config.h"
+#include "AppLogic.hpp"
 #include "components/LIS3DSH/LIS3DSH.hpp"
 #include "components/LIS3DSH/FakeLIS3DSH.hpp"
 #include "drivers/DMA/DMA.hpp"
@@ -71,12 +71,9 @@ private:
     FakeLIS3DSH    mLIS3DSH;
 #endif
 
-//    std::atomic<bool> mButtonPressed;
-    std::atomic<bool> mMotionDataAvailable;
-    uint8_t mMotionLength;
+    AppLogic mLogic;
 
 //    void ButtonPressedCallback();
-    void MotionDataReceived(uint8_t length);
 };
 
 
