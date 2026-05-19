@@ -25,8 +25,8 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include <atomic>
 #include "config.h"
+#include "AppLogic.hpp"
 #include "components/HI-M1388AR/HI-M1388AR.hpp"
 #include "components/HI-M1388AR/FakeHI-M1388AR.hpp"
 #include "components/LIS3DSH/LIS3DSH.hpp"
@@ -35,34 +35,6 @@
 #include "drivers/Pin/Pin.hpp"
 #include "drivers/SPI/SPI.hpp"
 #include "drivers/USART/USART.hpp"
-
-
-/************************************************************************/
-/* Structs                                                              */
-/************************************************************************/
-/**
- * \struct  MotionSampleRaw
- * \brief   Raw motion sensor values.
- */
-struct MotionSampleRaw
-{
-    int16_t X;  ///< Raw sensor X value
-    int16_t Y;  ///< Raw sensor Y value
-    int16_t Z;  ///< Raw sensor Z value
-};
-
-/**
- * \struct  MotionSample
- * \brief   Motion sensor values in G's (m/s2), pitch and roll in degrees.
- */
-struct MotionSample
-{
-    float X;        ///< Sensor value X in G (m/s2)
-    float Y;        ///< Sensor value Y in G (m/s2)
-    float Z;        ///< Sensor value Z in G (m/s2)
-    float pitch;    ///< Sensor pitch value in degrees
-    float roll;     ///< Sensor roll value in degrees
-};
 
 
 /************************************************************************/
@@ -112,12 +84,9 @@ private:
     FakeLIS3DSH    mLIS3DSH;
 #endif
 
-    std::atomic<uint8_t> mMotionLength;
+    AppLogic mLogic;
 
     void MotionDataReceived(uint8_t length);
-
-    MotionSample CalculateMotionSample(const MotionSampleRaw &sampleRaw);
-    void CalculatePixel(uint8_t *dest, const MotionSample &sample, bool invert = false);
 
     void CallbackMotionDataReceived();
     void CallbackUpdateDisplay(const MotionSample &sample);
