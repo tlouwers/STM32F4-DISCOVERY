@@ -87,7 +87,7 @@ Application::Application() :
     mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
     mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-    mMotionLength(0)
+    mLogic(mLIS3DSH, mLedOrange)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
     mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
@@ -132,7 +132,6 @@ bool Application::Init()
 
     result = mLIS3DSH.Init(LIS3DSH::Config(true, LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
-    mMotionLength = 0;
 
     result = mLIS3DSH.Enable();
     ASSERT(result);
@@ -204,7 +203,7 @@ void Application::MotionDataReceived(uint8_t length)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    mMotionLength = length;
+    mLogic.OnMotionData(length);
 
     vTaskNotifyGiveIndexedFromISR( xMotionData, 0, &xHigherPriorityTaskWoken );
 
@@ -240,18 +239,7 @@ void Application::CallbackLedBlueToggle()
  */
 void Application::CallbackMotionDataReceived()
 {
-    static uint8_t motionArray[25 * 3 * 2] = {};
-
-    if (mMotionLength > 0)
-    {
-        mLedOrange.Toggle();
-
-        bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
-        EXPECT(retrieveResult);
-        (void)(retrieveResult);
-
-        // Deinterleave to X,Y,Z samples
-    }
+    mLogic.ProcessMotionData();
 }
 
 
