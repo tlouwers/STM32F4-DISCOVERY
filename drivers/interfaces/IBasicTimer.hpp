@@ -33,6 +33,21 @@ class IBasicTimer
 {
 public:
     virtual ~IBasicTimer() = default;
+
+    /**
+     * \brief   Enables the timer counter.
+     * \note    This interface deliberately exposes no callback-registration
+     *          API. BasicTimer's only documented consumer is the DAC TRGO
+     *          chain (CPU-less); the concrete driver installs a TimerIRQ
+     *          slot but does NOT enable the update-event interrupt, so no
+     *          periodic CPU callback is required. To activate a periodic
+     *          CPU callback in the future, add
+     *          `RegisterCallback(std::function<void()>)` here and switch
+     *          the concrete `Start()` to `HAL_TIM_Base_Start_IT`. See
+     *          driver_update.md "BasicTimer ### 1" and ledger L5b for the
+     *          deferred-decision rationale.
+     * \returns True if started, else false.
+     */
     virtual bool Start() = 0;
     virtual bool IsStarted() const = 0;
     virtual bool Stop() = 0;

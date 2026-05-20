@@ -90,6 +90,26 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
+    /**
+     * \brief   Enables the timer counter (CR1.CEN only — no update IRQ).
+     * \note    The TimerIRQ slot for TIM6/TIM7 is installed at Init() and
+     *          torn down at Sleep()/dtor, but UDIE is never enabled and the
+     *          slot's handler is never invoked. The only documented consumer
+     *          is the DAC TRGO chain (CPU-less), so no periodic CPU callback
+     *          is required.
+     *
+     *          To activate the slot in the future:
+     *            1. Add `bool RegisterCallback(const std::function<void()>&)`
+     *               to `IBasicTimer` and a matching override here.
+     *            2. Switch this `HAL_TIM_Base_Start` call to
+     *               `HAL_TIM_Base_Start_IT` (enables UDIE).
+     *            3. Have the TimerIRQ slot handler invoke the registered
+     *               callback.
+     *          The ISR seam already exists; only the API surface + the
+     *          Start variant change are required. Deliberately deferred —
+     *          see driver_update.md "BasicTimer ### 1" and ledger L5b.
+     * \returns True if started, else false.
+     */
     bool Start() override;
     bool IsStarted() const override;
     bool Stop() override;
