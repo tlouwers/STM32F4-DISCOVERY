@@ -100,7 +100,7 @@ bool Application::Init()
     result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
     ASSERT(result);
 
-    result = mLIS3DSH.Init(LIS3DSH::Config(true, LIS3DSH::SampleFrequency::_50_Hz));
+    result = mLIS3DSH.Init(LIS3DSH::Config(mLIS3DSHBuf, sizeof(mLIS3DSHBuf), true, LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
 
     mTim1.Start([this]() { this->CallbackLedGreenToggle(); });

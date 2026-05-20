@@ -82,7 +82,7 @@ bool Application::Init()
     ASSERT(result);
 
     // Hardware FIFO on: Process() drains a 25-sample watermark batch.
-    result = mLIS3DSH.Init(LIS3DSH::Config(true, LIS3DSH::SampleFrequency::_50_Hz));
+    result = mLIS3DSH.Init(LIS3DSH::Config(mLIS3DSHBuf, sizeof(mLIS3DSHBuf), true, LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
 
     result = mLIS3DSH.Enable();

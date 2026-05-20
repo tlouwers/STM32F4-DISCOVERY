@@ -78,6 +78,7 @@ private:
     FakeHI_M1388AR mMatrix;
 #endif
 
+    uint8_t        mLIS3DSHBuf[LIS3DSH::SINGLE_READ_BUFFER_SIZE]; ///< Read buffer supplied to LIS3DSH::Init (non-owning ref held by driver).
 #if (LIS3DSH_ACCELEROMETER == REAL_LIS3DSH)
     LIS3DSH        mLIS3DSH;
 #else
