@@ -1,3 +1,26 @@
+/**
+ * \file    Crc.cpp
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ *
+ * \class   Crc
+ *
+ * \brief   Fake CRC implementation that maps a small set of fixed inputs to
+ *          deterministic reference outputs, so unit tests can assert exact
+ *          CRC values without re-running the real polynomial.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/tests/Fake/drivers/Crc
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    05-2026
+ */
+
 #include "Crc.hpp"
 
 

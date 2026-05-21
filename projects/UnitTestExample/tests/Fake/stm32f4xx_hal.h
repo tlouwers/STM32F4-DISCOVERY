@@ -1,3 +1,23 @@
+/**
+ * \file    stm32f4xx_hal.h
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ *
+ * \brief   Umbrella fake STM32F4 HAL header for UnitTestExample native unit
+ *          tests. Declares the minimum HAL surface the drivers depend on.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/UnitTestExample/tests/Fake
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    05-2026
+ */
+
 #ifndef __STM32F4xx_HAL_H
 #define __STM32F4xx_HAL_H
 

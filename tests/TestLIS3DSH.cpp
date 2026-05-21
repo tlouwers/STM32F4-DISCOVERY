@@ -1,3 +1,24 @@
+/**
+ * \file    TestLIS3DSH.cpp
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ *
+ * \brief   Native unit tests for the LIS3DSH accelerometer component, driving
+ *          a Mock_SPI / Mock_Pin pair through the real driver and exercising
+ *          the caller-supplied read-buffer validation introduced in L5c.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/tests
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    05-2026
+ */
+
 #include "gtest/gtest.h"
 
 

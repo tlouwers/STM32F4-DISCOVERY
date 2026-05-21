@@ -1,3 +1,26 @@
+/**
+ * \file    Pin.cpp
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ *
+ * \class   Pin
+ *
+ * \brief   Fake Pin driver implementation (all methods are no-ops or return
+ *          benign defaults) so components that depend on Pin compile and link
+ *          in the native unit-test build.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/tests/Fake/drivers/Pin
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    05-2026
+ */
+
 #include "Pin.hpp"
 
 
