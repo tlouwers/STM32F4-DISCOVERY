@@ -188,6 +188,72 @@ void HAL_Delay(uint32_t Delay);
 #define UNUSED(X) (void)X      /* To avoid gcc/g++ warnings */
 
 
+/**
+ * \brief   HAL status enumeration -- minimal subset, added for the RNG fake
+ *          surface needed by the L12 multi-thread Rng test. Matches the real
+ *          HAL ordering so HAL_OK is the canonical success token.
+ */
+typedef enum
+{
+    HAL_OK      = 0x00U,
+    HAL_ERROR   = 0x01U,
+    HAL_BUSY    = 0x02U,
+    HAL_TIMEOUT = 0x03U
+} HAL_StatusTypeDef;
+
+/**
+ * \brief   Reset and Clock Control -- minimal subset (only the fields
+ *          Rng::IsRngClockConfigured() reads). Backed by storage in the
+ *          companion fake .cpp; the test harness pre-fills CR/PLLCFGR so
+ *          the clock check passes.
+ */
+typedef struct
+{
+    volatile uint32_t CR;        ///< Clock control register
+    volatile uint32_t PLLCFGR;   ///< PLL configuration register
+} RCC_TypeDef;
+
+extern RCC_TypeDef* const RCC;
+
+#define RCC_CR_PLLRDY            ((uint32_t)0x02000000U)   ///< CR bit 25: main PLL ready flag
+#define RCC_PLLCFGR_PLLQ         ((uint32_t)0x0F000000U)   ///< PLLCFGR PLLQ mask (bits 24..27)
+#define RCC_PLLCFGR_PLLQ_Pos     ((uint32_t)24U)           ///< PLLCFGR PLLQ bit position
+
+/**
+ * \brief   RNG peripheral instance (opaque -- the fake never inspects it;
+ *          only Rng.cpp's `mHandle.Instance = RNG;` touches it).
+ */
+typedef struct
+{
+    uint32_t reserved;
+} RNG_TypeDef;
+
+extern RNG_TypeDef* const RNG;
+
+typedef struct
+{
+    RNG_TypeDef* Instance;   ///< Set to RNG by the driver; unread by the fake.
+} RNG_HandleTypeDef;
+
+#define __HAL_RCC_RNG_CLK_ENABLE()    do { } while(0)
+#define __HAL_RCC_RNG_CLK_DISABLE()   do { } while(0)
+
+/** Driver-facing HAL surface (fake implementations live in stm32f4xx_hal_rng.cpp). */
+HAL_StatusTypeDef HAL_RNG_Init(RNG_HandleTypeDef* hrng);
+HAL_StatusTypeDef HAL_RNG_DeInit(RNG_HandleTypeDef* hrng);
+HAL_StatusTypeDef HAL_RNG_GenerateRandomNumber(RNG_HandleTypeDef* hrng, uint32_t* random32bit);
+
+/**
+ * \brief   Test-only observation hooks for the L12 multi-thread Rng test.
+ * \details The fake's HAL_RNG_GenerateRandomNumber increments an atomic
+ *          counter on entry and decrements on exit, tracking the maximum
+ *          observed concurrent callers. The production atomic_flag guard
+ *          in Rng::GetRandom must keep this <= 1; the test asserts it.
+ */
+int  FakeRNG_MaxObservedConcurrentCallers(void);
+void FakeRNG_ResetObservation(void);
+
+
 #ifdef __cplusplus
 }
 #endif
