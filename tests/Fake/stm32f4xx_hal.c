@@ -28,4 +28,14 @@
 // __NOP() formally part of CMSIS, only available for ARM.
 void __NOP(void) { ; }
 
-void HAL_Delay(uint32_t Delay) { ; }
+void HAL_Delay(uint32_t Delay) { (void)Delay; }
+
+
+// NVIC controls: no-ops on the native build (no interrupt controller).
+void HAL_NVIC_SetPriority(IRQn_Type IRQn, uint32_t PreemptPriority, uint32_t SubPriority)
+{
+    (void)IRQn; (void)PreemptPriority; (void)SubPriority;
+}
+void HAL_NVIC_EnableIRQ(IRQn_Type IRQn)       { (void)IRQn; }
+void HAL_NVIC_DisableIRQ(IRQn_Type IRQn)      { (void)IRQn; }
+void HAL_NVIC_ClearPendingIRQ(IRQn_Type IRQn) { (void)IRQn; }

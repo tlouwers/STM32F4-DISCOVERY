@@ -210,6 +210,19 @@ void HAL_Delay(uint32_t Delay);
 
 
 /**
+ * \brief   Cortex-M NVIC control surface (fake). Bodies in stm32f4xx_hal.c
+ *          are no-ops: on real hardware the drivers call these purely for
+ *          their interrupt-controller side effects, which the native unit
+ *          tests neither configure nor observe. Shared by every driver that
+ *          installs an IRQ (DMA, SPI, I2C, USART, ...).
+ */
+void HAL_NVIC_SetPriority(IRQn_Type IRQn, uint32_t PreemptPriority, uint32_t SubPriority);
+void HAL_NVIC_EnableIRQ(IRQn_Type IRQn);
+void HAL_NVIC_DisableIRQ(IRQn_Type IRQn);
+void HAL_NVIC_ClearPendingIRQ(IRQn_Type IRQn);
+
+
+/**
  * \brief   HAL status enumeration -- minimal subset, added for the RNG fake
  *          surface needed by the L12 multi-thread Rng test. Matches the real
  *          HAL ordering so HAL_OK is the canonical success token.

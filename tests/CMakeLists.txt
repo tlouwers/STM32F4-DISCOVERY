@@ -15,16 +15,19 @@ target_sources(TestRunner
         TestLIS3DSH.cpp
         TestCrc.cpp
         TestRng.cpp
+        TestDMA.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/Crc.cpp
         Fake/drivers/Pin/Pin.cpp
         Fake/utility/Assert/Assert.cpp
         Fake/stm32f4xx_hal.c
         Fake/stm32f4xx_hal_rng.cpp
+        Fake/stm32f4xx_hal_dma.cpp
         # Test subjects
         ../drivers/components/HI-M1388AR/HI-M1388AR.cpp
         ../drivers/components/LIS3DSH/LIS3DSH.cpp
         ../drivers/drivers/Rng/Rng.cpp
+        ../drivers/drivers/DMA/DMA.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )
