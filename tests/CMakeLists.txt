@@ -24,6 +24,7 @@ target_sources(TestRunner
         TestGenericTimer.cpp
         TestBasicTimer.cpp
         TestPWM.cpp
+        TestTimerIRQ.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/Crc.cpp
         Fake/drivers/Pin/Pin.cpp
