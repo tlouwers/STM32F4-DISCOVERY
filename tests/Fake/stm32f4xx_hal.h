@@ -503,6 +503,53 @@ typedef struct __DAC_HandleTypeDef
 } DAC_HandleTypeDef;
 
 
+/**
+ * \brief   ADC peripheral instance (opaque -- the driver only stores it in
+ *          mHandle.Instance and compares handle->Instance == ADCx in the
+ *          conversion-complete ISR dispatch; the fake never inspects it).
+ */
+typedef struct
+{
+    uint32_t reserved;
+} ADC_TypeDef;
+
+extern ADC_TypeDef* const ADC1;
+extern ADC_TypeDef* const ADC2;
+extern ADC_TypeDef* const ADC3;
+
+/**
+ * \brief   ADC init config -- field names mirror the real HAL so Adc::Init
+ *          populates the handle exactly as on hardware. All fields are kept as
+ *          uint32_t (the FunctionalState DISABLE values the driver assigns are
+ *          0, which converts cleanly).
+ */
+typedef struct
+{
+    uint32_t ClockPrescaler;         ///< ADC_CLOCK_SYNC_PCLK_DIV*
+    uint32_t Resolution;             ///< ADC_RESOLUTION_*
+    uint32_t DataAlign;              ///< ADC_DATAALIGN_*
+    uint32_t ScanConvMode;           ///< DISABLE for single conversion
+    uint32_t EOCSelection;           ///< ADC_EOC_*
+    uint32_t ContinuousConvMode;     ///< DISABLE for single conversion
+    uint32_t NbrOfConversion;        ///< Number of regular conversions
+    uint32_t DiscontinuousConvMode;  ///< DISABLE
+    uint32_t NbrOfDiscConversion;    ///< Number of discontinuous conversions
+    uint32_t ExternalTrigConv;       ///< ADC_SOFTWARE_START
+    uint32_t ExternalTrigConvEdge;   ///< ADC_EXTERNALTRIGCONVEDGE_*
+    uint32_t DMAContinuousRequests;  ///< DISABLE
+} ADC_InitTypeDef;
+
+/**
+ * \brief   ADC handle. Only Instance + Init are touched by the driver; the
+ *          fake never reads the configuration back.
+ */
+typedef struct __ADC_HandleTypeDef
+{
+    ADC_TypeDef*    Instance;   ///< Set to ADCx by the driver
+    ADC_InitTypeDef Init;       ///< Configuration
+} ADC_HandleTypeDef;
+
+
 #ifdef __cplusplus
 }
 #endif
