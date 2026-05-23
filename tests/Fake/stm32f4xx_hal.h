@@ -245,6 +245,7 @@ typedef struct
 {
     volatile uint32_t CR;        ///< Clock control register
     volatile uint32_t PLLCFGR;   ///< PLL configuration register
+    volatile uint32_t CFGR;      ///< Clock configuration register (APB prescalers)
 } RCC_TypeDef;
 
 extern RCC_TypeDef* const RCC;
@@ -252,6 +253,14 @@ extern RCC_TypeDef* const RCC;
 #define RCC_CR_PLLRDY            ((uint32_t)0x02000000U)   ///< CR bit 25: main PLL ready flag
 #define RCC_PLLCFGR_PLLQ         ((uint32_t)0x0F000000U)   ///< PLLCFGR PLLQ mask (bits 24..27)
 #define RCC_PLLCFGR_PLLQ_Pos     ((uint32_t)24U)           ///< PLLCFGR PLLQ bit position
+
+/* CFGR APB1/APB2 prescaler fields (read by GenericTimer to scale the timer
+   input clock). Real CMSIS bit positions; the timer-input doubling rule keys
+   off the DIV2 threshold. */
+#define RCC_CFGR_PPRE1           ((uint32_t)0x00001C00U)   ///< APB1 prescaler mask (bits 10..12)
+#define RCC_CFGR_PPRE1_DIV2      ((uint32_t)0x00001000U)   ///< APB1 prescaler /2
+#define RCC_CFGR_PPRE2           ((uint32_t)0x0000E000U)   ///< APB2 prescaler mask (bits 13..15)
+#define RCC_CFGR_PPRE2_DIV2      ((uint32_t)0x00008000U)   ///< APB2 prescaler /2
 
 /**
  * \brief   RNG peripheral instance (opaque -- the fake never inspects it;
@@ -548,6 +557,60 @@ typedef struct __ADC_HandleTypeDef
     ADC_TypeDef*    Instance;   ///< Set to ADCx by the driver
     ADC_InitTypeDef Init;       ///< Configuration
 } ADC_HandleTypeDef;
+
+
+/**
+ * \brief   TIM peripheral instance (opaque -- the driver only stores it in
+ *          mHandle.Instance and compares handle->Instance == TIMx in the
+ *          period-elapsed dispatch; the fake never inspects the contents).
+ * \note    The instances are named TIMn (not bare TIM) -- the F407 CMSIS
+ *          bare-defines TIM1..TIM14 as instance pointer macros, mirrored here.
+ *          Shared by every timer driver (GenericTimer, BasicTimer, PWM) plus
+ *          the TimerIRQ dispatcher.
+ */
+typedef struct
+{
+    uint32_t reserved;
+} TIM_TypeDef;
+
+extern TIM_TypeDef* const TIM1;
+extern TIM_TypeDef* const TIM2;
+extern TIM_TypeDef* const TIM3;
+extern TIM_TypeDef* const TIM4;
+extern TIM_TypeDef* const TIM5;
+extern TIM_TypeDef* const TIM6;
+extern TIM_TypeDef* const TIM7;
+extern TIM_TypeDef* const TIM8;
+extern TIM_TypeDef* const TIM9;
+extern TIM_TypeDef* const TIM10;
+extern TIM_TypeDef* const TIM11;
+extern TIM_TypeDef* const TIM12;
+extern TIM_TypeDef* const TIM13;
+extern TIM_TypeDef* const TIM14;
+
+/**
+ * \brief   TIM time-base init config -- field names mirror the real HAL so the
+ *          timer drivers populate the handle exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t Prescaler;          ///< Clock prescaler (CK_CNT = fCK_PSC / (Prescaler + 1))
+    uint32_t CounterMode;        ///< TIM_COUNTERMODE_*
+    uint32_t Period;             ///< Auto-reload (TIM_ARR)
+    uint32_t ClockDivision;      ///< TIM_CLOCKDIVISION_*
+    uint32_t RepetitionCounter;  ///< Advanced-timer repetition counter (unused by the base path)
+    uint32_t AutoReloadPreload;  ///< TIM_AUTORELOAD_PRELOAD_*
+} TIM_Base_InitTypeDef;
+
+/**
+ * \brief   TIM handle. Only Instance + Init are touched by the base-timer
+ *          drivers; the fake never reads the configuration back.
+ */
+typedef struct __TIM_HandleTypeDef
+{
+    TIM_TypeDef*         Instance;   ///< Set to TIMx by the driver
+    TIM_Base_InitTypeDef Init;       ///< Configuration
+} TIM_HandleTypeDef;
 
 
 #ifdef __cplusplus
