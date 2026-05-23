@@ -288,6 +288,71 @@ int  FakeRNG_MaxObservedConcurrentCallers(void);
 void FakeRNG_ResetObservation(void);
 
 
+/**
+ * \brief   APB peripheral-bus clock frequencies (fake). Fixed to the values
+ *          the drafted 168 MHz PLL config produces: PCLK1 (APB1) = 42 MHz,
+ *          PCLK2 (APB2) = 84 MHz. SPI1 sits on APB2, SPI2/3 on APB1, so the
+ *          SPI driver reads these to validate the requested bus speed and to
+ *          compute the baud-rate prescaler. Bodies in stm32f4xx_hal.c.
+ */
+uint32_t HAL_RCC_GetPCLK1Freq(void);
+uint32_t HAL_RCC_GetPCLK2Freq(void);
+
+
+/**
+ * \brief   SPI peripheral instance (opaque). The driver only stores it in
+ *          mHandle.Instance and compares handle->Instance == SPIx in its ISR
+ *          dispatch; the fake never inspects the contents.
+ */
+typedef struct
+{
+    uint32_t reserved;
+} SPI_TypeDef;
+
+extern SPI_TypeDef* const SPI1;
+extern SPI_TypeDef* const SPI2;
+extern SPI_TypeDef* const SPI3;
+
+/**
+ * \brief   SPI init config -- field names mirror the real HAL so SPI::Init
+ *          populates the handle exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t Mode;                ///< SPI_MODE_*
+    uint32_t Direction;           ///< SPI_DIRECTION_*
+    uint32_t DataSize;            ///< SPI_DATASIZE_*
+    uint32_t CLKPolarity;         ///< SPI_POLARITY_*
+    uint32_t CLKPhase;            ///< SPI_PHASE_*
+    uint32_t NSS;                 ///< SPI_NSS_*
+    uint32_t BaudRatePrescaler;   ///< SPI_BAUDRATEPRESCALER_*
+    uint32_t FirstBit;            ///< SPI_FIRSTBIT_*
+    uint32_t TIMode;              ///< SPI_TIMODE_*
+    uint32_t CRCCalculation;      ///< SPI_CRCCALCULATION_*
+    uint32_t CRCPolynomial;       ///< CRC polynomial
+} SPI_InitTypeDef;
+
+/* Forward declaration: the DMA handle is fully defined in stm32f4xx_hal_dma.h.
+   SPI_HandleTypeDef only needs pointers to it (the hdmatx/hdmarx slots wired
+   by __HAL_LINKDMA), so an incomplete type is sufficient here and avoids a
+   hard include dependency for the many TUs that pull in this umbrella header
+   without ever touching DMA. */
+struct __DMA_HandleTypeDef;
+
+/**
+ * \brief   SPI handle. hdmatx/hdmarx are populated by __HAL_LINKDMA when a
+ *          DMA stream is wired into the Tx/Rx slot; the WriteDMA/ReadDMA paths
+ *          guard on them being non-null.
+ */
+typedef struct __SPI_HandleTypeDef
+{
+    SPI_TypeDef*                Instance;   ///< Set to SPIx by the driver
+    SPI_InitTypeDef             Init;       ///< Configuration
+    struct __DMA_HandleTypeDef* hdmatx;     ///< Tx DMA slot (set by __HAL_LINKDMA)
+    struct __DMA_HandleTypeDef* hdmarx;     ///< Rx DMA slot (set by __HAL_LINKDMA)
+} SPI_HandleTypeDef;
+
+
 #ifdef __cplusplus
 }
 #endif

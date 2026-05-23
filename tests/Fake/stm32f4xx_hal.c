@@ -39,3 +39,9 @@ void HAL_NVIC_SetPriority(IRQn_Type IRQn, uint32_t PreemptPriority, uint32_t Sub
 void HAL_NVIC_EnableIRQ(IRQn_Type IRQn)       { (void)IRQn; }
 void HAL_NVIC_DisableIRQ(IRQn_Type IRQn)      { (void)IRQn; }
 void HAL_NVIC_ClearPendingIRQ(IRQn_Type IRQn) { (void)IRQn; }
+
+
+// APB bus clocks: the drafted 168 MHz PLL gives APB1 = 42 MHz, APB2 = 84 MHz.
+// Fixed values are enough for the drivers' bus-speed validation / prescaler math.
+uint32_t HAL_RCC_GetPCLK1Freq(void) { return 42000000U; }
+uint32_t HAL_RCC_GetPCLK2Freq(void) { return 84000000U; }
