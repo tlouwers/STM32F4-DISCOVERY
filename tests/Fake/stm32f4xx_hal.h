@@ -477,6 +477,32 @@ typedef struct __UART_HandleTypeDef
 } UART_HandleTypeDef;
 
 
+/**
+ * \brief   DAC peripheral instance (opaque -- the driver only stores it in
+ *          mHandle.Instance; the fake never inspects it).
+ * \note    The class is named `Dac` (not `DAC`) precisely because CMSIS
+ *          bare-defines `DAC` as this instance pointer macro on the F407.
+ */
+typedef struct
+{
+    uint32_t reserved;
+} DAC_TypeDef;
+
+extern DAC_TypeDef* const DAC;
+
+/**
+ * \brief   DAC handle. DMA_Handle1/2 are populated by __HAL_LINKDMA when a DMA
+ *          stream is wired into the per-channel slot; StartWaveform guards on
+ *          the relevant slot being non-null.
+ */
+typedef struct __DAC_HandleTypeDef
+{
+    DAC_TypeDef*                Instance;     ///< Set to DAC by the driver
+    struct __DMA_HandleTypeDef* DMA_Handle1;  ///< Channel-1 DMA slot (set by __HAL_LINKDMA)
+    struct __DMA_HandleTypeDef* DMA_Handle2;  ///< Channel-2 DMA slot (set by __HAL_LINKDMA)
+} DAC_HandleTypeDef;
+
+
 #ifdef __cplusplus
 }
 #endif
