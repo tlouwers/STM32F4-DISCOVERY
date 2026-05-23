@@ -22,6 +22,7 @@ target_sources(TestRunner
         TestDac.cpp
         TestAdc.cpp
         TestGenericTimer.cpp
+        TestBasicTimer.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/Crc.cpp
         Fake/drivers/Pin/Pin.cpp
@@ -46,6 +47,7 @@ target_sources(TestRunner
         ../drivers/drivers/Dac/Dac.cpp
         ../drivers/drivers/Adc/Adc.cpp
         ../drivers/drivers/GenericTimer/GenericTimer.cpp
+        ../drivers/drivers/BasicTimer/BasicTimer.cpp
         ../drivers/drivers/TimerIRQ/TimerIRQ.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp

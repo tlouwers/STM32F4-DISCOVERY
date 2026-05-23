@@ -58,9 +58,10 @@ TIM_TypeDef s_tim12 = {};
 TIM_TypeDef s_tim13 = {};
 TIM_TypeDef s_tim14 = {};
 
-HAL_StatusTypeDef s_init_result   = HAL_OK;
-HAL_StatusTypeDef s_deinit_result = HAL_OK;
-int               s_irq_handler_calls = 0;
+HAL_StatusTypeDef s_init_result          = HAL_OK;
+HAL_StatusTypeDef s_deinit_result        = HAL_OK;
+HAL_StatusTypeDef s_master_config_result = HAL_OK;
+int               s_irq_handler_calls    = 0;
 
 } // namespace
 
@@ -95,6 +96,11 @@ extern "C" HAL_StatusTypeDef HAL_TIM_Base_Stop(TIM_HandleTypeDef* /*htim*/)     
 extern "C" HAL_StatusTypeDef HAL_TIM_Base_Start_IT(TIM_HandleTypeDef* /*htim*/) { return HAL_OK; }
 extern "C" HAL_StatusTypeDef HAL_TIM_Base_Stop_IT(TIM_HandleTypeDef* /*htim*/)  { return HAL_OK; }
 
+extern "C" HAL_StatusTypeDef HAL_TIMEx_MasterConfigSynchronization(TIM_HandleTypeDef* /*htim*/, TIM_MasterConfigTypeDef* /*sMasterConfig*/)
+{
+    return s_master_config_result;
+}
+
 extern "C" void HAL_TIM_IRQHandler(TIM_HandleTypeDef* htim)
 {
     ++s_irq_handler_calls;
@@ -111,11 +117,13 @@ extern "C" void HAL_TIM_IRQHandler(TIM_HandleTypeDef* htim)
 /************************************************************************/
 extern "C" void FakeTIM_Reset(void)
 {
-    s_init_result   = HAL_OK;
-    s_deinit_result = HAL_OK;
-    s_irq_handler_calls = 0;
+    s_init_result          = HAL_OK;
+    s_deinit_result        = HAL_OK;
+    s_master_config_result = HAL_OK;
+    s_irq_handler_calls    = 0;
 }
 
-extern "C" void FakeTIM_SetInitResult(HAL_StatusTypeDef result)   { s_init_result = result; }
-extern "C" void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result) { s_deinit_result = result; }
-extern "C" int  FakeTIM_IRQHandlerCallCount(void)                 { return s_irq_handler_calls; }
+extern "C" void FakeTIM_SetInitResult(HAL_StatusTypeDef result)          { s_init_result = result; }
+extern "C" void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result)        { s_deinit_result = result; }
+extern "C" void FakeTIM_SetMasterConfigResult(HAL_StatusTypeDef result)  { s_master_config_result = result; }
+extern "C" int  FakeTIM_IRQHandlerCallCount(void)                        { return s_irq_handler_calls; }

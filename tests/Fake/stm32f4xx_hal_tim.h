@@ -62,6 +62,26 @@ extern "C" {
 #define TIM_AUTORELOAD_PRELOAD_DISABLE      ((uint32_t)0x00000000U)
 #define TIM_AUTORELOAD_PRELOAD_ENABLE       ((uint32_t)0x00000080U)
 
+/* Master/slave (TRGO) config -- used by BasicTimer to drive the DAC chain. */
+#define TIM_TRGO_RESET                      ((uint32_t)0x00000000U)
+#define TIM_TRGO_UPDATE                     ((uint32_t)0x00000020U)
+#define TIM_MASTERSLAVEMODE_DISABLE         ((uint32_t)0x00000000U)
+#define TIM_MASTERSLAVEMODE_ENABLE          ((uint32_t)0x00000080U)
+
+
+/************************************************************************/
+/* Structures                                                           */
+/************************************************************************/
+/**
+ * \brief   TIM master-config struct -- field names mirror the real HAL so the
+ *          timer drivers populate it exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t MasterOutputTrigger;   ///< TIM_TRGO_*
+    uint32_t MasterSlaveMode;       ///< TIM_MASTERSLAVEMODE_*
+} TIM_MasterConfigTypeDef;
+
 
 /************************************************************************/
 /* RCC TIM clock gating -- pretend the clock is already enabled.        */
@@ -106,6 +126,7 @@ HAL_StatusTypeDef HAL_TIM_Base_Start(TIM_HandleTypeDef* htim);
 HAL_StatusTypeDef HAL_TIM_Base_Stop(TIM_HandleTypeDef* htim);
 HAL_StatusTypeDef HAL_TIM_Base_Start_IT(TIM_HandleTypeDef* htim);
 HAL_StatusTypeDef HAL_TIM_Base_Stop_IT(TIM_HandleTypeDef* htim);
+HAL_StatusTypeDef HAL_TIMEx_MasterConfigSynchronization(TIM_HandleTypeDef* htim, TIM_MasterConfigTypeDef* sMasterConfig);
 void              HAL_TIM_IRQHandler(TIM_HandleTypeDef* htim);
 
 /* Defined by the driver (GenericTimer.cpp); declared here so the definition
@@ -119,9 +140,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim);
 /** Reset all fake TIM state: every result back to HAL_OK, counters to 0. */
 void FakeTIM_Reset(void);
 
-void FakeTIM_SetInitResult(HAL_StatusTypeDef result);    ///< Drives Init failure
-void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result);  ///< Drives Sleep failure
-int  FakeTIM_IRQHandlerCallCount(void);                  ///< HAL_TIM_IRQHandler invocation count
+void FakeTIM_SetInitResult(HAL_StatusTypeDef result);          ///< Drives Init failure
+void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result);        ///< Drives Sleep failure
+void FakeTIM_SetMasterConfigResult(HAL_StatusTypeDef result);  ///< Drives BasicTimer master-config (TRGO) failure
+int  FakeTIM_IRQHandlerCallCount(void);                        ///< HAL_TIM_IRQHandler invocation count
 
 
 #ifdef __cplusplus
