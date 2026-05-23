@@ -431,6 +431,52 @@ typedef struct __I2C_HandleTypeDef
 } I2C_HandleTypeDef;
 
 
+/**
+ * \brief   USART peripheral instance. SR is read by the IDLE-flag check and DR
+ *          by the Rx-complete dummy read; the remaining registers are omitted.
+ */
+typedef struct
+{
+    volatile uint32_t SR;   ///< Status register (IDLE flag)
+    volatile uint32_t DR;   ///< Data register
+} USART_TypeDef;
+
+extern USART_TypeDef* const USART1;
+extern USART_TypeDef* const USART2;
+extern USART_TypeDef* const USART3;
+extern USART_TypeDef* const USART6;
+
+/**
+ * \brief   UART init config -- field names mirror the real HAL so USART::Init
+ *          populates the handle exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t BaudRate;      ///< Bus baud rate
+    uint32_t WordLength;    ///< UART_WORDLENGTH_*
+    uint32_t StopBits;      ///< UART_STOPBITS_*
+    uint32_t Parity;        ///< UART_PARITY_*
+    uint32_t Mode;          ///< UART_MODE_*
+    uint32_t HwFlowCtl;     ///< UART_HWCONTROL_*
+    uint32_t OverSampling;  ///< UART_OVERSAMPLING_*
+} UART_InitTypeDef;
+
+/**
+ * \brief   UART handle. hdmatx/hdmarx are populated by __HAL_LINKDMA;
+ *          RxXferSize/RxXferCount are read by the Rx-complete ISR to compute
+ *          the received byte count.
+ */
+typedef struct __UART_HandleTypeDef
+{
+    USART_TypeDef*              Instance;     ///< Set to USARTx by the driver
+    UART_InitTypeDef            Init;         ///< Configuration
+    struct __DMA_HandleTypeDef* hdmatx;       ///< Tx DMA slot (set by __HAL_LINKDMA)
+    struct __DMA_HandleTypeDef* hdmarx;       ///< Rx DMA slot (set by __HAL_LINKDMA)
+    uint16_t                    RxXferSize;   ///< Bytes expected in the active Rx
+    uint16_t                    RxXferCount;  ///< Bytes still outstanding in the active Rx
+} UART_HandleTypeDef;
+
+
 #ifdef __cplusplus
 }
 #endif

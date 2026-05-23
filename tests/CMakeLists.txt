@@ -18,6 +18,7 @@ target_sources(TestRunner
         TestDMA.cpp
         TestSPI.cpp
         TestI2C.cpp
+        TestUSART.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/Crc.cpp
         Fake/drivers/Pin/Pin.cpp
@@ -27,6 +28,7 @@ target_sources(TestRunner
         Fake/stm32f4xx_hal_dma.cpp
         Fake/stm32f4xx_hal_spi.cpp
         Fake/stm32f4xx_hal_i2c.cpp
+        Fake/stm32f4xx_hal_usart.cpp
         # Test subjects
         ../drivers/components/HI-M1388AR/HI-M1388AR.cpp
         ../drivers/components/LIS3DSH/LIS3DSH.cpp
@@ -34,6 +36,7 @@ target_sources(TestRunner
         ../drivers/drivers/DMA/DMA.cpp
         ../drivers/drivers/SPI/SPI.cpp
         ../drivers/drivers/I2C/I2C.cpp
+        ../drivers/drivers/USART/USART.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )

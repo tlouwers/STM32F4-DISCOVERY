@@ -160,6 +160,11 @@ typedef struct __DMA_HandleTypeDef
 #define __HAL_DMA_DISABLE_IT(__HANDLE__, __INTERRUPT__) \
     (((DMA_Stream_TypeDef *)((__HANDLE__)->Instance))->CR &= ~(__INTERRUPT__))
 
+/** Remaining transfer count of a DMA stream (NDTR). Read by the USART Rx-complete
+ *  ISR to compute how many bytes actually arrived. */
+#define __HAL_DMA_GET_COUNTER(__HANDLE__) \
+    (((DMA_Stream_TypeDef *)((__HANDLE__)->Instance))->NDTR)
+
 /** Wire a DMA handle into a peripheral handle's stream slot, and back-link. */
 #define __HAL_LINKDMA(__HANDLE__, __PPP_DMA_FIELD__, __DMA_HANDLE__)   \
     do {                                                              \
