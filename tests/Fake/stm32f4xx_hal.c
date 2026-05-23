@@ -45,3 +45,13 @@ void HAL_NVIC_ClearPendingIRQ(IRQn_Type IRQn) { (void)IRQn; }
 // Fixed values are enough for the drivers' bus-speed validation / prescaler math.
 uint32_t HAL_RCC_GetPCLK1Freq(void) { return 42000000U; }
 uint32_t HAL_RCC_GetPCLK2Freq(void) { return 84000000U; }
+
+
+// Cortex-M4 DWT / CoreDebug register storage (cycle-counter busy-waits read these).
+static DWT_TypeDef       s_dwt        = { 0 };
+static CoreDebug_TypeDef s_core_debug = { 0 };
+DWT_TypeDef*       const DWT       = &s_dwt;
+CoreDebug_TypeDef* const CoreDebug = &s_core_debug;
+
+// Zero so every DWT cycle-counter busy-wait is a no-op (see stm32f4xx_hal.h).
+uint32_t SystemCoreClock = 0U;

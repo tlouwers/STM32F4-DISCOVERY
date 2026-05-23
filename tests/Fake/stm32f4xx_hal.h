@@ -353,6 +353,84 @@ typedef struct __SPI_HandleTypeDef
 } SPI_HandleTypeDef;
 
 
+/**
+ * \brief   Cortex-M4 DWT cycle counter and CoreDebug DEMCR (fake). Drivers that
+ *          busy-wait on the cycle counter (e.g. I2C bus-recovery's
+ *          DelayMicroseconds) read these; storage lives in stm32f4xx_hal.c.
+ */
+typedef struct
+{
+    volatile uint32_t CTRL;     ///< Control register (CYCCNTENA in bit 0)
+    volatile uint32_t reserved[5];
+    volatile uint32_t CYCCNT;   ///< Cycle count register
+} DWT_TypeDef;
+
+typedef struct
+{
+    volatile uint32_t DEMCR;    ///< Debug Exception and Monitor Control (TRCENA in bit 24)
+} CoreDebug_TypeDef;
+
+extern DWT_TypeDef*       const DWT;
+extern CoreDebug_TypeDef* const CoreDebug;
+
+#define DWT_CTRL_CYCCNTENA_Msk     ((uint32_t)0x00000001U)   ///< CTRL: CYCCNT enable
+#define CoreDebug_DEMCR_TRCENA_Msk ((uint32_t)0x01000000U)   ///< DEMCR: trace enable
+
+/**
+ * \brief   Live core clock (fake). Deliberately 0 so the cycle budget
+ *          `(SystemCoreClock / 1000000) * us` computes to 0 and every
+ *          DWT-based busy-wait returns immediately: the fake DWT->CYCCNT does
+ *          not advance on read, so a non-zero budget would spin forever. Native
+ *          tests have no real bus, so a zero-length delay is the correct fake.
+ */
+extern uint32_t SystemCoreClock;
+
+
+/**
+ * \brief   I2C peripheral instance. Only CR1 is modelled (the bus-recovery
+ *          SWRST / PE-disable path writes it); the remaining registers are
+ *          omitted as no driver path inspects them.
+ */
+typedef struct
+{
+    volatile uint32_t CR1;   ///< Control register 1 (PE, SWRST)
+} I2C_TypeDef;
+
+extern I2C_TypeDef* const I2C1;
+extern I2C_TypeDef* const I2C2;
+extern I2C_TypeDef* const I2C3;
+
+/**
+ * \brief   I2C init config -- field names mirror the real HAL so I2C::Init
+ *          populates the handle exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t ClockSpeed;        ///< Bus clock in Hz
+    uint32_t DutyCycle;         ///< I2C_DUTYCYCLE_*
+    uint32_t OwnAddress1;       ///< First device own address
+    uint32_t AddressingMode;    ///< I2C_ADDRESSINGMODE_*
+    uint32_t DualAddressMode;   ///< I2C_DUALADDRESS_*
+    uint32_t OwnAddress2;       ///< Second device own address
+    uint32_t GeneralCallMode;   ///< I2C_GENERALCALL_*
+    uint32_t NoStretchMode;     ///< I2C_NOSTRETCH_*
+} I2C_InitTypeDef;
+
+/**
+ * \brief   I2C handle. hdmatx/hdmarx are populated by __HAL_LINKDMA; Devaddress
+ *          and ErrorCode are read by the Sleep abort path / completion ISRs.
+ */
+typedef struct __I2C_HandleTypeDef
+{
+    I2C_TypeDef*                Instance;     ///< Set to I2Cx by the driver
+    I2C_InitTypeDef             Init;         ///< Configuration
+    struct __DMA_HandleTypeDef* hdmatx;       ///< Tx DMA slot (set by __HAL_LINKDMA)
+    struct __DMA_HandleTypeDef* hdmarx;       ///< Rx DMA slot (set by __HAL_LINKDMA)
+    uint16_t                    Devaddress;   ///< Target address of an in-flight transfer
+    uint32_t                    ErrorCode;    ///< HAL_I2C_ERROR_* of the last transfer
+} I2C_HandleTypeDef;
+
+
 #ifdef __cplusplus
 }
 #endif
