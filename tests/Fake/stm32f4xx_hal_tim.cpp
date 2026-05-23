@@ -63,6 +63,12 @@ HAL_StatusTypeDef s_deinit_result        = HAL_OK;
 HAL_StatusTypeDef s_master_config_result = HAL_OK;
 int               s_irq_handler_calls    = 0;
 
+HAL_StatusTypeDef s_pwm_init_result    = HAL_OK;
+HAL_StatusTypeDef s_pwm_deinit_result  = HAL_OK;
+HAL_StatusTypeDef s_pwm_config_result  = HAL_OK;
+HAL_StatusTypeDef s_pwm_start_result   = HAL_OK;
+HAL_StatusTypeDef s_pwm_stop_result    = HAL_OK;
+
 } // namespace
 
 
@@ -111,6 +117,17 @@ extern "C" void HAL_TIM_IRQHandler(TIM_HandleTypeDef* htim)
     HAL_TIM_PeriodElapsedCallback(htim);
 }
 
+extern "C" HAL_StatusTypeDef HAL_TIM_PWM_Init(TIM_HandleTypeDef* /*htim*/)   { return s_pwm_init_result; }
+extern "C" HAL_StatusTypeDef HAL_TIM_PWM_DeInit(TIM_HandleTypeDef* /*htim*/) { return s_pwm_deinit_result; }
+
+extern "C" HAL_StatusTypeDef HAL_TIM_PWM_ConfigChannel(TIM_HandleTypeDef* /*htim*/, TIM_OC_InitTypeDef* /*sConfig*/, uint32_t /*Channel*/)
+{
+    return s_pwm_config_result;
+}
+
+extern "C" HAL_StatusTypeDef HAL_TIM_PWM_Start(TIM_HandleTypeDef* /*htim*/, uint32_t /*Channel*/) { return s_pwm_start_result; }
+extern "C" HAL_StatusTypeDef HAL_TIM_PWM_Stop(TIM_HandleTypeDef* /*htim*/, uint32_t /*Channel*/)  { return s_pwm_stop_result; }
+
 
 /************************************************************************/
 /* Test-only observation / control hooks                                */
@@ -121,9 +138,21 @@ extern "C" void FakeTIM_Reset(void)
     s_deinit_result        = HAL_OK;
     s_master_config_result = HAL_OK;
     s_irq_handler_calls    = 0;
+
+    s_pwm_init_result   = HAL_OK;
+    s_pwm_deinit_result = HAL_OK;
+    s_pwm_config_result = HAL_OK;
+    s_pwm_start_result  = HAL_OK;
+    s_pwm_stop_result   = HAL_OK;
 }
 
 extern "C" void FakeTIM_SetInitResult(HAL_StatusTypeDef result)          { s_init_result = result; }
 extern "C" void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result)        { s_deinit_result = result; }
 extern "C" void FakeTIM_SetMasterConfigResult(HAL_StatusTypeDef result)  { s_master_config_result = result; }
 extern "C" int  FakeTIM_IRQHandlerCallCount(void)                        { return s_irq_handler_calls; }
+
+extern "C" void FakeTIM_SetPwmInitResult(HAL_StatusTypeDef result)          { s_pwm_init_result = result; }
+extern "C" void FakeTIM_SetPwmDeInitResult(HAL_StatusTypeDef result)        { s_pwm_deinit_result = result; }
+extern "C" void FakeTIM_SetPwmConfigChannelResult(HAL_StatusTypeDef result) { s_pwm_config_result = result; }
+extern "C" void FakeTIM_SetPwmStartResult(HAL_StatusTypeDef result)         { s_pwm_start_result = result; }
+extern "C" void FakeTIM_SetPwmStopResult(HAL_StatusTypeDef result)          { s_pwm_stop_result = result; }

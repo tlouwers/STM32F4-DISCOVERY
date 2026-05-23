@@ -68,6 +68,25 @@ extern "C" {
 #define TIM_MASTERSLAVEMODE_DISABLE         ((uint32_t)0x00000000U)
 #define TIM_MASTERSLAVEMODE_ENABLE          ((uint32_t)0x00000080U)
 
+/* PWM output-compare config -- used by the PWM driver. */
+#define TIM_OCMODE_PWM1                     ((uint32_t)0x00000060U)
+#define TIM_OCMODE_PWM2                     ((uint32_t)0x00000070U)
+#define TIM_OCPOLARITY_HIGH                 ((uint32_t)0x00000000U)
+#define TIM_OCPOLARITY_LOW                  ((uint32_t)0x00000002U)
+#define TIM_OCFAST_DISABLE                  ((uint32_t)0x00000000U)
+#define TIM_OCFAST_ENABLE                   ((uint32_t)0x00000004U)
+
+#define TIM_CHANNEL_1                       ((uint32_t)0x00000000U)
+#define TIM_CHANNEL_2                       ((uint32_t)0x00000004U)
+#define TIM_CHANNEL_3                       ((uint32_t)0x00000008U)
+#define TIM_CHANNEL_4                       ((uint32_t)0x0000000CU)
+
+/* Single-MMIO compare-register write. The fake TIM_TypeDef is opaque (no CCR
+   storage) and the native test cannot observe the register, so this is a no-op
+   that simply consumes its arguments -- it must still compile in the driver. */
+#define __HAL_TIM_SET_COMPARE(__HANDLE__, __CHANNEL__, __COMPARE__) \
+    do { (void)(__HANDLE__); (void)(__CHANNEL__); (void)(__COMPARE__); } while(0)
+
 
 /************************************************************************/
 /* Structures                                                           */
@@ -81,6 +100,18 @@ typedef struct
     uint32_t MasterOutputTrigger;   ///< TIM_TRGO_*
     uint32_t MasterSlaveMode;       ///< TIM_MASTERSLAVEMODE_*
 } TIM_MasterConfigTypeDef;
+
+/**
+ * \brief   TIM output-compare init struct -- field names mirror the real HAL so
+ *          the PWM driver populates it exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t OCMode;       ///< TIM_OCMODE_*
+    uint32_t Pulse;        ///< Compare value (CCR)
+    uint32_t OCPolarity;   ///< TIM_OCPOLARITY_*
+    uint32_t OCFastMode;   ///< TIM_OCFAST_*
+} TIM_OC_InitTypeDef;
 
 
 /************************************************************************/
@@ -129,6 +160,13 @@ HAL_StatusTypeDef HAL_TIM_Base_Stop_IT(TIM_HandleTypeDef* htim);
 HAL_StatusTypeDef HAL_TIMEx_MasterConfigSynchronization(TIM_HandleTypeDef* htim, TIM_MasterConfigTypeDef* sMasterConfig);
 void              HAL_TIM_IRQHandler(TIM_HandleTypeDef* htim);
 
+/* PWM output path (used by the PWM driver). */
+HAL_StatusTypeDef HAL_TIM_PWM_Init(TIM_HandleTypeDef* htim);
+HAL_StatusTypeDef HAL_TIM_PWM_DeInit(TIM_HandleTypeDef* htim);
+HAL_StatusTypeDef HAL_TIM_PWM_ConfigChannel(TIM_HandleTypeDef* htim, TIM_OC_InitTypeDef* sConfig, uint32_t Channel);
+HAL_StatusTypeDef HAL_TIM_PWM_Start(TIM_HandleTypeDef* htim, uint32_t Channel);
+HAL_StatusTypeDef HAL_TIM_PWM_Stop(TIM_HandleTypeDef* htim, uint32_t Channel);
+
 /* Defined by the driver (GenericTimer.cpp); declared here so the definition
    links with C linkage and the fake HAL_TIM_IRQHandler can dispatch into it. */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim);
@@ -140,10 +178,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim);
 /** Reset all fake TIM state: every result back to HAL_OK, counters to 0. */
 void FakeTIM_Reset(void);
 
-void FakeTIM_SetInitResult(HAL_StatusTypeDef result);          ///< Drives Init failure
-void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result);        ///< Drives Sleep failure
+void FakeTIM_SetInitResult(HAL_StatusTypeDef result);          ///< Drives Base_Init failure
+void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result);        ///< Drives Base_DeInit (Sleep) failure
 void FakeTIM_SetMasterConfigResult(HAL_StatusTypeDef result);  ///< Drives BasicTimer master-config (TRGO) failure
 int  FakeTIM_IRQHandlerCallCount(void);                        ///< HAL_TIM_IRQHandler invocation count
+
+void FakeTIM_SetPwmInitResult(HAL_StatusTypeDef result);          ///< Drives PWM Init failure
+void FakeTIM_SetPwmDeInitResult(HAL_StatusTypeDef result);        ///< Drives PWM Sleep failure
+void FakeTIM_SetPwmConfigChannelResult(HAL_StatusTypeDef result); ///< Drives ConfigureChannel failure
+void FakeTIM_SetPwmStartResult(HAL_StatusTypeDef result);         ///< Drives Start failure
+void FakeTIM_SetPwmStopResult(HAL_StatusTypeDef result);          ///< Drives Stop failure
 
 
 #ifdef __cplusplus
