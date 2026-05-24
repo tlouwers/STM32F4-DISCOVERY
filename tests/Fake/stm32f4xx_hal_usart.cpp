@@ -50,6 +50,10 @@ HAL_StatusTypeDef s_deinit_result   = HAL_OK;
 HAL_StatusTypeDef s_transfer_result = HAL_OK;
 int               s_irq_handler_calls = 0;
 
+// Handle of the most recently started IT/DMA transfer; FakeUSART_FireTxCplt
+// dispatches HAL_UART_TxCpltCallback against it.
+UART_HandleTypeDef* s_last_handle = nullptr;
+
 // Mirror the real HAL's parameter rejection so the driver's null/zero paths,
 // which delegate to the HAL, return false as documented on IUSART.
 HAL_StatusTypeDef TransferResult(const void* buf, uint16_t size)
@@ -88,23 +92,29 @@ extern "C" HAL_StatusTypeDef HAL_UART_Receive(UART_HandleTypeDef* /*huart*/, uin
     return TransferResult(pData, Size);
 }
 
-extern "C" HAL_StatusTypeDef HAL_UART_Transmit_IT(UART_HandleTypeDef* /*huart*/, uint8_t* pData, uint16_t Size)
+extern "C" HAL_StatusTypeDef HAL_UART_Transmit_IT(UART_HandleTypeDef* huart, uint8_t* pData, uint16_t Size)
 {
+    s_last_handle = huart;
     return TransferResult(pData, Size);
 }
 
-extern "C" HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef* /*huart*/, uint8_t* pData, uint16_t Size)
+extern "C" HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef* huart, uint8_t* pData, uint16_t Size)
 {
+    s_last_handle = huart;
+    if (huart != nullptr) { huart->RxXferSize = Size; huart->RxXferCount = 0; }
     return TransferResult(pData, Size);
 }
 
-extern "C" HAL_StatusTypeDef HAL_UART_Transmit_DMA(UART_HandleTypeDef* /*huart*/, uint8_t* pData, uint16_t Size)
+extern "C" HAL_StatusTypeDef HAL_UART_Transmit_DMA(UART_HandleTypeDef* huart, uint8_t* pData, uint16_t Size)
 {
+    s_last_handle = huart;
     return TransferResult(pData, Size);
 }
 
-extern "C" HAL_StatusTypeDef HAL_UART_Receive_DMA(UART_HandleTypeDef* /*huart*/, uint8_t* pData, uint16_t Size)
+extern "C" HAL_StatusTypeDef HAL_UART_Receive_DMA(UART_HandleTypeDef* huart, uint8_t* pData, uint16_t Size)
 {
+    s_last_handle = huart;
+    if (huart != nullptr) { huart->RxXferSize = Size; huart->RxXferCount = 0; }
     return TransferResult(pData, Size);
 }
 
@@ -127,9 +137,33 @@ extern "C" void FakeUSART_Reset(void)
     s_deinit_result     = HAL_OK;
     s_transfer_result   = HAL_OK;
     s_irq_handler_calls = 0;
+    s_last_handle       = nullptr;
 }
 
 extern "C" void FakeUSART_SetInitResult(HAL_StatusTypeDef result)     { s_init_result = result; }
 extern "C" void FakeUSART_SetDeInitResult(HAL_StatusTypeDef result)   { s_deinit_result = result; }
 extern "C" void FakeUSART_SetTransferResult(HAL_StatusTypeDef result) { s_transfer_result = result; }
 extern "C" int  FakeUSART_IRQHandlerCallCount(void)                   { return s_irq_handler_calls; }
+
+extern "C" void FakeUSART_FireTxCplt(void)
+{
+    if (s_last_handle != nullptr) { HAL_UART_TxCpltCallback(s_last_handle); }
+}
+
+extern "C" void FakeUSART_SetIdleFlag(int set)
+{
+    if (set != 0)
+    {
+        s_usart1.SR |= UART_FLAG_IDLE;
+        s_usart2.SR |= UART_FLAG_IDLE;
+        s_usart3.SR |= UART_FLAG_IDLE;
+        s_usart6.SR |= UART_FLAG_IDLE;
+    }
+    else
+    {
+        s_usart1.SR &= ~UART_FLAG_IDLE;
+        s_usart2.SR &= ~UART_FLAG_IDLE;
+        s_usart3.SR &= ~UART_FLAG_IDLE;
+        s_usart6.SR &= ~UART_FLAG_IDLE;
+    }
+}

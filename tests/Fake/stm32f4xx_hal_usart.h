@@ -143,6 +143,18 @@ void FakeUSART_SetTransferResult(HAL_StatusTypeDef result);
 /** Number of HAL_UART_IRQHandler calls since the last reset. */
 int FakeUSART_IRQHandlerCallCount(void);
 
+/** Simulate a Tx-complete interrupt on the most recently started IT/DMA
+ *  transfer, dispatching into the driver's HAL_UART_TxCpltCallback (routes by
+ *  handle->Instance into the per-instance user handler). No-op if none started
+ *  since the last reset. */
+void FakeUSART_FireTxCplt(void);
+
+/** Set (set != 0) or clear the IDLE-line flag on every USART status register, so
+ *  that firing a USARTx vector takes CallbackIRQ's IDLE path into
+ *  HAL_UART_RxCpltCallback. The Receive IT/DMA entry points pre-load RxXferSize
+ *  with the requested size so that path reports a non-zero byte count. */
+void FakeUSART_SetIdleFlag(int set);
+
 
 #ifdef __cplusplus
 }

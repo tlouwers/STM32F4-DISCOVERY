@@ -46,9 +46,12 @@ extern "C" {
 /************************************************************************/
 /* External references                                                  */
 /************************************************************************/
-// The driver installs this C-linkage ISR entry point; the test fires it to
-// prove the USART1 vector dispatches into CallbackIRQ -> HAL_UART_IRQHandler.
+// The driver installs these C-linkage ISR entry points; the test fires them to
+// prove each USARTx vector dispatches into CallbackIRQ -> HAL_UART_IRQHandler.
 extern "C" void USART1_IRQHandler(void);
+extern "C" void USART2_IRQHandler(void);
+extern "C" void USART3_IRQHandler(void);
+extern "C" void USART6_IRQHandler(void);
 
 
 namespace {
@@ -343,6 +346,100 @@ TEST_F(USART_Test, IRQHandler_AfterSleep_DoesNotDispatch)
     USART1_IRQHandler();
 
     EXPECT_EQ(0, FakeUSART_IRQHandlerCallCount());
+}
+
+
+/************************************************************************/
+/* Config coverage (parity)                                             */
+/************************************************************************/
+// ValidConfig uses Parity::NO and the FullConfig test uses EVEN; cover ODD so
+// every GetParity switch arm is exercised.
+TEST_F(USART_Test, Init_OddParity_ReturnsTrue)
+{
+    USART::Config cfg(0, false, USART::Baudrate::_115K2,
+                      USART::WordLength::_8_BIT, USART::Parity::ODD);
+    EXPECT_TRUE(mSubject.Init(cfg));
+}
+
+
+/************************************************************************/
+/* Instance coverage (USART2 / USART3 / USART6)                         */
+/************************************************************************/
+// Constructing + initialising each instance exercises the USART2/3/6 arms of
+// SetInstance, CheckAndEnable/DisablePeripheralClock and GetIRQn.
+TEST_F(USART_Test, Init_EachInstance_ReturnsTrueAndSleeps)
+{
+    const UsartInstance insts[] = {
+        UsartInstance::USART_2, UsartInstance::USART_3, UsartInstance::USART_6
+    };
+    for (const auto& inst : insts)
+    {
+        FakeUSART_Reset();
+        USART u(inst);
+        EXPECT_TRUE(u.Init(ValidConfig()));
+        EXPECT_TRUE(u.Sleep());
+    }
+}
+
+
+/************************************************************************/
+/* Completion-callback dispatch                                         */
+/************************************************************************/
+// The Write* IT path registers a void() handler the HAL fires on Tx completion;
+// iterate every instance so HAL_UART_TxCpltCallback's per-instance dispatch
+// (USART1/2/3/6) is covered.
+TEST_F(USART_Test, WriteInterrupt_TxComplete_EachInstance_FiresHandler)
+{
+    const UsartInstance insts[] = {
+        UsartInstance::USART_1, UsartInstance::USART_2,
+        UsartInstance::USART_3, UsartInstance::USART_6
+    };
+    for (const auto& inst : insts)
+    {
+        FakeUSART_Reset();
+        USART u(inst);
+        ASSERT_TRUE(u.Init(ValidConfig()));
+
+        bool fired = false;
+        const uint8_t src[4] = { 1, 2, 3, 4 };
+        ASSERT_TRUE(u.WriteInterrupt(src, sizeof(src), [&]{ fired = true; }));
+
+        FakeUSART_FireTxCplt();
+        EXPECT_TRUE(fired);
+    }
+}
+
+// The Rx-complete path runs through CallbackIRQ's IDLE branch: a registered
+// ReadInterrupt arms RxXferSize; setting the IDLE flag + firing the instance's
+// vector dispatches HAL_UART_RxCpltCallback -> the user handler with the byte
+// count. Covers the IDLE branch, the RxCplt body, every per-instance dispatch
+// arm and every USARTx vector.
+TEST_F(USART_Test, ReadInterrupt_RxComplete_IdlePath_EachInstance_FiresHandler)
+{
+    const struct { UsartInstance inst; void (*isr)(void); } cases[] = {
+        { UsartInstance::USART_1, &USART1_IRQHandler },
+        { UsartInstance::USART_2, &USART2_IRQHandler },
+        { UsartInstance::USART_3, &USART3_IRQHandler },
+        { UsartInstance::USART_6, &USART6_IRQHandler },
+    };
+    for (const auto& c : cases)
+    {
+        FakeUSART_Reset();
+        USART u(c.inst);
+        ASSERT_TRUE(u.Init(ValidConfig()));
+
+        bool     called = false;
+        uint16_t got    = 0;
+        uint8_t  dest[4] = {};
+        ASSERT_TRUE(u.ReadInterrupt(dest, sizeof(dest),
+                                    [&](uint16_t n){ called = true; got = n; }, true));
+
+        FakeUSART_SetIdleFlag(1);
+        c.isr();
+
+        EXPECT_TRUE(called);
+        EXPECT_EQ(4u, got);
+    }
 }
 
 
