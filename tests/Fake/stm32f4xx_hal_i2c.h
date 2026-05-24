@@ -126,13 +126,32 @@ HAL_StatusTypeDef HAL_I2C_Master_Receive_DMA(I2C_HandleTypeDef* hi2c, uint16_t D
 void HAL_I2C_EV_IRQHandler(I2C_HandleTypeDef* hi2c);
 void HAL_I2C_ER_IRQHandler(I2C_HandleTypeDef* hi2c);
 
+/* Defined by the driver (I2C.cpp); declared here for C linkage so the fake's
+   completion-fire hooks below can dispatch into them. On hardware the HAL fires
+   these from the EV/ER IRQ handlers at transfer completion / error / abort. */
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef* hi2c);
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef* hi2c);
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef* hi2c);
+void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef* hi2c);
+
 
 /************************************************************************/
 /* Test-only observation / control hooks                                */
 /************************************************************************/
 /** Reset all fake I2C state: Init/DeInit/transfer results to HAL_OK, the
- *  reported state to HAL_I2C_STATE_READY, and the EV/ER IRQ counters to zero. */
+ *  reported state to HAL_I2C_STATE_READY, the EV/ER IRQ counters to zero, and
+ *  the last-transfer handle. */
 void FakeI2C_Reset(void);
+
+/** Simulate completion of the most recently started IT/DMA master transfer,
+ *  dispatching into the driver's matching callback (routes by handle->Instance
+ *  into the per-instance user handler). TxCplt/RxCplt fire success=true; Error
+ *  and Abort fire both Tx+Rx slots success=false. No-op if no IT/DMA transfer
+ *  has been started since the last reset. */
+void FakeI2C_FireMasterTxCplt(void);
+void FakeI2C_FireMasterRxCplt(void);
+void FakeI2C_FireError(void);
+void FakeI2C_FireAbort(void);
 
 /** Force HAL_I2C_Init to return `result` (drives the Init / RecoverBus re-init
  *  failure paths). */

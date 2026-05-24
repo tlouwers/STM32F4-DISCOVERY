@@ -49,9 +49,13 @@ extern "C" {
 /* External references                                                  */
 /************************************************************************/
 // The driver installs these C-linkage ISR entry points; the test fires them
-// directly to prove the I2C1 vectors dispatch into CallbackEvent/Error.
+// directly to prove each I2Cx vector dispatches into CallbackEvent/Error.
 extern "C" void I2C1_EV_IRQHandler(void);
 extern "C" void I2C1_ER_IRQHandler(void);
+extern "C" void I2C2_EV_IRQHandler(void);
+extern "C" void I2C2_ER_IRQHandler(void);
+extern "C" void I2C3_EV_IRQHandler(void);
+extern "C" void I2C3_ER_IRQHandler(void);
 
 
 namespace {
@@ -390,6 +394,146 @@ TEST_F(I2C_Test, EvIRQHandler_AfterSleep_DoesNotDispatch)
     I2C1_EV_IRQHandler();
 
     EXPECT_EQ(0, FakeI2C_EvIRQHandlerCallCount());
+}
+
+
+/************************************************************************/
+/* Instance coverage (I2C2 / I2C3)                                      */
+/************************************************************************/
+// Constructing + initialising I2C_2 / I2C_3 exercises the I2C2/I2C3 arms of
+// SetInstance, CheckAndEnable/DisablePeripheralClock and GetIRQn (both EV + ER).
+TEST_F(I2C_Test, Init_I2c2Instance_ReturnsTrueAndSleeps)
+{
+    I2C i2c2(I2CInstance::I2C_2);
+    EXPECT_TRUE(i2c2.Init(ValidConfig()));
+    EXPECT_TRUE(i2c2.Sleep());
+}
+
+TEST_F(I2C_Test, Init_I2c3Instance_ReturnsTrueAndSleeps)
+{
+    I2C i2c3(I2CInstance::I2C_3);
+    EXPECT_TRUE(i2c3.Init(ValidConfig()));
+    EXPECT_TRUE(i2c3.Sleep());
+}
+
+TEST_F(I2C_Test, EvErIRQHandler_I2c2_DispatchesIntoHal)
+{
+    I2C i2c2(I2CInstance::I2C_2);
+    ASSERT_TRUE(i2c2.Init(ValidConfig()));
+
+    I2C2_EV_IRQHandler();
+    I2C2_ER_IRQHandler();
+
+    EXPECT_EQ(1, FakeI2C_EvIRQHandlerCallCount());
+    EXPECT_EQ(1, FakeI2C_ErIRQHandlerCallCount());
+}
+
+TEST_F(I2C_Test, EvErIRQHandler_I2c3_DispatchesIntoHal)
+{
+    I2C i2c3(I2CInstance::I2C_3);
+    ASSERT_TRUE(i2c3.Init(ValidConfig()));
+
+    I2C3_EV_IRQHandler();
+    I2C3_ER_IRQHandler();
+
+    EXPECT_EQ(1, FakeI2C_EvIRQHandlerCallCount());
+    EXPECT_EQ(1, FakeI2C_ErIRQHandlerCallCount());
+}
+
+
+/************************************************************************/
+/* Completion-callback dispatch                                         */
+/************************************************************************/
+// The async IT paths register a void(bool) user handler the HAL fires on
+// completion (MasterTxCplt / MasterRxCplt, success=true) or on error/abort
+// (success=false). Iterate every instance so each callback's per-instance
+// dispatch arm (I2C1/2/3) is covered.
+TEST_F(I2C_Test, WriteInterrupt_TxComplete_EachInstance_FiresHandlerSuccess)
+{
+    const I2CInstance insts[] = {
+        I2CInstance::I2C_1, I2CInstance::I2C_2, I2CInstance::I2C_3
+    };
+    for (const auto& inst : insts)
+    {
+        FakeI2C_Reset();
+        I2C i2c(inst);
+        ASSERT_TRUE(i2c.Init(ValidConfig()));
+
+        bool called = false, ok = false;
+        const uint8_t src[4] = { 1, 2, 3, 4 };
+        ASSERT_TRUE(i2c.WriteInterrupt(kSlave, src, sizeof(src),
+                                       [&](bool s){ called = true; ok = s; }));
+
+        FakeI2C_FireMasterTxCplt();
+        EXPECT_TRUE(called);
+        EXPECT_TRUE(ok);
+    }
+}
+
+TEST_F(I2C_Test, ReadInterrupt_RxComplete_EachInstance_FiresHandlerSuccess)
+{
+    const I2CInstance insts[] = {
+        I2CInstance::I2C_1, I2CInstance::I2C_2, I2CInstance::I2C_3
+    };
+    for (const auto& inst : insts)
+    {
+        FakeI2C_Reset();
+        I2C i2c(inst);
+        ASSERT_TRUE(i2c.Init(ValidConfig()));
+
+        bool called = false, ok = false;
+        uint8_t dest[4] = {};
+        ASSERT_TRUE(i2c.ReadInterrupt(kSlave, dest, sizeof(dest),
+                                      [&](bool s){ called = true; ok = s; }));
+
+        FakeI2C_FireMasterRxCplt();
+        EXPECT_TRUE(called);
+        EXPECT_TRUE(ok);
+    }
+}
+
+TEST_F(I2C_Test, ErrorCallback_EachInstance_FiresInFlightHandlerFailure)
+{
+    const I2CInstance insts[] = {
+        I2CInstance::I2C_1, I2CInstance::I2C_2, I2CInstance::I2C_3
+    };
+    for (const auto& inst : insts)
+    {
+        FakeI2C_Reset();
+        I2C i2c(inst);
+        ASSERT_TRUE(i2c.Init(ValidConfig()));
+
+        bool called = false, ok = true;
+        const uint8_t src[4] = { 1, 2, 3, 4 };
+        ASSERT_TRUE(i2c.WriteInterrupt(kSlave, src, sizeof(src),
+                                       [&](bool s){ called = true; ok = s; }));
+
+        FakeI2C_FireError();
+        EXPECT_TRUE(called);
+        EXPECT_FALSE(ok);
+    }
+}
+
+TEST_F(I2C_Test, AbortCallback_EachInstance_FiresInFlightHandlerFailure)
+{
+    const I2CInstance insts[] = {
+        I2CInstance::I2C_1, I2CInstance::I2C_2, I2CInstance::I2C_3
+    };
+    for (const auto& inst : insts)
+    {
+        FakeI2C_Reset();
+        I2C i2c(inst);
+        ASSERT_TRUE(i2c.Init(ValidConfig()));
+
+        bool called = false, ok = true;
+        uint8_t dest[4] = {};
+        ASSERT_TRUE(i2c.ReadInterrupt(kSlave, dest, sizeof(dest),
+                                      [&](bool s){ called = true; ok = s; }));
+
+        FakeI2C_FireAbort();
+        EXPECT_TRUE(called);
+        EXPECT_FALSE(ok);
+    }
 }
 
 

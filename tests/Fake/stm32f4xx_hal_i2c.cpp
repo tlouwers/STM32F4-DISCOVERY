@@ -52,6 +52,10 @@ int s_abort_calls = 0;
 int s_ev_irq_calls = 0;
 int s_er_irq_calls = 0;
 
+// Handle of the most recently started IT/DMA master transfer; the
+// FakeI2C_Fire* hooks dispatch the matching completion callback against it.
+I2C_HandleTypeDef* s_last_handle = nullptr;
+
 } // namespace
 
 
@@ -97,23 +101,27 @@ extern "C" HAL_StatusTypeDef HAL_I2C_Master_Receive(I2C_HandleTypeDef* /*hi2c*/,
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_I2C_Master_Transmit_IT(I2C_HandleTypeDef* /*hi2c*/, uint16_t /*DevAddress*/, uint8_t* /*pData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_I2C_Master_Transmit_IT(I2C_HandleTypeDef* hi2c, uint16_t /*DevAddress*/, uint8_t* /*pData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hi2c;
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_I2C_Master_Receive_IT(I2C_HandleTypeDef* /*hi2c*/, uint16_t /*DevAddress*/, uint8_t* /*pData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_I2C_Master_Receive_IT(I2C_HandleTypeDef* hi2c, uint16_t /*DevAddress*/, uint8_t* /*pData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hi2c;
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_I2C_Master_Transmit_DMA(I2C_HandleTypeDef* /*hi2c*/, uint16_t /*DevAddress*/, uint8_t* /*pData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_I2C_Master_Transmit_DMA(I2C_HandleTypeDef* hi2c, uint16_t /*DevAddress*/, uint8_t* /*pData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hi2c;
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_I2C_Master_Receive_DMA(I2C_HandleTypeDef* /*hi2c*/, uint16_t /*DevAddress*/, uint8_t* /*pData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_I2C_Master_Receive_DMA(I2C_HandleTypeDef* hi2c, uint16_t /*DevAddress*/, uint8_t* /*pData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hi2c;
     return s_transfer_result;
 }
 
@@ -143,6 +151,27 @@ extern "C" void FakeI2C_Reset(void)
     s_abort_calls     = 0;
     s_ev_irq_calls    = 0;
     s_er_irq_calls    = 0;
+    s_last_handle     = nullptr;
+}
+
+extern "C" void FakeI2C_FireMasterTxCplt(void)
+{
+    if (s_last_handle != nullptr) { HAL_I2C_MasterTxCpltCallback(s_last_handle); }
+}
+
+extern "C" void FakeI2C_FireMasterRxCplt(void)
+{
+    if (s_last_handle != nullptr) { HAL_I2C_MasterRxCpltCallback(s_last_handle); }
+}
+
+extern "C" void FakeI2C_FireError(void)
+{
+    if (s_last_handle != nullptr) { HAL_I2C_ErrorCallback(s_last_handle); }
+}
+
+extern "C" void FakeI2C_FireAbort(void)
+{
+    if (s_last_handle != nullptr) { HAL_I2C_AbortCpltCallback(s_last_handle); }
 }
 
 extern "C" void FakeI2C_SetInitResult(HAL_StatusTypeDef result)     { s_init_result = result; }
