@@ -613,6 +613,46 @@ typedef struct __TIM_HandleTypeDef
 } TIM_HandleTypeDef;
 
 
+/**
+ * \brief   RTC peripheral instance (opaque -- the driver only stores it in
+ *          mHandle.Instance; the fake never inspects it).
+ * \note    The class is named `Rtc` (not `RTC`) precisely because CMSIS
+ *          bare-defines `RTC` as this instance pointer macro on the F407.
+ */
+typedef struct
+{
+    uint32_t reserved;
+} RTC_TypeDef;
+
+extern RTC_TypeDef* const RTC;
+
+/**
+ * \brief   RTC init config -- field names mirror the real HAL so Rtc::Init
+ *          populates the handle exactly as on hardware. The fake never reads
+ *          the configuration back.
+ */
+typedef struct
+{
+    uint32_t HourFormat;       ///< RTC_HOURFORMAT_*
+    uint32_t AsynchPrediv;     ///< Asynchronous prescaler
+    uint32_t SynchPrediv;      ///< Synchronous prescaler
+    uint32_t OutPut;           ///< RTC_OUTPUT_*
+    uint32_t OutPutPolarity;   ///< RTC_OUTPUT_POLARITY_*
+    uint32_t OutPutType;       ///< RTC_OUTPUT_TYPE_*
+} RTC_InitTypeDef;
+
+/**
+ * \brief   RTC handle. Only Instance + Init are touched by the driver. Declared
+ *          in the umbrella because Rtc.hpp holds it as a member (it includes
+ *          only this umbrella, not the module rtc header).
+ */
+typedef struct __RTC_HandleTypeDef
+{
+    RTC_TypeDef*    Instance;   ///< Set to RTC by the driver
+    RTC_InitTypeDef Init;       ///< Configuration
+} RTC_HandleTypeDef;
+
+
 #ifdef __cplusplus
 }
 #endif
