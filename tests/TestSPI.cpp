@@ -46,9 +46,11 @@ extern "C" {
 /************************************************************************/
 /* External references                                                  */
 /************************************************************************/
-// The driver installs this C-linkage ISR entry point; the test invokes it
-// directly to prove the SPI1 vector dispatches into the driver's CallbackIRQ().
+// The driver installs these C-linkage ISR entry points; the test invokes them
+// directly to prove each SPIx vector dispatches into the driver's CallbackIRQ().
 extern "C" void SPI1_IRQHandler(void);
+extern "C" void SPI2_IRQHandler(void);
+extern "C" void SPI3_IRQHandler(void);
 
 
 namespace {
@@ -392,6 +394,159 @@ TEST_F(SPI_Test, IRQHandler_AfterSleep_DoesNotDispatch)
     SPI1_IRQHandler();
 
     EXPECT_EQ(0, FakeSPI_IRQHandlerCallCount());
+}
+
+
+/************************************************************************/
+/* Instance coverage (SPI2 / SPI3)                                      */
+/************************************************************************/
+// Constructing + initialising SPI_2 / SPI_3 exercises the SPI2/SPI3 arms of
+// SetInstance, CheckAndEnable/DisablePeripheralClock and GetIRQn (SPI2/3 run on
+// PCLK1 = 42 MHz in the fake, so 1 MHz stays in range).
+TEST_F(SPI_Test, Init_Spi2Instance_ReturnsTrueAndSleeps)
+{
+    SPI spi2(SPIInstance::SPI_2);
+    EXPECT_TRUE(spi2.Init(ValidConfig()));
+    EXPECT_TRUE(spi2.Sleep());
+}
+
+TEST_F(SPI_Test, Init_Spi3Instance_ReturnsTrueAndSleeps)
+{
+    SPI spi3(SPIInstance::SPI_3);
+    EXPECT_TRUE(spi3.Init(ValidConfig()));
+    EXPECT_TRUE(spi3.Sleep());
+}
+
+TEST_F(SPI_Test, IRQHandler_Spi2_DispatchesIntoHal)
+{
+    SPI spi2(SPIInstance::SPI_2);
+    ASSERT_TRUE(spi2.Init(ValidConfig()));
+
+    SPI2_IRQHandler();
+
+    EXPECT_EQ(1, FakeSPI_IRQHandlerCallCount());
+}
+
+TEST_F(SPI_Test, IRQHandler_Spi3_DispatchesIntoHal)
+{
+    SPI spi3(SPIInstance::SPI_3);
+    ASSERT_TRUE(spi3.Init(ValidConfig()));
+
+    SPI3_IRQHandler();
+
+    EXPECT_EQ(1, FakeSPI_IRQHandlerCallCount());
+}
+
+
+/************************************************************************/
+/* Mode coverage (polarity / phase)                                     */
+/************************************************************************/
+// Each SPI mode maps to a distinct polarity/phase pair; initialising with every
+// mode exercises both GetPolarity and GetPhase switch tables.
+TEST_F(SPI_Test, Init_EveryMode_ReturnsTrue)
+{
+    const SPI::Mode modes[] = {
+        SPI::Mode::_0, SPI::Mode::_1, SPI::Mode::_2, SPI::Mode::_3
+    };
+    for (const auto& mode : modes)
+    {
+        SPI spi(SPIInstance::SPI_1);
+        EXPECT_TRUE(spi.Init(SPI::Config(0, mode, 1000000U)));
+    }
+}
+
+
+/************************************************************************/
+/* Prescaler bus-speed branches                                         */
+/************************************************************************/
+// CalculatePrescaler walks an if/else-if ladder over PCLK/busSpeed; sweep bus
+// speeds (SPI1 PCLK2 = 84 MHz in the fake) to land in each prescaler bucket
+// (/256 down to /2).
+TEST_F(SPI_Test, Init_VariousBusSpeeds_AllSelectAValidPrescaler)
+{
+    const uint32_t busSpeeds[] = {
+        300000U,    // 84/0.3 = 280  -> /256
+        600000U,    // 140          -> /128
+        1200000U,   // 70           -> /64
+        2500000U,   // 33           -> /32
+        5000000U,   // 16           -> /16
+        10000000U,  // 8            -> /8
+        20000000U,  // 4            -> /4
+        42000000U   // 2            -> /2
+    };
+    for (const auto& speed : busSpeeds)
+    {
+        SPI spi(SPIInstance::SPI_1);
+        EXPECT_TRUE(spi.Init(SPI::Config(0, SPI::Mode::_0, speed)));
+    }
+}
+
+
+/************************************************************************/
+/* Completion-callback dispatch                                         */
+/************************************************************************/
+// The Write*/Read*/WriteRead* IT paths register a user handler that the HAL
+// fires on completion via HAL_SPI_TxCplt/RxCplt/TxRxCpltCallback. Iterate every
+// instance so each callback's per-instance dispatch arm (SPI1/2/3) is covered.
+TEST_F(SPI_Test, WriteInterrupt_TxComplete_EachInstance_FiresHandler)
+{
+    const SPIInstance insts[] = {
+        SPIInstance::SPI_1, SPIInstance::SPI_2, SPIInstance::SPI_3
+    };
+    for (const auto& inst : insts)
+    {
+        FakeSPI_Reset();
+        SPI spi(inst);
+        ASSERT_TRUE(spi.Init(ValidConfig()));
+
+        bool fired = false;
+        const uint8_t src[4] = { 1, 2, 3, 4 };
+        ASSERT_TRUE(spi.WriteInterrupt(src, sizeof(src), [&]{ fired = true; }));
+
+        FakeSPI_FireTxCplt();
+        EXPECT_TRUE(fired);
+    }
+}
+
+TEST_F(SPI_Test, ReadInterrupt_RxComplete_EachInstance_FiresHandler)
+{
+    const SPIInstance insts[] = {
+        SPIInstance::SPI_1, SPIInstance::SPI_2, SPIInstance::SPI_3
+    };
+    for (const auto& inst : insts)
+    {
+        FakeSPI_Reset();
+        SPI spi(inst);
+        ASSERT_TRUE(spi.Init(ValidConfig()));
+
+        bool fired = false;
+        uint8_t dest[4] = {};
+        ASSERT_TRUE(spi.ReadInterrupt(dest, sizeof(dest), [&]{ fired = true; }));
+
+        FakeSPI_FireRxCplt();
+        EXPECT_TRUE(fired);
+    }
+}
+
+TEST_F(SPI_Test, WriteReadInterrupt_TxRxComplete_EachInstance_FiresHandler)
+{
+    const SPIInstance insts[] = {
+        SPIInstance::SPI_1, SPIInstance::SPI_2, SPIInstance::SPI_3
+    };
+    for (const auto& inst : insts)
+    {
+        FakeSPI_Reset();
+        SPI spi(inst);
+        ASSERT_TRUE(spi.Init(ValidConfig()));
+
+        bool fired = false;
+        const uint8_t src[4]  = { 1, 2, 3, 4 };
+        uint8_t       dest[4] = {};
+        ASSERT_TRUE(spi.WriteReadInterrupt(src, dest, sizeof(src), [&]{ fired = true; }));
+
+        FakeSPI_FireTxRxCplt();
+        EXPECT_TRUE(fired);
+    }
 }
 
 

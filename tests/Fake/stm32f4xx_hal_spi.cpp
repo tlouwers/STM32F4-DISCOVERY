@@ -48,6 +48,10 @@ HAL_StatusTypeDef s_deinit_result   = HAL_OK;
 HAL_StatusTypeDef s_transfer_result = HAL_OK;
 int               s_irq_handler_calls = 0;
 
+// Handle of the most recently started IT/DMA transfer; the FakeSPI_Fire*Cplt
+// hooks dispatch the matching completion callback against it.
+SPI_HandleTypeDef* s_last_handle = nullptr;
+
 } // namespace
 
 
@@ -77,33 +81,39 @@ extern "C" HAL_StatusTypeDef HAL_SPI_Abort(SPI_HandleTypeDef* /*hspi*/)
     return HAL_OK;
 }
 
-extern "C" HAL_StatusTypeDef HAL_SPI_Transmit_DMA(SPI_HandleTypeDef* /*hspi*/, uint8_t* /*pData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_SPI_Transmit_DMA(SPI_HandleTypeDef* hspi, uint8_t* /*pData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hspi;
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_SPI_TransmitReceive_DMA(SPI_HandleTypeDef* /*hspi*/, uint8_t* /*pTxData*/, uint8_t* /*pRxData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_SPI_TransmitReceive_DMA(SPI_HandleTypeDef* hspi, uint8_t* /*pTxData*/, uint8_t* /*pRxData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hspi;
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_SPI_Receive_DMA(SPI_HandleTypeDef* /*hspi*/, uint8_t* /*pData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_SPI_Receive_DMA(SPI_HandleTypeDef* hspi, uint8_t* /*pData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hspi;
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_SPI_Transmit_IT(SPI_HandleTypeDef* /*hspi*/, uint8_t* /*pData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_SPI_Transmit_IT(SPI_HandleTypeDef* hspi, uint8_t* /*pData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hspi;
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_SPI_TransmitReceive_IT(SPI_HandleTypeDef* /*hspi*/, uint8_t* /*pTxData*/, uint8_t* /*pRxData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_SPI_TransmitReceive_IT(SPI_HandleTypeDef* hspi, uint8_t* /*pTxData*/, uint8_t* /*pRxData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hspi;
     return s_transfer_result;
 }
 
-extern "C" HAL_StatusTypeDef HAL_SPI_Receive_IT(SPI_HandleTypeDef* /*hspi*/, uint8_t* /*pData*/, uint16_t /*Size*/)
+extern "C" HAL_StatusTypeDef HAL_SPI_Receive_IT(SPI_HandleTypeDef* hspi, uint8_t* /*pData*/, uint16_t /*Size*/)
 {
+    s_last_handle = hspi;
     return s_transfer_result;
 }
 
@@ -137,6 +147,22 @@ extern "C" void FakeSPI_Reset(void)
     s_deinit_result     = HAL_OK;
     s_transfer_result   = HAL_OK;
     s_irq_handler_calls = 0;
+    s_last_handle       = nullptr;
+}
+
+extern "C" void FakeSPI_FireTxCplt(void)
+{
+    if (s_last_handle != nullptr) { HAL_SPI_TxCpltCallback(s_last_handle); }
+}
+
+extern "C" void FakeSPI_FireRxCplt(void)
+{
+    if (s_last_handle != nullptr) { HAL_SPI_RxCpltCallback(s_last_handle); }
+}
+
+extern "C" void FakeSPI_FireTxRxCplt(void)
+{
+    if (s_last_handle != nullptr) { HAL_SPI_TxRxCpltCallback(s_last_handle); }
 }
 
 extern "C" void FakeSPI_SetInitResult(HAL_StatusTypeDef result)

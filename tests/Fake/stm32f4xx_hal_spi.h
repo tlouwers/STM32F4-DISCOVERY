@@ -106,13 +106,29 @@ HAL_StatusTypeDef HAL_SPI_Receive(SPI_HandleTypeDef* hspi, uint8_t* pData, uint1
 
 void HAL_SPI_IRQHandler(SPI_HandleTypeDef* hspi);
 
+/* Defined by the driver (SPI.cpp); declared here so the definitions link with C
+   linkage and the fake completion-fire hooks below can dispatch into them. On
+   hardware the HAL fires these from the IRQ handler at transfer completion. */
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* hspi);
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef* hspi);
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
+
 
 /************************************************************************/
 /* Test-only observation / control hooks                                */
 /************************************************************************/
-/** Reset all fake SPI state: Init/DeInit/transfer results back to HAL_OK and
- *  the HAL_SPI_IRQHandler call counter to zero. */
+/** Reset all fake SPI state: Init/DeInit/transfer results back to HAL_OK, the
+ *  HAL_SPI_IRQHandler call counter to zero, and the last-transfer handle. */
 void FakeSPI_Reset(void);
+
+/** Simulate a transfer-complete interrupt on the most recently started IT/DMA
+ *  transfer, dispatching into the driver's matching completion callback (which
+ *  routes by handle->Instance into the per-instance user handler). Tx for the
+ *  Write* paths, Rx for the Read* paths, TxRx for the WriteRead* paths. No-op if
+ *  no IT/DMA transfer has been started since the last reset. */
+void FakeSPI_FireTxCplt(void);
+void FakeSPI_FireRxCplt(void);
+void FakeSPI_FireTxRxCplt(void);
 
 /** Force HAL_SPI_Init to return `result`, so the driver's Init()-failure path
  *  (returns false, stays not-initialised) can be exercised. */
