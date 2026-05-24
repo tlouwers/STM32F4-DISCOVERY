@@ -202,6 +202,90 @@ typedef enum
 #define GPIOI           ((GPIO_TypeDef *) GPIOI_BASE)
 
 
+/**
+ * \brief   GPIO pin state (mirror the real HAL). HAL_GPIO_ReadPin returns it and
+ *          HAL_GPIO_WritePin takes it; the Pin driver compares against
+ *          GPIO_PIN_SET.
+ */
+typedef enum
+{
+    GPIO_PIN_RESET = 0U,
+    GPIO_PIN_SET   = 1U
+} GPIO_PinState;
+
+/**
+ * \brief   GPIO init config -- field names mirror the real HAL so Pin::Configure
+ *          populates it exactly as on hardware. The fake HAL_GPIO_Init records
+ *          the last-applied config so a test can assert what the driver wrote.
+ */
+typedef struct
+{
+    uint32_t Pin;         ///< GPIO_PIN_*
+    uint32_t Mode;        ///< GPIO_MODE_*
+    uint32_t Pull;        ///< GPIO_NOPULL / GPIO_PULLUP / GPIO_PULLDOWN
+    uint32_t Speed;       ///< GPIO_SPEED_*
+    uint32_t Alternate;   ///< GPIO alternate-function selection
+} GPIO_InitTypeDef;
+
+/* GPIO mode macros (mirror the real HAL bit-encoding). */
+#define GPIO_MODE_INPUT             ((uint32_t)0x00000000U)
+#define GPIO_MODE_OUTPUT_PP         ((uint32_t)0x00000001U)
+#define GPIO_MODE_OUTPUT_OD         ((uint32_t)0x00000011U)
+#define GPIO_MODE_AF_PP             ((uint32_t)0x00000002U)
+#define GPIO_MODE_AF_OD             ((uint32_t)0x00000012U)
+#define GPIO_MODE_ANALOG            ((uint32_t)0x00000003U)
+#define GPIO_MODE_IT_RISING         ((uint32_t)0x10110000U)
+#define GPIO_MODE_IT_FALLING        ((uint32_t)0x10210000U)
+#define GPIO_MODE_IT_RISING_FALLING ((uint32_t)0x10310000U)
+
+/* GPIO pull macros. */
+#define GPIO_NOPULL                 ((uint32_t)0x00000000U)
+#define GPIO_PULLUP                 ((uint32_t)0x00000001U)
+#define GPIO_PULLDOWN               ((uint32_t)0x00000002U)
+
+/* GPIO speed macros. */
+#define GPIO_SPEED_FREQ_LOW         ((uint32_t)0x00000000U)
+#define GPIO_SPEED_FREQ_MEDIUM      ((uint32_t)0x00000001U)
+#define GPIO_SPEED_FREQ_HIGH        ((uint32_t)0x00000002U)
+#define GPIO_SPEED_FREQ_VERY_HIGH   ((uint32_t)0x00000003U)
+
+/* RCC GPIO clock gating. IS_CLK_DISABLED reports "disabled" (1) so the driver's
+   enable branch is exercised; ENABLE is a no-op natively. */
+#define __HAL_RCC_GPIOA_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOB_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOC_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOD_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOE_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOF_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOG_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOH_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOI_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOA_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOB_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOC_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOD_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOE_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOF_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOG_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOH_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOI_CLK_ENABLE()        do { } while(0)
+
+/**
+ * \brief   GPIO driver-facing HAL surface (fake bodies in stm32f4xx_hal_gpio.cpp).
+ *          The Pin driver includes only this umbrella, so the prototypes live
+ *          here rather than in a module header.
+ */
+void          HAL_GPIO_Init(GPIO_TypeDef* GPIOx, GPIO_InitTypeDef* GPIO_Init);
+void          HAL_GPIO_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
+GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+void          HAL_GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+void          HAL_GPIO_EXTI_IRQHandler(uint16_t GPIO_Pin);
+
+/* Defined by the driver (Pin.cpp); declared here so the definition links with C
+   linkage and the fake HAL_GPIO_EXTI_IRQHandler can dispatch into it. */
+void          HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+
+
 void __NOP(void);
 
 void HAL_Delay(uint32_t Delay);
