@@ -28,6 +28,7 @@ target_sources(TestRunner
         TestRtc.cpp
         TestWatchdog.cpp
         TestPin.cpp
+        TestHeapCheck.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/Crc.cpp
         Fake/utility/Assert/Assert.cpp
@@ -60,6 +61,7 @@ target_sources(TestRunner
         ../drivers/drivers/Rtc/Rtc.cpp
         ../drivers/drivers/Watchdog/Watchdog.cpp
         ../drivers/drivers/Pin/Pin.cpp
+        ../drivers/utility/HeapCheck/heap_check.c
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )
