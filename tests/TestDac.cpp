@@ -323,4 +323,164 @@ TEST_F(Dac_Test, Tick_WaveformConfigured_AdvancesAndWraps)
 }
 
 
+/************************************************************************/
+/* Channel 2 paths                                                      */
+/************************************************************************/
+// The L24 wave only exercised CHANNEL_1; mirror the key paths on CHANNEL_2 so
+// its switch arms (ConfigureChannel / SetValue / StartChannel / StartWaveform /
+// StopWaveform / Tick / SetWaveform) are covered.
+TEST_F(Dac_Test, ConfigureChannel_Channel2_ReturnsTrue)
+{
+    ASSERT_TRUE(mSubject.Init());
+    EXPECT_TRUE(mSubject.ConfigureChannel(Ch::CHANNEL_2, Dac::ChannelConfig()));
+}
+
+TEST_F(Dac_Test, SetValue_Channel2_ReturnsTrue)
+{
+    ASSERT_TRUE(mSubject.Init());
+    EXPECT_TRUE(mSubject.SetValue(Ch::CHANNEL_2, 0x800));
+}
+
+TEST_F(Dac_Test, StartStopWaveform_Channel2_ReturnsTrue)
+{
+    ASSERT_TRUE(mSubject.Init());
+
+    DMA dma(DMA::Stream::Dma1_Stream6);
+    ASSERT_TRUE(ConfigureDma(dma, DMA::Direction::MemoryToPeripheral));
+    ASSERT_TRUE(mSubject.LinkDma(Ch::CHANNEL_2, dma));
+    ASSERT_TRUE(mSubject.ConfigureWaveform(Ch::CHANNEL_2, mWaveform, 4));
+
+    EXPECT_TRUE(mSubject.StartWaveform(Ch::CHANNEL_2));
+    EXPECT_TRUE(mSubject.StopWaveform(Ch::CHANNEL_2));
+}
+
+TEST_F(Dac_Test, Tick_Channel2_AdvancesAndWraps)
+{
+    ASSERT_TRUE(mSubject.Init());
+    ASSERT_TRUE(mSubject.ConfigureWaveform(Ch::CHANNEL_2, mWaveform, 4));
+
+    for (int i = 0; i < 5; ++i)
+    {
+        EXPECT_TRUE(mSubject.Tick(Ch::CHANNEL_2));
+    }
+}
+
+
+/************************************************************************/
+/* StopChannel branches (via Sleep)                                     */
+/************************************************************************/
+// A started, non-waveform channel (length 0) stops via HAL_DAC_Stop; a started
+// waveform channel (length > 0) stops via HAL_DAC_Stop_DMA. Sleep() walks both
+// channels, so drive each branch.
+TEST_F(Dac_Test, Sleep_AfterSetValue_StopsChannelViaNonDmaStop)
+{
+    ASSERT_TRUE(mSubject.Init());
+    ASSERT_TRUE(mSubject.SetValue(Ch::CHANNEL_1, 0x400));   // starts CH1, no waveform
+
+    EXPECT_TRUE(mSubject.Sleep());                           // StopChannel -> HAL_DAC_Stop
+}
+
+TEST_F(Dac_Test, Sleep_AfterStartWaveform_StopsChannelViaDmaStop)
+{
+    ASSERT_TRUE(mSubject.Init());
+
+    DMA dma(DMA::Stream::Dma1_Stream5);
+    ASSERT_TRUE(ConfigureDma(dma, DMA::Direction::MemoryToPeripheral));
+    ASSERT_TRUE(mSubject.LinkDma(Ch::CHANNEL_1, dma));
+    ASSERT_TRUE(mSubject.ConfigureWaveform(Ch::CHANNEL_1, mWaveform, 4));
+    ASSERT_TRUE(mSubject.StartWaveform(Ch::CHANNEL_1));      // started + length > 0
+
+    EXPECT_TRUE(mSubject.Sleep());                           // StopChannel -> HAL_DAC_Stop_DMA
+}
+
+
+/************************************************************************/
+/* Enum translators (Trigger / Precision / OutputBuffer)               */
+/************************************************************************/
+// ConfigureChannel routes mTrigger through GetTrigger; configure with every
+// trigger so all of its switch arms are covered.
+TEST_F(Dac_Test, ConfigureChannel_EveryTrigger_ReturnsTrue)
+{
+    ASSERT_TRUE(mSubject.Init());
+
+    const Dac::Trigger triggers[] = {
+        Dac::Trigger::NONE,    Dac::Trigger::TIMER_2, Dac::Trigger::TIMER_4,
+        Dac::Trigger::TIMER_5, Dac::Trigger::TIMER_6, Dac::Trigger::TIMER_7,
+        Dac::Trigger::TIMER_8, Dac::Trigger::EXT_LINE_9, Dac::Trigger::SOFTWARE
+    };
+    for (const auto& trig : triggers)
+    {
+        EXPECT_TRUE(mSubject.ConfigureChannel(
+            Ch::CHANNEL_1, Dac::ChannelConfig(Dac::Precision::_12_BIT_R, trig)));
+    }
+}
+
+// ConfigureChannel's GetOutputBuffer default arm is ENABLE; cover DISABLE.
+TEST_F(Dac_Test, ConfigureChannel_OutputBufferDisable_ReturnsTrue)
+{
+    ASSERT_TRUE(mSubject.Init());
+    EXPECT_TRUE(mSubject.ConfigureChannel(
+        Ch::CHANNEL_1,
+        Dac::ChannelConfig(Dac::Precision::_12_BIT_R, Dac::Trigger::NONE,
+                           Dac::OutputBuffer::DISABLE)));
+}
+
+// SetValue routes the stored precision through GetAlignment; configure each
+// precision then write so all of its switch arms are covered.
+TEST_F(Dac_Test, SetValue_EveryPrecision_ReturnsTrue)
+{
+    ASSERT_TRUE(mSubject.Init());
+
+    const Dac::Precision precisions[] = {
+        Dac::Precision::_8_BIT_R, Dac::Precision::_12_BIT_L, Dac::Precision::_12_BIT_R
+    };
+    for (const auto& prec : precisions)
+    {
+        ASSERT_TRUE(mSubject.ConfigureChannel(Ch::CHANNEL_1, Dac::ChannelConfig(prec)));
+        EXPECT_TRUE(mSubject.SetValue(Ch::CHANNEL_1, 0x080));
+    }
+}
+
+
+/************************************************************************/
+/* Channel 2 failure / skip branches                                    */
+/************************************************************************/
+// Mirror the CHANNEL_1 HAL-failure / skip paths on CHANNEL_2 so its
+// return-false breaks are covered too.
+TEST_F(Dac_Test, ConfigureChannel_Channel2_HalConfigFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init());
+    FakeDAC_SetConfigChannelResult(HAL_ERROR);
+
+    EXPECT_FALSE(mSubject.ConfigureChannel(Ch::CHANNEL_2, Dac::ChannelConfig()));
+}
+
+TEST_F(Dac_Test, SetValue_Channel2_HalStartFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init());
+    FakeDAC_SetStartResult(HAL_ERROR);
+
+    EXPECT_FALSE(mSubject.SetValue(Ch::CHANNEL_2, 0x800));
+}
+
+TEST_F(Dac_Test, StartWaveform_Channel2_HalStartDmaFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init());
+
+    DMA dma(DMA::Stream::Dma1_Stream6);
+    ASSERT_TRUE(ConfigureDma(dma, DMA::Direction::MemoryToPeripheral));
+    ASSERT_TRUE(mSubject.LinkDma(Ch::CHANNEL_2, dma));
+    ASSERT_TRUE(mSubject.ConfigureWaveform(Ch::CHANNEL_2, mWaveform, 4));
+    FakeDAC_SetStartDmaResult(HAL_ERROR);
+
+    EXPECT_FALSE(mSubject.StartWaveform(Ch::CHANNEL_2));
+}
+
+TEST_F(Dac_Test, StopWaveform_Channel2_NotStarted_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init());
+    EXPECT_FALSE(mSubject.StopWaveform(Ch::CHANNEL_2));
+}
+
+
 } // namespace
