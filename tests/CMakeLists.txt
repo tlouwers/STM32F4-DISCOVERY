@@ -26,6 +26,7 @@ target_sources(TestRunner
         TestPWM.cpp
         TestTimerIRQ.cpp
         TestRtc.cpp
+        TestWatchdog.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/Crc.cpp
         Fake/drivers/Pin/Pin.cpp
@@ -40,6 +41,7 @@ target_sources(TestRunner
         Fake/stm32f4xx_hal_adc.cpp
         Fake/stm32f4xx_hal_tim.cpp
         Fake/stm32f4xx_hal_rtc.cpp
+        Fake/stm32f4xx_hal_iwdg.cpp
         # Test subjects
         ../drivers/components/HI-M1388AR/HI-M1388AR.cpp
         ../drivers/components/LIS3DSH/LIS3DSH.cpp
@@ -55,6 +57,7 @@ target_sources(TestRunner
         ../drivers/drivers/PWM/PWM.cpp
         ../drivers/drivers/TimerIRQ/TimerIRQ.cpp
         ../drivers/drivers/Rtc/Rtc.cpp
+        ../drivers/drivers/Watchdog/Watchdog.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )

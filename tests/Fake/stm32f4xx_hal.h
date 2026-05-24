@@ -653,6 +653,41 @@ typedef struct __RTC_HandleTypeDef
 } RTC_HandleTypeDef;
 
 
+/**
+ * \brief   IWDG (independent watchdog) peripheral instance (opaque -- the
+ *          driver only stores it in mHandle.Instance; the fake never inspects
+ *          it).
+ */
+typedef struct
+{
+    uint32_t reserved;
+} IWDG_TypeDef;
+
+extern IWDG_TypeDef* const IWDG;
+
+/**
+ * \brief   IWDG init config -- field names mirror the real HAL so Watchdog::Init
+ *          populates the handle exactly as on hardware. The fake never reads the
+ *          configuration back.
+ */
+typedef struct
+{
+    uint32_t Prescaler;   ///< IWDG_PRESCALER_*
+    uint32_t Reload;      ///< Down-counter reload value [0..0x0FFF]
+} IWDG_InitTypeDef;
+
+/**
+ * \brief   IWDG handle. Only Instance + Init are touched by the driver. Declared
+ *          in the umbrella because Watchdog.hpp holds it as a member (it includes
+ *          only this umbrella, not the module iwdg header).
+ */
+typedef struct __IWDG_HandleTypeDef
+{
+    IWDG_TypeDef*    Instance;   ///< Set to IWDG by the driver
+    IWDG_InitTypeDef Init;       ///< Configuration
+} IWDG_HandleTypeDef;
+
+
 #ifdef __cplusplus
 }
 #endif
