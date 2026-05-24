@@ -29,6 +29,7 @@ target_sources(TestRunner
         TestWatchdog.cpp
         TestPin.cpp
         TestHeapCheck.cpp
+        TestCpuWakeCounter.cpp
         # Mocks and Fakes
         Fake/drivers/Crc/Crc.cpp
         Fake/utility/Assert/Assert.cpp
@@ -62,6 +63,7 @@ target_sources(TestRunner
         ../drivers/drivers/Watchdog/Watchdog.cpp
         ../drivers/drivers/Pin/Pin.cpp
         ../drivers/utility/HeapCheck/heap_check.c
+        ../drivers/utility/CpuWakeCounter/CpuWakeCounter.cpp
         # Used sources (not part of unit tests)
         # Ex: ../target/Src/utility/crc32.cpp
 )

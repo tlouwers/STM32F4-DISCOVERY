@@ -288,6 +288,23 @@ void          HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
 void __NOP(void);
 
+/* Cortex-M core intrinsics + Systick suspend/resume used by CpuWakeCounter. */
+uint32_t __get_PRIMASK(void);
+void     __disable_irq(void);
+void     __set_PRIMASK(uint32_t mask);
+void     __WFI(void);
+void     __WFE(void);
+void     HAL_SuspendTick(void);
+void     HAL_ResumeTick(void);
+
+/* Test hooks for the fake DWT cycle counter (see stm32f4xx_hal.c).
+   FakeDWT_SetCounting(0) freezes CYCCNT so CpuWakeCounter::Init()'s
+   counter-running probe fails; FakeDWT_SetSleepAdvance(n) makes each WFI/WFE
+   consume n cycles so a measurement window can be driven to completion. */
+void FakeDWT_Reset(void);
+void FakeDWT_SetCounting(int enabled);
+void FakeDWT_SetSleepAdvance(uint32_t cycles);
+
 void HAL_Delay(uint32_t Delay);
 
 #define UNUSED(X) (void)X      /* To avoid gcc/g++ warnings */
