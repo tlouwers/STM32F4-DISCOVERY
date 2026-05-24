@@ -38,9 +38,24 @@
 /************************************************************************/
 /* External references                                                  */
 /************************************************************************/
-// The driver installs these C-linkage ISR entry points; the test invokes one
-// directly to prove the stream vector dispatches into the driver's Callback().
+// The driver installs these C-linkage ISR entry points; the tests invoke them
+// directly to prove each stream vector dispatches into the driver's Callback().
 extern "C" void DMA1_Stream0_IRQHandler(void);
+extern "C" void DMA1_Stream1_IRQHandler(void);
+extern "C" void DMA1_Stream2_IRQHandler(void);
+extern "C" void DMA1_Stream3_IRQHandler(void);
+extern "C" void DMA1_Stream4_IRQHandler(void);
+extern "C" void DMA1_Stream5_IRQHandler(void);
+extern "C" void DMA1_Stream6_IRQHandler(void);
+extern "C" void DMA1_Stream7_IRQHandler(void);
+extern "C" void DMA2_Stream0_IRQHandler(void);
+extern "C" void DMA2_Stream1_IRQHandler(void);
+extern "C" void DMA2_Stream2_IRQHandler(void);
+extern "C" void DMA2_Stream3_IRQHandler(void);
+extern "C" void DMA2_Stream4_IRQHandler(void);
+extern "C" void DMA2_Stream5_IRQHandler(void);
+extern "C" void DMA2_Stream6_IRQHandler(void);
+extern "C" void DMA2_Stream7_IRQHandler(void);
 
 
 namespace {
@@ -187,6 +202,165 @@ TEST_F(DMA_Test, StreamIRQHandler_AfterDestruction_DoesNotDispatch)
 
     // No live object: the callback slot is null, so nothing dispatches.
     EXPECT_EQ(0, FakeDMA_IRQHandlerCallCount());
+}
+
+// Every stream must map to its own instance/IRQn/callback-slot and its own
+// vector must dispatch into the driver -- exercises GetInstance, GetIRQn and
+// GetCallbackSlot across all 16 arms plus the 16 stream ISR entry points.
+TEST_F(DMA_Test, AllStreams_ConfigureAndFireVector_DispatchesOnce)
+{
+    struct StreamVector
+    {
+        DMA::Stream stream;
+        void (*vector)(void);
+    };
+
+    const StreamVector table[] = {
+        { DMA::Stream::Dma1_Stream0, &DMA1_Stream0_IRQHandler },
+        { DMA::Stream::Dma1_Stream1, &DMA1_Stream1_IRQHandler },
+        { DMA::Stream::Dma1_Stream2, &DMA1_Stream2_IRQHandler },
+        { DMA::Stream::Dma1_Stream3, &DMA1_Stream3_IRQHandler },
+        { DMA::Stream::Dma1_Stream4, &DMA1_Stream4_IRQHandler },
+        { DMA::Stream::Dma1_Stream5, &DMA1_Stream5_IRQHandler },
+        { DMA::Stream::Dma1_Stream6, &DMA1_Stream6_IRQHandler },
+        { DMA::Stream::Dma1_Stream7, &DMA1_Stream7_IRQHandler },
+        { DMA::Stream::Dma2_Stream0, &DMA2_Stream0_IRQHandler },
+        { DMA::Stream::Dma2_Stream1, &DMA2_Stream1_IRQHandler },
+        { DMA::Stream::Dma2_Stream2, &DMA2_Stream2_IRQHandler },
+        { DMA::Stream::Dma2_Stream3, &DMA2_Stream3_IRQHandler },
+        { DMA::Stream::Dma2_Stream4, &DMA2_Stream4_IRQHandler },
+        { DMA::Stream::Dma2_Stream5, &DMA2_Stream5_IRQHandler },
+        { DMA::Stream::Dma2_Stream6, &DMA2_Stream6_IRQHandler },
+        { DMA::Stream::Dma2_Stream7, &DMA2_Stream7_IRQHandler },
+    };
+
+    for (const StreamVector& sv : table)
+    {
+        FakeDMA_Reset();
+
+        DMA subject(sv.stream);
+        ASSERT_NE(nullptr, subject.Handle()->Instance);
+        ASSERT_TRUE(subject.Configure(DMA::Channel::Channel0,
+                                      DMA::Direction::MemoryToPeripheral,
+                                      DMA::BufferMode::Normal));
+
+        sv.vector();
+        EXPECT_EQ(1, FakeDMA_IRQHandlerCallCount());
+    }
+}
+
+// Every channel selection must translate -- exercises all GetChannel arms.
+TEST_F(DMA_Test, Configure_EveryChannel_ReturnsTrue)
+{
+    const DMA::Channel channels[] = {
+        DMA::Channel::Channel0, DMA::Channel::Channel1,
+        DMA::Channel::Channel2, DMA::Channel::Channel3,
+        DMA::Channel::Channel4, DMA::Channel::Channel5,
+        DMA::Channel::Channel6, DMA::Channel::Channel7,
+    };
+
+    for (const DMA::Channel channel : channels)
+    {
+        DMA subject(DMA::Stream::Dma1_Stream0);
+        EXPECT_TRUE(subject.Configure(channel,
+                                      DMA::Direction::MemoryToPeripheral,
+                                      DMA::BufferMode::Normal));
+    }
+}
+
+// Mem-to-mem is the third direction arm and also flips PeriphInc on.
+TEST_F(DMA_Test, Configure_MemoryToMemory_ReturnsTrue)
+{
+    DMA subject(DMA::Stream::Dma2_Stream0);
+
+    EXPECT_TRUE(subject.Configure(DMA::Channel::Channel0,
+                                  DMA::Direction::MemoryToMemory,
+                                  DMA::BufferMode::Normal));
+    EXPECT_EQ(DMA::Direction::MemoryToMemory, subject.GetDirection());
+}
+
+// Both mem- and periph-side width translators have a Byte/HalfWord/Word arm.
+TEST_F(DMA_Test, Configure_EveryDataWidth_ReturnsTrue)
+{
+    const DMA::DataWidth widths[] = {
+        DMA::DataWidth::Byte, DMA::DataWidth::HalfWord, DMA::DataWidth::Word,
+    };
+
+    for (const DMA::DataWidth mem : widths)
+    {
+        for (const DMA::DataWidth periph : widths)
+        {
+            DMA subject(DMA::Stream::Dma1_Stream0);
+            EXPECT_TRUE(subject.Configure(DMA::Channel::Channel0,
+                                          DMA::Direction::MemoryToPeripheral,
+                                          DMA::BufferMode::Normal,
+                                          mem,
+                                          DMA::Priority::Low,
+                                          DMA::HalfBufferInterrupt::Enabled,
+                                          periph));
+        }
+    }
+}
+
+// All four priority arms.
+TEST_F(DMA_Test, Configure_EveryPriority_ReturnsTrue)
+{
+    const DMA::Priority priorities[] = {
+        DMA::Priority::Low, DMA::Priority::Medium,
+        DMA::Priority::High, DMA::Priority::VeryHigh,
+    };
+
+    for (const DMA::Priority priority : priorities)
+    {
+        DMA subject(DMA::Stream::Dma1_Stream0);
+        EXPECT_TRUE(subject.Configure(DMA::Channel::Channel0,
+                                      DMA::Direction::MemoryToPeripheral,
+                                      DMA::BufferMode::Normal,
+                                      DMA::DataWidth::Byte,
+                                      priority));
+    }
+}
+
+// Circular buffer mode is the second BufferMode arm.
+TEST_F(DMA_Test, Configure_CircularBufferMode_ReturnsTrue)
+{
+    DMA subject(DMA::Stream::Dma1_Stream0);
+
+    EXPECT_TRUE(subject.Configure(DMA::Channel::Channel0,
+                                  DMA::Direction::MemoryToPeripheral,
+                                  DMA::BufferMode::Circular));
+}
+
+// Enabling the FIFO takes the burst/threshold branch -- exercises every arm of
+// GetFifoThreshold, GetMemBurst and GetPeriphBurst.
+TEST_F(DMA_Test, Configure_FifoEnabled_EveryThresholdAndBurst_ReturnsTrue)
+{
+    const DMA::FifoThreshold thresholds[] = {
+        DMA::FifoThreshold::Quarter, DMA::FifoThreshold::Half,
+        DMA::FifoThreshold::ThreeQuarters, DMA::FifoThreshold::Full,
+    };
+    const DMA::Burst bursts[] = {
+        DMA::Burst::Single, DMA::Burst::Increment4,
+        DMA::Burst::Increment8, DMA::Burst::Increment16,
+    };
+
+    for (int i = 0; i < 4; ++i)
+    {
+        DMA subject(DMA::Stream::Dma1_Stream0);
+        const DMA::Fifo fifo(DMA::FifoMode::Enable, thresholds[i],
+                             bursts[i], bursts[i]);
+
+        EXPECT_TRUE(subject.Configure(DMA::Channel::Channel0,
+                                      DMA::Direction::MemoryToPeripheral,
+                                      DMA::BufferMode::Normal,
+                                      DMA::DataWidth::Byte,
+                                      DMA::Priority::Low,
+                                      DMA::HalfBufferInterrupt::Enabled,
+                                      DMA::DataWidth::Byte,
+                                      0,
+                                      0,
+                                      fifo));
+    }
 }
 
 
