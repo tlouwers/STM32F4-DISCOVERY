@@ -108,6 +108,7 @@ static constexpr uint8_t SAMPLE_LENGTH    = 0x06;                               
 static constexpr uint8_t WATERMARK_LEVEL  = 0x19;                               // 25 samples X,Y,Z default - fifo size max = 32
 static constexpr uint8_t AXES_ENABLED     = 0x07;
 static constexpr uint8_t FIFO_EMPTY       = 0x20;
+static constexpr uint8_t FIFO_MAX_SAMPLES = 0x20;                              // FIFO depth = 32; bounds the ClearFifo drain buffer
 
 
 /************************************************************************/
@@ -431,7 +432,7 @@ bool LIS3DSH::ClearFifo()
         if (nrSamplesInFifo > 0)
         {
             const uint8_t length = SAMPLE_LENGTH * nrSamplesInFifo;     // X,Y,Z * int16_t * samples in fifo
-            uint8_t samples[length] = {};
+            uint8_t samples[SAMPLE_LENGTH * FIFO_MAX_SAMPLES] = {};     // max-sized; ISO C++ forbids a VLA
             result &= ReadRegister(OUT_X_L, samples, length);
             EXPECT(result);
         }

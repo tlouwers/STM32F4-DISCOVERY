@@ -102,6 +102,7 @@ target_compile_options(${EXECUTABLE} PRIVATE
 
     # Extra warnings - catch common bugs at compile time
     -Wextra
+    -Wpedantic
     -Wshadow
     -Wdouble-promotion
     -Wundef

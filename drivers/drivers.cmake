@@ -77,6 +77,7 @@ function(stm32_add_drivers_library)
         -g3
 
         -Wextra
+        -Wpedantic
         -Wshadow
         -Wdouble-promotion
         -Wundef
