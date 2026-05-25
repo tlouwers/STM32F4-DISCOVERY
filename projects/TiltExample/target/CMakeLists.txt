@@ -62,6 +62,7 @@ target_compile_options(stm32_hal PRIVATE
 
     -fdata-sections
     -ffunction-sections
+    -fstrict-volatile-bitfields
 
     -g3
 )
@@ -94,6 +95,7 @@ target_compile_options(${EXECUTABLE} PRIVATE
     -fdata-sections
     -ffunction-sections
     -fstack-usage
+    -fstrict-volatile-bitfields
 
     -Wall
     -g3

@@ -71,6 +71,7 @@ function(stm32_add_drivers_library)
 
         -fdata-sections
         -ffunction-sections
+        -fstrict-volatile-bitfields
 
         -Wall
         -g3
