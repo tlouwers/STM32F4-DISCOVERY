@@ -11,12 +11,13 @@ target_sources(TestRunner
     PRIVATE
         # Unit test files
         TestRunner.cpp
+        TestAppLogic.cpp
         # Mocks and Fakes
         Fake/drivers/Pin/Pin.cpp
         Fake/utility/Assert/Assert.cpp
         Fake/stm32f4xx_hal.c
         # Used sources (not part of unit tests)
-        # Ex: ../target/Src/utility/crc32.cpp
+        ../target/Src/AppLogic.cpp
 )
 
 # Include the real and Fake source directories.
@@ -24,8 +25,10 @@ target_sources(TestRunner
 # the same paths; canonical comes second for components/, interfaces/, etc.
 target_include_directories(TestRunner PRIVATE
     ./Fake
+    ./Mock                 # project-local GMock objects (Mock_PWM, Mock_HI_M1388AR, Mock_Delay)
     ../../../drivers       # canonical: components/, interfaces/, utility/ (non-faked)
-    ../target/Src          # project-specific: board/BoardConfig.hpp, config.h, hal_conf
+    ../../../tests/Mock    # shared GMock objects (Mock_Pin)
+    ../target/Src          # project-specific: AppLogic.hpp, Delay.hpp, board/BoardConfig.hpp, config.h
 )
 
 # Link in Google Mock (which also includes Google Test)

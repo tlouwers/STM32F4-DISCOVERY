@@ -25,8 +25,9 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include <atomic>
 #include "config.h"
+#include "AppLogic.hpp"
+#include "Delay.hpp"
 #include "components/HI-M1388AR/HI-M1388AR.hpp"
 #include "components/HI-M1388AR/FakeHI-M1388AR.hpp"
 #include "drivers/Pin/Pin.hpp"
@@ -67,9 +68,8 @@ private:
     FakeHI_M1388AR mMatrix;
 #endif
 
-    std::atomic<bool> mButtonPressed;
-
-    void ButtonPressedCallback();
+    Delay    mDelay;
+    AppLogic mLogic;
 };
 
 
