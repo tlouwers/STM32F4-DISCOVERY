@@ -100,7 +100,7 @@ private:
         RequestType request_type            /** Indicate the request type */        = RequestType::Invalid;
         const uint8_t * src                 /** Pointer to the data (to) sent */    = nullptr;
         uint8_t * dest                      /** Pointer to the data received */     = nullptr;
-        size_t length                       /** The length of a message */          = 0;
+        uint16_t length                     /** The length of a message */          = 0;
         std::function<void()> callbackDone  /** Callback to call when done */       = nullptr;
     };
 

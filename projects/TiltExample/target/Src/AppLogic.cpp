@@ -34,7 +34,7 @@
 /* Constants                                                            */
 /************************************************************************/
 // Perform scaling --> (4000/65535) milli-G per digit for +/-2g full scale when using the 16-bit output
-static constexpr float K = 4.0 / UINT16_MAX;        // K expressed in G (m/s2), not milli-G
+static constexpr float K = 4.0f / UINT16_MAX;       // K expressed in G (m/s2), not milli-G
 
 // Half-circle in degrees, expressed against PI (M_PI is not ISO C++14)
 static constexpr double PI = 3.14159265358979323846;

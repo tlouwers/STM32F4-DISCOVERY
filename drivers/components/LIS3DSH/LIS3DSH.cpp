@@ -374,7 +374,7 @@ bool LIS3DSH::Configure(const Config& cfg)
 
     const uint8_t BDU = (mUseHardwareFifo) ? 0 : 1;     // 0: disabled (default if fifo is used), 1: enabled
 
-    uint8_t src = (ODR | (BDU << 3) | AXES_ENABLED);    // Set sample frequency, all axes enabled, not using BDU
+    uint8_t src = static_cast<uint8_t>(ODR | (BDU << 3) | AXES_ENABLED);    // Set sample frequency, all axes enabled, not using BDU
     bool result = WriteRegister(CTRL_REG4, &src, 1);
     EXPECT(result);
 

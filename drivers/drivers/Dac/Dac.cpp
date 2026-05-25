@@ -336,7 +336,7 @@ bool Dac::Tick(const Channel& channel)
             if ((mWaveformChannel1.mValues == nullptr) || (mWaveformChannel1.mLength == 0)) { return false; }
 
             const uint16_t value = mWaveformChannel1.mValues[mWaveformChannel1.mIndex];
-            mWaveformChannel1.mIndex = (mWaveformChannel1.mIndex + 1) % mWaveformChannel1.mLength;
+            mWaveformChannel1.mIndex = static_cast<uint16_t>((mWaveformChannel1.mIndex + 1) % mWaveformChannel1.mLength);
             return SetValue(Channel::CHANNEL_1, value);
         }
         case Channel::CHANNEL_2:
@@ -344,7 +344,7 @@ bool Dac::Tick(const Channel& channel)
             if ((mWaveformChannel2.mValues == nullptr) || (mWaveformChannel2.mLength == 0)) { return false; }
 
             const uint16_t value = mWaveformChannel2.mValues[mWaveformChannel2.mIndex];
-            mWaveformChannel2.mIndex = (mWaveformChannel2.mIndex + 1) % mWaveformChannel2.mLength;
+            mWaveformChannel2.mIndex = static_cast<uint16_t>((mWaveformChannel2.mIndex + 1) % mWaveformChannel2.mLength);
             return SetValue(Channel::CHANNEL_2, value);
         }
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection

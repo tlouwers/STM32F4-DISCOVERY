@@ -207,7 +207,7 @@ bool I2C::Sleep()
     const HAL_I2C_StateTypeDef state = HAL_I2C_GetState(&mHandle);
     if ((state == HAL_I2C_STATE_BUSY_TX) || (state == HAL_I2C_STATE_BUSY_RX))
     {
-        HAL_I2C_Master_Abort_IT(&mHandle, mHandle.Devaddress);
+        HAL_I2C_Master_Abort_IT(&mHandle, static_cast<uint16_t>(mHandle.Devaddress));
     }
 
     if (HAL_I2C_DeInit(&mHandle) != HAL_OK) { return false; }

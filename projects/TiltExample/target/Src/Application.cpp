@@ -246,9 +246,9 @@ void Application::CallbackMotionDataReceived()
         for (size_t i = 0; ((i < sizeof(motionArray)) && (i + MOTION_SAMPLE_SIZE <= length)); i += MOTION_SAMPLE_SIZE)
         {
             MotionSampleRaw sampleRaw;
-            sampleRaw.X = (motionArray[i + 1] << 8) | motionArray[i + 0];
-            sampleRaw.Y = (motionArray[i + 3] << 8) | motionArray[i + 2];
-            sampleRaw.Z = (motionArray[i + 5] << 8) | motionArray[i + 4];
+            sampleRaw.X = static_cast<int16_t>((motionArray[i + 1] << 8) | motionArray[i + 0]);
+            sampleRaw.Y = static_cast<int16_t>((motionArray[i + 3] << 8) | motionArray[i + 2]);
+            sampleRaw.Z = static_cast<int16_t>((motionArray[i + 5] << 8) | motionArray[i + 4]);
 
             MotionSample sample = mLogic.CalculateMotionSample(sampleRaw);
 

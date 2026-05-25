@@ -82,6 +82,8 @@ function(stm32_add_drivers_library)
         -Wformat=2
         -Wcast-qual
         -Wcast-align
+        -Wconversion
+        -Wsign-conversion
         -Wlogical-op
         -Wnull-dereference
         -Wmisleading-indentation
