@@ -182,8 +182,8 @@ bool Dac::ConfigureWaveform(const Channel& channel, const uint16_t* values, uint
     EXPECT(values);
     EXPECT(length > 0);
 
-    if (values == nullptr) { return false; }
-    if (length == 0)       { return false; }
+    if (nullptr == values) { return false; }
+    if (0 == length)       { return false; }
     if (!mInitialized)     { return false; }
 
     SetWaveform(channel, values, length);
@@ -243,7 +243,7 @@ bool Dac::StartWaveform(const Channel& channel)
     switch (channel)
     {
         case Channel::CHANNEL_1:
-            if ((mHandle.DMA_Handle1 == nullptr) || (mWaveformChannel1.mLength == 0)) { return false; }
+            if ((nullptr == mHandle.DMA_Handle1) || (0 == mWaveformChannel1.mLength)) { return false; }
 
             if (! mChannel1.mStarted)
             {
@@ -260,7 +260,7 @@ bool Dac::StartWaveform(const Channel& channel)
             }
             break;
         case Channel::CHANNEL_2:
-            if ((mHandle.DMA_Handle2 == nullptr) || (mWaveformChannel2.mLength == 0)) { return false; }
+            if ((nullptr == mHandle.DMA_Handle2) || (0 == mWaveformChannel2.mLength)) { return false; }
 
             if (! mChannel2.mStarted)
             {
@@ -333,7 +333,7 @@ bool Dac::Tick(const Channel& channel)
     {
         case Channel::CHANNEL_1:
         {
-            if ((mWaveformChannel1.mValues == nullptr) || (mWaveformChannel1.mLength == 0)) { return false; }
+            if ((nullptr == mWaveformChannel1.mValues) || (0 == mWaveformChannel1.mLength)) { return false; }
 
             const uint16_t value = mWaveformChannel1.mValues[mWaveformChannel1.mIndex];
             mWaveformChannel1.mIndex = static_cast<uint16_t>((mWaveformChannel1.mIndex + 1) % mWaveformChannel1.mLength);
@@ -341,7 +341,7 @@ bool Dac::Tick(const Channel& channel)
         }
         case Channel::CHANNEL_2:
         {
-            if ((mWaveformChannel2.mValues == nullptr) || (mWaveformChannel2.mLength == 0)) { return false; }
+            if ((nullptr == mWaveformChannel2.mValues) || (0 == mWaveformChannel2.mLength)) { return false; }
 
             const uint16_t value = mWaveformChannel2.mValues[mWaveformChannel2.mIndex];
             mWaveformChannel2.mIndex = static_cast<uint16_t>((mWaveformChannel2.mIndex + 1) % mWaveformChannel2.mLength);
@@ -481,7 +481,7 @@ bool Dac::StopChannel(const Channel& channel)
         case Channel::CHANNEL_1:
             if (mChannel1.mStarted)
             {
-                if (mWaveformChannel1.mLength == 0)
+                if (0 == mWaveformChannel1.mLength)
                 {
                     HAL_DAC_Stop(&mHandle, DAC_CHANNEL_1);
                 } else {
@@ -494,7 +494,7 @@ bool Dac::StopChannel(const Channel& channel)
         case Channel::CHANNEL_2:
             if (mChannel2.mStarted)
             {
-                if (mWaveformChannel2.mLength == 0)
+                if (0 == mWaveformChannel2.mLength)
                 {
                     HAL_DAC_Stop(&mHandle, DAC_CHANNEL_2);
                 } else {

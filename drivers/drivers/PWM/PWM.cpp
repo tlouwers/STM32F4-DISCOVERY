@@ -267,7 +267,7 @@ uint16_t PWM::CalculatePeriod(float desiredFrequency)
 
     // Cap at UINT16_MAX. TIM2/5 ARR is 32-bit but TIM3/4 is 16-bit; use the
     // common cap so the same Config range applies on every supported instance.
-    if ((timer_period == 0) || (timer_period > UINT16_MAX))
+    if ((0 == timer_period) || (timer_period > UINT16_MAX))
     {
         timer_period = UINT16_MAX;
         EXPECT(false);
@@ -296,7 +296,7 @@ uint32_t PWM::CalculatePulse(float desiredDutyCycle, uint32_t period)
     // OCPolarity below the channel sticks at the user's "ON" level -- i.e.
     // 0% silently turns into 100%. Special-case it.
     const uint32_t scaled = static_cast<uint32_t>(static_cast<float>(period + 1U) * desiredDutyCycle);
-    if (scaled == 0U) { return 0U; }
+    if (0U == scaled) { return 0U; }
 
     // pulse_length = (timer_period + 1) * duty_cycle - 1
     return scaled - 1U;

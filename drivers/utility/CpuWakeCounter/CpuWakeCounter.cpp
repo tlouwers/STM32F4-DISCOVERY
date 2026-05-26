@@ -53,7 +53,7 @@ bool CpuWakeCounter::Init()
     __NOP();
 
     // Verify DWT is actually counting
-    if (DWT->CYCCNT == 0) { return false; }
+    if (0 == DWT->CYCCNT) { return false; }
 
     // Open a fresh measurement window starting from now.
     mWindowStartCycle  = DWT->CYCCNT;

@@ -163,7 +163,7 @@ bool LIS3DSH::Init(const IConfig& config)
     const size_t required = (cfg.mUseHardwareFifo) ? FIFO_READ_BUFFER_SIZE : SINGLE_READ_BUFFER_SIZE;
     EXPECT(cfg.mReadBuffer != nullptr);
     EXPECT(cfg.mReadBufferSize >= required);
-    if (cfg.mReadBuffer == nullptr)     { return false; }
+    if (nullptr == cfg.mReadBuffer)     { return false; }
     if (cfg.mReadBufferSize < required) { return false; }
 
     mReadBuffer      = cfg.mReadBuffer;
@@ -315,8 +315,8 @@ bool LIS3DSH::RetrieveAxesData(uint8_t* dest, uint8_t length)
     EXPECT(length > 0);
     EXPECT(length <= maxLength);
 
-    if (dest == nullptr)    { return false; }
-    if (length == 0)        { return false; }
+    if (nullptr == dest)    { return false; }
+    if (0 == length)        { return false; }
     if (length > maxLength) { return false; }
 
     std::memcpy(dest, mReadBuffer, length);
@@ -626,7 +626,7 @@ void LIS3DSH::CallbackInt1()
 {
     const size_t bufferSize = (mUseHardwareFifo) ? FIFO_READ_BUFFER_SIZE : SINGLE_READ_BUFFER_SIZE;
 
-    if ((mReadBuffer != nullptr) && (bufferSize > 0))
+    if ((nullptr != mReadBuffer) && (bufferSize > 0))
     {
         uint8_t reg = OUT_X_L | READ_MASK | MULTI_BYTE_MASK;
 

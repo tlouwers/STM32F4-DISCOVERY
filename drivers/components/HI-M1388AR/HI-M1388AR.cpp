@@ -149,7 +149,7 @@ bool HI_M1388AR::WriteDigits(const uint8_t* src)
 {
     EXPECT(src);
 
-    if (src == nullptr) { return false; }
+    if (nullptr == src) { return false; }
     if (!mInitialized)  { return false; }
 
     bool result = true;

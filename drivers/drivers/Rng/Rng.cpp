@@ -125,7 +125,7 @@ bool Rng::GetRandom(uint32_t& out)
 
     mInUse.clear(std::memory_order_release);
 
-    if (status == HAL_OK)
+    if (HAL_OK == status)
     {
         out = random;
         return true;

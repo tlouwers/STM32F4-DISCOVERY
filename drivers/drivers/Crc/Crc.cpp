@@ -100,8 +100,8 @@ bool Crc::Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out)
     EXPECT(buffer);
     EXPECT(length > 0);
 
-    if (buffer == nullptr) { return false; }
-    if (length == 0)       { return false; }
+    if (nullptr == buffer) { return false; }
+    if (0 == length)       { return false; }
     if (!mInitialized)     { return false; }
 
     // HAL_CRC_Calculate's pBuffer parameter is non-const, but the function

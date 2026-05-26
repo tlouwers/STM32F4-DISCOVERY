@@ -79,7 +79,7 @@ public:
     bool ClearDisplay() override { return ((mInitialized) ? true : false); }
     bool WriteDigits(const uint8_t* src) override
     {
-        if (src != nullptr)
+        if (nullptr != src)
         {
             return ((mInitialized) ? true : false);
         }
