@@ -87,6 +87,8 @@ function(stm32_add_drivers_library)
         -Wconversion
         -Wsign-conversion
         -Wlogical-op
+        -Wfloat-equal
+        -Wlogical-not-parentheses
         -Wnull-dereference
         -Wmisleading-indentation
         -Wduplicated-cond

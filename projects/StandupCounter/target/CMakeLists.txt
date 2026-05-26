@@ -103,6 +103,8 @@ target_compile_options(${EXECUTABLE} PRIVATE
     -Wconversion
     -Wsign-conversion
     -Wlogical-op
+    -Wfloat-equal
+    -Wlogical-not-parentheses
     -Wnull-dereference
     -Wmisleading-indentation
     -Wduplicated-cond
