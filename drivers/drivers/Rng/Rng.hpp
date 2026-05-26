@@ -27,6 +27,7 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
+#include <atomic>
 #include <cstdint>
 #include "interfaces/IInitable.hpp"
 #include "interfaces/IRng.hpp"
@@ -51,6 +52,7 @@ public:
 private:
     RNG_HandleTypeDef mHandle = {};
     bool              mInitialized;
+    std::atomic_flag  mInUse = ATOMIC_FLAG_INIT;   ///< Reentrancy guard around HAL_RNG_GenerateRandomNumber
 
     void CheckAndEnablePeripheralClock();
     void CheckAndDisablePeripheralClock();

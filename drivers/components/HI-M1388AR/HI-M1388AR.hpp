@@ -26,7 +26,7 @@
 /************************************************************************/
 #include <cstdint>
 #include <functional>
-#include "interfaces/IInitable.hpp"
+#include "interfaces/IHI_M1388AR.hpp"
 #include "interfaces/ISPI.hpp"
 #include "drivers/Pin/Pin.hpp"
 
@@ -34,7 +34,7 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class HI_M1388AR final : public IConfigInitable
+class HI_M1388AR final : public IHI_M1388AR
 {
 public:
     /**
@@ -70,8 +70,8 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    bool ClearDisplay();
-    bool WriteDigits(const uint8_t* src);
+    bool ClearDisplay() override;
+    bool WriteDigits(const uint8_t* src) override;
 
 private:
     ISPI& mSpi;

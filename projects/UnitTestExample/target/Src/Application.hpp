@@ -25,8 +25,8 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
-#include <atomic>
 #include "config.h"
+#include "AppLogic.hpp"
 #include "components/LIS3DSH/LIS3DSH.hpp"
 #include "components/LIS3DSH/FakeLIS3DSH.hpp"
 #include "drivers/DMA/DMA.hpp"
@@ -65,18 +65,16 @@ private:
     DMA mDMA_SPI_Tx;
     DMA mDMA_SPI_Rx;
 
+    uint8_t        mLIS3DSHBuf[LIS3DSH::FIFO_READ_BUFFER_SIZE];   ///< Read buffer supplied to LIS3DSH::Init (non-owning ref held by driver).
 #if (LIS3DSH_ACCELEROMETER == REAL_LIS3DSH)
     LIS3DSH        mLIS3DSH;
 #else
     FakeLIS3DSH    mLIS3DSH;
 #endif
 
-//    std::atomic<bool> mButtonPressed;
-    std::atomic<bool> mMotionDataAvailable;
-    uint8_t mMotionLength;
+    AppLogic mLogic;
 
 //    void ButtonPressedCallback();
-    void MotionDataReceived(uint8_t length);
 };
 
 

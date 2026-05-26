@@ -69,7 +69,7 @@ bool BasicTimer::Init(const IConfig& config)
     const Config& cfg = static_cast<const Config&>(config);
 
     EXPECT(cfg.mFrequency > 0);
-    if (cfg.mFrequency == 0) { return false; }
+    if (0 == cfg.mFrequency) { return false; }
 
     // (Freq. timer input) / (Prescaler + 1) = (Freq. CLK_CNT) --> aim for 1 MHz CNT
     mHandle.Init.Prescaler         = (GetTimerInputClockFreq() / 1000000U) - 1U;
@@ -249,7 +249,7 @@ uint16_t BasicTimer::CalculatePeriod(uint16_t desiredFrequency)
     // (Freq. desired) = (Freq. CNT_CLK) / (TIM_ARR + 1)
     // (1000000 / desiredFrequency) - 1 = TIM_ARR
 
-    uint32_t period = (1000000 / desiredFrequency) - 1;
+    uint32_t period = (1000000u / desiredFrequency) - 1;
 
     if (period > UINT16_MAX) { period = UINT16_MAX; }
 

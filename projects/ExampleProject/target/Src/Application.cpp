@@ -49,11 +49,10 @@ Application::Application() :
     mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
     mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-    mMotionDataAvailable(false),
-    mMotionLength(0)
+    mLogic(mLIS3DSH, mWatchdog, mLedOrange)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
-    mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
+    mLIS3DSH.SetHandler( [this](uint8_t length) { mLogic.OnMotionData(length); } );
 }
 
 /**
@@ -75,13 +74,13 @@ bool Application::Init()
     result = mWatchdog.Init(Watchdog::Config(Watchdog::Timeout::_4_S));     // 4 seconds
     ASSERT(result);
 
-    result = mTim1.Init(GenericTimer::Config(15, 5.00));                    // 5.00 Hz --> 200 ms
+    result = mTim1.Init(GenericTimer::Config(15, 5.00f));                   // 5.00 Hz --> 200 ms
     ASSERT(result);
 
-    result = mTim2.Init(GenericTimer::Config(16, 2.22));                    // 2.22 Hz --> 450 ms
+    result = mTim2.Init(GenericTimer::Config(16, 2.22f));                   // 2.22 Hz --> 450 ms
     ASSERT(result);
 
-    result = mTim3.Init(GenericTimer::Config(17, 1.74));                    // 1.74 Hz --> 575 ms
+    result = mTim3.Init(GenericTimer::Config(17, 1.74f));                   // 1.74 Hz --> 575 ms
     ASSERT(result);
 
     result = mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
@@ -101,11 +100,8 @@ bool Application::Init()
     result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
     ASSERT(result);
 
-    result = mLIS3DSH.Init(LIS3DSH::Config(true, LIS3DSH::SampleFrequency::_50_Hz));
+    result = mLIS3DSH.Init(LIS3DSH::Config(mLIS3DSHBuf, sizeof(mLIS3DSHBuf), true, LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
-
-    mMotionDataAvailable = false;
-    mMotionLength = 0;
 
     mTim1.Start([this]() { this->CallbackLedGreenToggle(); });
     mTim2.Start([this]() { this->CallbackLedRedToggle();   });
@@ -125,18 +121,7 @@ bool Application::Init()
  */
 void Application::Process()
 {
-    static uint8_t motionArray[25 * 3 * 2] = {};
-
-    if (mMotionDataAvailable)
-    {
-        mMotionDataAvailable = false;
-
-        bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
-        EXPECT(retrieveResult);
-        (void)(retrieveResult);
-
-        // Deinterleave to X,Y,Z samples
-    }
+    mLogic.Process();
 
     // Handle an update (if available)
     if (mCpuWakeCounter.IsUpdated())    // Will update once per second
@@ -144,14 +129,7 @@ void Application::Process()
         // Get the updated statistics
         CpuStats cpuStats = mCpuWakeCounter.GetStatistics();
 
-        // Handle the statistics, like log or assert if the wake percentage is above 80%
-        if (cpuStats.wakePercentage > 80.0f)
-        {
-            EXPECT(false);
-        }
-
-        // Refresh watchdog every once in a while - before the 4 second timeout
-        mWatchdog.Refresh();
+        mLogic.ServiceTick(cpuStats.wakePercentage);
     }
 
     // At the end of the main process loop enter the desired sleep mode
@@ -184,17 +162,6 @@ void Application::Error()
 /************************************************************************/
 /* Private Methods                                                      */
 /************************************************************************/
-/**
- * \brief   Callback called for the motion data received callback.
- */
-void Application::MotionDataReceived(uint8_t length)
-{
-    mLedOrange.Toggle();
-
-    mMotionDataAvailable = true;
-    mMotionLength = length;
-}
-
 /**
  * \brief   Callback for the green led toggle event.
  */

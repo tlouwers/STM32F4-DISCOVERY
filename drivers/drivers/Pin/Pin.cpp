@@ -268,7 +268,7 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
 
     const auto index = GetIndexById(mId);
     // Check: if callback exists then pin is already configured as interrupt
-    if (pinInterruptList[index].callback != nullptr)
+    if (nullptr != pinInterruptList[index].callback)
     {
         // Restore NVIC for pin
         if (pinInterruptList[index].enabled)
@@ -329,7 +329,7 @@ bool Pin::InterruptEnable()
     const auto index = GetIndexById(mId);
 
     // Check: if callback exists then pin is already configured as interrupt
-    if (pinInterruptList[index].callback != nullptr)
+    if (nullptr != pinInterruptList[index].callback)
     {
         // Enable NVIC for pin
         HAL_NVIC_EnableIRQ(GetIRQn(mId));
@@ -352,7 +352,7 @@ bool Pin::InterruptDisable()
     const auto index = GetIndexById(mId);
 
     // Check: if callback exists then pin is already configured as interrupt
-    if (pinInterruptList[index].callback != nullptr)
+    if (nullptr != pinInterruptList[index].callback)
     {
         // Disable NVIC for pin
         if (!IsIRQSharedWithOtherPin(mId))
@@ -380,7 +380,7 @@ bool Pin::InterruptRemove()
     const auto index = GetIndexById(mId);
 
     // Check: if callback exists then pin is already configured as interrupt
-    if (pinInterruptList[index].callback != nullptr)
+    if (nullptr != pinInterruptList[index].callback)
     {
         // Disable NVIC for pin
         if (!IsIRQSharedWithOtherPin(mId))
@@ -533,23 +533,23 @@ bool Pin::IsIRQSharedWithOtherPin(uint16_t id)
     }
     else if (id < GPIO_PIN_10)
     {
-        if (pinInterruptList[5].callback != nullptr) { count++; }
-        if (pinInterruptList[6].callback != nullptr) { count++; }
-        if (pinInterruptList[7].callback != nullptr) { count++; }
-        if (pinInterruptList[8].callback != nullptr) { count++; }
-        if (pinInterruptList[9].callback != nullptr) { count++; }
+        if (nullptr != pinInterruptList[5].callback) { count++; }
+        if (nullptr != pinInterruptList[6].callback) { count++; }
+        if (nullptr != pinInterruptList[7].callback) { count++; }
+        if (nullptr != pinInterruptList[8].callback) { count++; }
+        if (nullptr != pinInterruptList[9].callback) { count++; }
     }
     else
     {
-        if (pinInterruptList[10].callback != nullptr) { count++; }
-        if (pinInterruptList[11].callback != nullptr) { count++; }
-        if (pinInterruptList[12].callback != nullptr) { count++; }
-        if (pinInterruptList[13].callback != nullptr) { count++; }
-        if (pinInterruptList[14].callback != nullptr) { count++; }
-        if (pinInterruptList[15].callback != nullptr) { count++; }
+        if (nullptr != pinInterruptList[10].callback) { count++; }
+        if (nullptr != pinInterruptList[11].callback) { count++; }
+        if (nullptr != pinInterruptList[12].callback) { count++; }
+        if (nullptr != pinInterruptList[13].callback) { count++; }
+        if (nullptr != pinInterruptList[14].callback) { count++; }
+        if (nullptr != pinInterruptList[15].callback) { count++; }
     }
 
-    if (pinInterruptList[index].callback != nullptr) { count--; }
+    if (nullptr != pinInterruptList[index].callback) { count--; }
 
     return (count > 0);
 }
@@ -595,7 +595,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     // No nested vector priority issue as all interrupt priorities for pins are the same.
     const auto index = GetIndexById(GPIO_Pin);
 
-    if ((pinInterruptList[index].enabled == true) && (pinInterruptList[index].callback != nullptr))
+    if (pinInterruptList[index].enabled && (nullptr != pinInterruptList[index].callback))
     {
         pinInterruptList[index].callback();
     }

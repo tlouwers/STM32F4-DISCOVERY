@@ -37,13 +37,6 @@
 /************************************************************************/
 static const uint16_t MOTION_SAMPLE_SIZE = 3 * 2;   // X,Y,Z, each 16 bit signed int
 
-// Perform scaling --> (4000/65535) milli-G per digit for +/-2g full scale when using the 16-bit output
-static constexpr float K = 4.0 / UINT16_MAX;        // K expressed in G (m/s2), not milli-G
-
-// 8x8 Led Matrix display
-static constexpr uint8_t MATRIX_NR_COLUMNS = 8;
-static constexpr uint8_t MATRIX_NR_ROWS    = 8;
-
 
 /************************************************************************/
 /* Task - definitions                                                   */
@@ -80,25 +73,6 @@ static void CallbackSendSampleViaUsart(const MotionSampleRaw &sample)
     if (callbackSendSampleViaUsart) { callbackSendSampleViaUsart(sample); }
 }
 
-/**
- * \brief   Reverse a byte array.
- * \param   start   Pointer to first element of the byte array to reverse.
- * \param   size    Size of the array.
- */
-static void ReverseBytes(uint8_t *start, size_t size) {
-    if (start != nullptr)
-    {
-        uint8_t *lo = start;
-        uint8_t *hi = start + size - 1;
-        uint8_t swap;
-        while (lo < hi) {
-            swap = *lo;
-            *lo++ = *hi;
-            *hi-- = swap;
-        }
-    }
-}
-
 
 /************************************************************************/
 /* Public Methods                                                       */
@@ -122,7 +96,7 @@ Application::Application() :
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
     mMatrix(mSPIMatrix, PIN_SPI2_CS),
     mLIS3DSH(mSPIMotion, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-    mMotionLength(0)
+    mLogic(mLIS3DSH, mLedOrange, mMatrix)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
     mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
@@ -160,9 +134,8 @@ bool Application::Init()
     result = mSPIMotion.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
     ASSERT(result);
 
-    result = mLIS3DSH.Init(LIS3DSH::Config(false, LIS3DSH::SampleFrequency::_50_Hz));
+    result = mLIS3DSH.Init(LIS3DSH::Config(mLIS3DSHBuf, sizeof(mLIS3DSHBuf), false, LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
-    mMotionLength = 0;
 
 
     result = mSPIMatrix.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
@@ -252,83 +225,11 @@ void Application::MotionDataReceived(uint8_t length)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    mMotionLength = length;
+    mLogic.OnMotionData(length);
 
     vTaskNotifyGiveIndexedFromISR( xMotionData, 0, &xHigherPriorityTaskWoken );
 
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
-}
-
-/**
- * \brief   Convert to G (m/s2) and calculate the pith and roll.
- * \param   sampleRaw   The motion sample to convert.
- * \returns Converted motion sample.
- */
-MotionSample Application::CalculateMotionSample(const MotionSampleRaw &sampleRaw)
-{
-    MotionSample sample;
-
-    // Convert to G (m/s2)
-    sample.X = sampleRaw.X * K;
-    sample.Y = sampleRaw.Y * K;
-    sample.Z = sampleRaw.Z * K;
-
-    // Calculate the pith and roll in degrees
-    sample.pitch = 180.0f * atan2f(sample.Y, sample.Z) / static_cast<float>(M_PI);
-    sample.roll  = 180.0f * atan2f(sample.X, sample.Z) / static_cast<float>(M_PI);
-
-    return sample;
-}
-
-/**
- * \brief   Calculate the pixel to display on the matrix display based upon the
- *          pitch and roll.
- * \param   dest    The destination pixel array (8 bytes) to fill.
- * \param   sample  Motion sample with pitch and roll in degrees.
- * \param   invert  Flag, indicate if the display should be inverted or not.
- */
-void Application::CalculatePixel(uint8_t *dest, const MotionSample &sample, bool invert /* = false */)
-{
-    if (dest != nullptr)
-    {
-        uint8_t columnPitch = 0;
-             if (sample.pitch >  40.0f) { columnPitch = 0x0F; }     // Special case: row
-        else if (sample.pitch >  30.0f) { columnPitch = 7;    }
-        else if (sample.pitch >  20.0f) { columnPitch = 6;    }
-        else if (sample.pitch >  10.0f) { columnPitch = 5;    }
-        else if (sample.pitch >=  0.0f) { columnPitch = 4;    }
-        else if (sample.pitch > -10.0f) { columnPitch = 3;    }
-        else if (sample.pitch > -20.0f) { columnPitch = 2;    }
-        else if (sample.pitch > -30.0f) { columnPitch = 1;    }
-        else if (sample.pitch > -40.0f) { columnPitch = 0;    }
-        else                            { columnPitch = 0xF0; }     // Special case: row
-
-        uint8_t rowRoll = 0;
-             if (sample.roll >  40.0f) { rowRoll = 0x0F; }          // Special case: column
-        else if (sample.roll >  30.0f) { rowRoll = 7;    }
-        else if (sample.roll >  20.0f) { rowRoll = 6;    }
-        else if (sample.roll >  10.0f) { rowRoll = 5;    }
-        else if (sample.roll >=  0.0f) { rowRoll = 4;    }
-        else if (sample.roll > -10.0f) { rowRoll = 3;    }
-        else if (sample.roll > -20.0f) { rowRoll = 2;    }
-        else if (sample.roll > -30.0f) { rowRoll = 1;    }
-        else if (sample.roll > -40.0f) { rowRoll = 0;    }
-        else                           { rowRoll = 0xF0; }          // Special case: column
-
-        uint8_t pixel = 0;
-             if (columnPitch == 0x0F) { for (uint8_t i = 0; i < MATRIX_NR_COLUMNS; i++ ) { dest[i] = 0x80; } }
-        else if (columnPitch == 0xF0) { for (uint8_t i = 0; i < MATRIX_NR_COLUMNS; i++ ) { dest[i] = 0x01; } }
-        else                          { pixel = (1 << columnPitch); }
-
-             if (rowRoll == 0x0F) { dest[7] = 0xFF; }
-        else if (rowRoll == 0xF0) { dest[0] = 0xFF; }
-        else if (columnPitch != 0x0F && columnPitch != 0xF0) { dest[rowRoll] = pixel; }
-
-        if (invert)
-        {
-            ReverseBytes(dest, MATRIX_NR_ROWS);
-        }
-    }
 }
 
 /**
@@ -338,23 +239,18 @@ void Application::CallbackMotionDataReceived()
 {
     static uint8_t motionArray[MOTION_SAMPLE_SIZE] = {};
 
-    if (mMotionLength > 0)
+    uint8_t length = 0;
+    if (mLogic.RetrieveMotion(motionArray, length))
     {
-        mLedOrange.Toggle();
-
-        bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
-        EXPECT(retrieveResult);
-        (void)(retrieveResult);
-
         // Deinterleave to X,Y,Z samples
-        for (size_t i = 0; ((i < sizeof(motionArray)) && (i + MOTION_SAMPLE_SIZE <= mMotionLength)); i += MOTION_SAMPLE_SIZE)
+        for (size_t i = 0; ((i < sizeof(motionArray)) && (i + MOTION_SAMPLE_SIZE <= length)); i += MOTION_SAMPLE_SIZE)
         {
             MotionSampleRaw sampleRaw;
-            sampleRaw.X = (motionArray[i + 1] << 8) | motionArray[i + 0];
-            sampleRaw.Y = (motionArray[i + 3] << 8) | motionArray[i + 2];
-            sampleRaw.Z = (motionArray[i + 5] << 8) | motionArray[i + 4];
+            sampleRaw.X = static_cast<int16_t>((motionArray[i + 1] << 8) | motionArray[i + 0]);
+            sampleRaw.Y = static_cast<int16_t>((motionArray[i + 3] << 8) | motionArray[i + 2]);
+            sampleRaw.Z = static_cast<int16_t>((motionArray[i + 5] << 8) | motionArray[i + 4]);
 
-            MotionSample sample = CalculateMotionSample(sampleRaw);
+            MotionSample sample = mLogic.CalculateMotionSample(sampleRaw);
 
             // Put converted samples to queue(s)
             BaseType_t result = xQueueSend(displayQueue, &sample, 0);
@@ -370,11 +266,7 @@ void Application::CallbackMotionDataReceived()
  */
 void Application::CallbackUpdateDisplay(const MotionSample &sample)
 {
-    uint8_t pixels[8] = {};
-
-    CalculatePixel(pixels, sample, true);
-
-    mMatrix.WriteDigits(pixels);
+    mLogic.RenderTilt(sample);
 }
 
 /**

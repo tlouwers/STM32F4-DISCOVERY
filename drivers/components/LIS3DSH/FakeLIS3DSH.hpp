@@ -166,8 +166,8 @@ public:
     void SetHandler(const std::function<void(uint8_t length)>& handler) { UNUSED(handler); }
     bool RetrieveAxesData(uint8_t* dest, uint8_t length)
     {
-        if (dest == nullptr) { return false; }
-        if (length == 0)     { return false; }
+        if (nullptr == dest) { return false; }
+        if (0 == length)     { return false; }
         if (length % 6 != 0) { return false; }
 
 #if (SIMULATED_SENSOR_OUTPUT_DATA == SAWTOOTH_SIGNAL)

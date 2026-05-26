@@ -207,7 +207,7 @@ bool I2C::Sleep()
     const HAL_I2C_StateTypeDef state = HAL_I2C_GetState(&mHandle);
     if ((state == HAL_I2C_STATE_BUSY_TX) || (state == HAL_I2C_STATE_BUSY_RX))
     {
-        HAL_I2C_Master_Abort_IT(&mHandle, mHandle.Devaddress);
+        HAL_I2C_Master_Abort_IT(&mHandle, static_cast<uint16_t>(mHandle.Devaddress));
     }
 
     if (HAL_I2C_DeInit(&mHandle) != HAL_OK) { return false; }
@@ -343,10 +343,10 @@ bool I2C::WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
+    if (nullptr == src) { return false; }
+    if (0 == length)    { return false; }
     if (!mInitialized)  { return false; }
-    if (mHandle.hdmatx == nullptr) { return false; }
+    if (nullptr == mHandle.hdmatx) { return false; }
 
     mI2CCallbacks.callbackTx = handler;
 
@@ -369,10 +369,10 @@ bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::func
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
-    if (mHandle.hdmarx == nullptr) { return false; }
+    if (nullptr == mHandle.hdmarx) { return false; }
 
     mI2CCallbacks.callbackRx = handler;
 
@@ -399,8 +399,8 @@ bool I2C::WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, con
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
+    if (nullptr == src) { return false; }
+    if (0 == length)    { return false; }
     if (!mInitialized)  { return false; }
 
     mI2CCallbacks.callbackTx = handler;
@@ -423,8 +423,8 @@ bool I2C::ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
     mI2CCallbacks.callbackRx = handler;
@@ -446,8 +446,8 @@ bool I2C::WriteBlocking(uint8_t slave, const uint8_t* src, uint16_t length)
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
+    if (nullptr == src) { return false; }
+    if (0 == length)    { return false; }
     if (!mInitialized)  { return false; }
 
     return (HAL_I2C_Master_Transmit(&mHandle, slave, const_cast<uint8_t*>(src), length, HAL_MAX_DELAY) == HAL_OK);
@@ -467,8 +467,8 @@ bool I2C::ReadBlocking(uint8_t slave, uint8_t* dest, uint16_t length)
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
     return (HAL_I2C_Master_Receive(&mHandle, slave, dest, length, HAL_MAX_DELAY) == HAL_OK);

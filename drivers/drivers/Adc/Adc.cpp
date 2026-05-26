@@ -171,9 +171,9 @@ bool Adc::Sleep()
 
     DisconnectCallbacks();
 
-    if ((adc1_callbacks.callbackIRQ == nullptr) &&
-        (adc2_callbacks.callbackIRQ == nullptr) &&
-        (adc3_callbacks.callbackIRQ == nullptr))
+    if ((nullptr == adc1_callbacks.callbackIRQ) &&
+        (nullptr == adc2_callbacks.callbackIRQ) &&
+        (nullptr == adc3_callbacks.callbackIRQ))
     {
         HAL_NVIC_DisableIRQ(ADC_IRQn);
     }

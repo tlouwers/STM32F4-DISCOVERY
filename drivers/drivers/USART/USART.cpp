@@ -212,7 +212,7 @@ bool USART::WriteDma(const uint8_t* src, uint16_t length, const std::function<vo
     EXPECT(length > 0);
 
     if (!mInitialized) { return false; }
-    if (mHandle.hdmatx == nullptr) { return false; }
+    if (nullptr == mHandle.hdmatx) { return false; }
 
     mUsartCallbacks.callbackTx = handler;
 
@@ -239,7 +239,7 @@ bool USART::ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uin
     EXPECT(length > 0);
 
     if (!mInitialized) { return false; }
-    if (mHandle.hdmarx == nullptr) { return false; }
+    if (nullptr == mHandle.hdmarx) { return false; }
 
     mUsartCallbacks.callbackRx = handler;
 

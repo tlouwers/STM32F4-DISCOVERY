@@ -30,9 +30,10 @@
 /************************************************************************/
 /* Includes                                                             */
 /************************************************************************/
+#include <cstddef>
 #include <cstdint>
 #include <functional>
-#include "interfaces/IInitable.hpp"
+#include "interfaces/ILIS3DSH.hpp"
 #include "interfaces/ISPI.hpp"
 #include "drivers/Pin/Pin.hpp"
 
@@ -40,9 +41,23 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class LIS3DSH final : public IConfigInitable
+class LIS3DSH final : public ILIS3DSH
 {
 public:
+    /**
+     * \brief   Required size, in bytes, of the caller-supplied read
+     *          buffer when the hardware FIFO is enabled.
+     * \details 25 samples (the FIFO watermark) of X,Y,Z (3) at int16_t (2 bytes) = 150.
+     */
+    static constexpr size_t FIFO_READ_BUFFER_SIZE   = 150;
+
+    /**
+     * \brief   Required size, in bytes, of the caller-supplied read
+     *          buffer when the hardware FIFO is NOT enabled.
+     * \details One sample of X,Y,Z (3) at int16_t (2 bytes) = 6.
+     */
+    static constexpr size_t SINGLE_READ_BUFFER_SIZE = 6;
+
     /**
      * \enum    SampleFrequency
      * \brief   Sample frequency for accelerometer data.
@@ -112,22 +127,34 @@ public:
     {
         /**
          * \brief   Constructor of the LIS3DSH configuration struct.
+         * \param   readBuffer          Caller-owned buffer the driver fills via SPI/DMA.
+         *                              Must remain valid for the lifetime of the driver
+         *                              (until Sleep()). Must be non-null and at least
+         *                              FIFO_READ_BUFFER_SIZE bytes when useHardwareFifo
+         *                              is true, else SINGLE_READ_BUFFER_SIZE bytes.
+         * \param   readBufferSize      Size, in bytes, of readBuffer.
          * \param   useHardwareFifo     Flag indicating hardware FIFO is to be used.
          * \param   sampleFrequency     Sample frequency for accelerometer data.
          * \param   scale               Scale of the accelerometer data. Default +/- 2G.
          * \param   antiAliasingFilter  Anti-aliasing filter bandwidth. Default 200 Hz.
          *
          */
-        explicit Config(bool useHardwareFifo,
-                        SampleFrequency sampleFrequency,
-                        Scale scale = Scale::_2_G,
-                        AntiAliasingFilter antiAliasingFilter = AntiAliasingFilter::_200_Hz) :
+        Config(uint8_t* readBuffer,
+               size_t readBufferSize,
+               bool useHardwareFifo,
+               SampleFrequency sampleFrequency,
+               Scale scale = Scale::_2_G,
+               AntiAliasingFilter antiAliasingFilter = AntiAliasingFilter::_200_Hz) :
+            mReadBuffer(readBuffer),
+            mReadBufferSize(readBufferSize),
             mUseHardwareFifo(useHardwareFifo),
             mSampleFrequency(sampleFrequency),
             mScale(scale),
             mAntiAliasingFilter(antiAliasingFilter)
         { }
 
+        uint8_t*           mReadBuffer;             ///< Caller-owned read buffer (non-owning pointer).
+        size_t             mReadBufferSize;         ///< Size of mReadBuffer in bytes.
         bool               mUseHardwareFifo;        ///< Flag indicating hardware FIFO is to be used.
         SampleFrequency    mSampleFrequency;        ///< Sample frequency for accelerometer data.
         Scale              mScale;                  ///< Scale of the accelerometer data.
@@ -150,11 +177,11 @@ public:
     bool IsInit() const override;
     bool Sleep() override;
 
-    bool Enable();
-    bool Disable();
+    bool Enable() override;
+    bool Disable() override;
 
-    void SetHandler(const std::function<void(uint8_t length)>& handler);
-    bool RetrieveAxesData(uint8_t* dest, uint8_t length);
+    void SetHandler(const std::function<void(uint8_t length)>& handler) override;
+    bool RetrieveAxesData(uint8_t* dest, uint8_t length) override;
 
 private:
     ISPI&    mSpi;
@@ -169,8 +196,7 @@ private:
     std::function<void(uint8_t length)> mHandler;
 
     bool SelfTest();
-    bool Configure(const IConfig& config);
-    bool PrepareReadBuffer(uint8_t bufferSize);
+    bool Configure(const Config& cfg);
     bool ClearFifo();
     uint8_t GetSampleFrequencyAsODR(SampleFrequency sampleFrequency);
     uint8_t GetScaleAsFSCALE(Scale scale);

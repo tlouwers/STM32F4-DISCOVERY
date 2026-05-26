@@ -62,6 +62,7 @@ target_compile_options(stm32_hal PRIVATE
 
     -fdata-sections
     -ffunction-sections
+    -fstrict-volatile-bitfields
 
     -g3
 )
@@ -94,19 +95,25 @@ target_compile_options(${EXECUTABLE} PRIVATE
     -fdata-sections
     -ffunction-sections
     -fstack-usage
+    -fstrict-volatile-bitfields
 
     -Wall
     -g3
 
     # Extra warnings - catch common bugs at compile time
     -Wextra
+    -Wpedantic
     -Wshadow
     -Wdouble-promotion
     -Wundef
     -Wformat=2
     -Wcast-qual
     -Wcast-align
+    -Wconversion
+    -Wsign-conversion
     -Wlogical-op
+    -Wfloat-equal
+    -Wlogical-not-parentheses
     -Wnull-dereference
     -Wmisleading-indentation
     -Wduplicated-cond

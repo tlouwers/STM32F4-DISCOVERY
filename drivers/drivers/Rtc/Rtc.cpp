@@ -188,7 +188,7 @@ bool Rtc::SetDateTime(const DateTime& dateTime)
     if (HAL_RTC_SetTime(&mHandle, &sTime, RTC_FORMAT_BIN) == HAL_OK)
     {
         RTC_DateTypeDef sDate = {};
-        sDate.Year  = dateTime.year - YEAR_OFFSET;
+        sDate.Year  = static_cast<uint8_t>(dateTime.year - YEAR_OFFSET);
         sDate.Month = dateTime.month;
         sDate.Date  = dateTime.day;
         return (HAL_RTC_SetDate(&mHandle, &sDate, RTC_FORMAT_BIN) == HAL_OK);

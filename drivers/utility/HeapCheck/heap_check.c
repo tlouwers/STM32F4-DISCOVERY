@@ -67,7 +67,7 @@ uint32_t get_used_heap(void)
     uint8_t* heap_end   = (uint8_t*)_sbrk(0);
     uint8_t* heap_start = (uint8_t*)&end;
 
-    return (heap_end - heap_start);
+    return (uint32_t)(heap_end - heap_start);
 }
 
 /**

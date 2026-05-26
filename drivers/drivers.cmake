@@ -71,18 +71,24 @@ function(stm32_add_drivers_library)
 
         -fdata-sections
         -ffunction-sections
+        -fstrict-volatile-bitfields
 
         -Wall
         -g3
 
         -Wextra
+        -Wpedantic
         -Wshadow
         -Wdouble-promotion
         -Wundef
         -Wformat=2
         -Wcast-qual
         -Wcast-align
+        -Wconversion
+        -Wsign-conversion
         -Wlogical-op
+        -Wfloat-equal
+        -Wlogical-not-parentheses
         -Wnull-dereference
         -Wmisleading-indentation
         -Wduplicated-cond

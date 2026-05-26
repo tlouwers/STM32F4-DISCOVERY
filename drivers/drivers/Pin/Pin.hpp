@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <functional>
 #include "stm32f4xx_hal.h"
+#include "interfaces/IPin.hpp"
 
 
 /************************************************************************/
@@ -57,14 +58,8 @@ struct PinInterrupt
 /* Enums                                                                */
 /************************************************************************/
 /**
- * \enum    Level
- * \brief   Pin level.
+ * \note    enum class Level and Trigger are defined in interfaces/IPin.hpp.
  */
-enum class Level : bool
-{
-    LOW,
-    HIGH
-};
 
 /**
  * \enum    Direction
@@ -106,17 +101,6 @@ enum class PullUpDown : uint8_t
 };
 
 /**
- * \enum    Trigger
- * \brief   Interrupt trigger condition for a pin.
- */
-enum class Trigger : uint8_t
-{
-    RISING,
-    FALLING,
-    BOTH
-};
-
-/**
  * \enum    Alternate
  * \brief   Alternate function selection for a pin.
  * \note    See the HAL 'GPIO_Alternate_function_selection' for options.
@@ -155,7 +139,7 @@ enum class Mode : bool
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
-class Pin
+class Pin final : public IPin
 {
 public:
     Pin(Pin&& other);
@@ -165,18 +149,20 @@ public:
     Pin(PinIdPort idAndPort, PullUpDown pullUpDown);
     Pin(PinIdPort idAndPort, Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
 
+    virtual ~Pin() = default;
+
     void Configure(Level level, Drive drive = Drive::PUSH_PULL);
     void Configure(PullUpDown pullUpDown);
     void Configure(Alternate alternate, PullUpDown pullUpDown = PullUpDown::HIGHZ, Mode mode = Mode::PUSH_PULL);
 
-    bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true);
-    bool InterruptEnable();
-    bool InterruptDisable();
-    bool InterruptRemove();
+    bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure = true) override;
+    bool InterruptEnable() override;
+    bool InterruptDisable() override;
+    bool InterruptRemove() override;
 
-    void Toggle() const;
-    void Set(Level level);
-    Level Get() const;
+    void Toggle() const override;
+    void Set(Level level) override;
+    Level Get() const override;
 
     Pin& operator= (Pin&& other);
 

@@ -327,7 +327,7 @@ uint32_t GenericTimer::CalculatePeriod(float desiredFrequency)
     // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     // (10000 / desiredFrequency) - 1 = TIM_ARR
 
-    uint32_t period = (10000 / desiredFrequency) - 1;
+    uint32_t period = static_cast<uint32_t>(10000.0f / desiredFrequency - 1.0f);
 
     const bool is32Bit = (mInstance == GenericTimerInstance::TIMER_2) ||
                          (mInstance == GenericTimerInstance::TIMER_5);

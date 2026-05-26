@@ -1,3 +1,24 @@
+/**
+ * \file    stm32f4xx_hal.h
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ *
+ * \brief   Umbrella fake STM32F4 HAL header for the native unit-test build.
+ *          Declares the minimum set of HAL types/macros/prototypes the real
+ *          drivers depend on, so they compile and link without the vendor HAL.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/tests/Fake
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    05-2026
+ */
+
 #ifndef __STM32F4xx_HAL_H
 #define __STM32F4xx_HAL_H
 
@@ -181,11 +202,591 @@ typedef enum
 #define GPIOI           ((GPIO_TypeDef *) GPIOI_BASE)
 
 
+/**
+ * \brief   GPIO pin state (mirror the real HAL). HAL_GPIO_ReadPin returns it and
+ *          HAL_GPIO_WritePin takes it; the Pin driver compares against
+ *          GPIO_PIN_SET.
+ */
+typedef enum
+{
+    GPIO_PIN_RESET = 0U,
+    GPIO_PIN_SET   = 1U
+} GPIO_PinState;
+
+/**
+ * \brief   GPIO init config -- field names mirror the real HAL so Pin::Configure
+ *          populates it exactly as on hardware. The fake HAL_GPIO_Init records
+ *          the last-applied config so a test can assert what the driver wrote.
+ */
+typedef struct
+{
+    uint32_t Pin;         ///< GPIO_PIN_*
+    uint32_t Mode;        ///< GPIO_MODE_*
+    uint32_t Pull;        ///< GPIO_NOPULL / GPIO_PULLUP / GPIO_PULLDOWN
+    uint32_t Speed;       ///< GPIO_SPEED_*
+    uint32_t Alternate;   ///< GPIO alternate-function selection
+} GPIO_InitTypeDef;
+
+/* GPIO mode macros (mirror the real HAL bit-encoding). */
+#define GPIO_MODE_INPUT             ((uint32_t)0x00000000U)
+#define GPIO_MODE_OUTPUT_PP         ((uint32_t)0x00000001U)
+#define GPIO_MODE_OUTPUT_OD         ((uint32_t)0x00000011U)
+#define GPIO_MODE_AF_PP             ((uint32_t)0x00000002U)
+#define GPIO_MODE_AF_OD             ((uint32_t)0x00000012U)
+#define GPIO_MODE_ANALOG            ((uint32_t)0x00000003U)
+#define GPIO_MODE_IT_RISING         ((uint32_t)0x10110000U)
+#define GPIO_MODE_IT_FALLING        ((uint32_t)0x10210000U)
+#define GPIO_MODE_IT_RISING_FALLING ((uint32_t)0x10310000U)
+
+/* GPIO pull macros. */
+#define GPIO_NOPULL                 ((uint32_t)0x00000000U)
+#define GPIO_PULLUP                 ((uint32_t)0x00000001U)
+#define GPIO_PULLDOWN               ((uint32_t)0x00000002U)
+
+/* GPIO speed macros. */
+#define GPIO_SPEED_FREQ_LOW         ((uint32_t)0x00000000U)
+#define GPIO_SPEED_FREQ_MEDIUM      ((uint32_t)0x00000001U)
+#define GPIO_SPEED_FREQ_HIGH        ((uint32_t)0x00000002U)
+#define GPIO_SPEED_FREQ_VERY_HIGH   ((uint32_t)0x00000003U)
+
+/* RCC GPIO clock gating. IS_CLK_DISABLED reports "disabled" (1) so the driver's
+   enable branch is exercised; ENABLE is a no-op natively. */
+#define __HAL_RCC_GPIOA_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOB_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOC_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOD_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOE_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOF_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOG_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOH_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOI_IS_CLK_DISABLED()   (1U)
+#define __HAL_RCC_GPIOA_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOB_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOC_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOD_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOE_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOF_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOG_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOH_CLK_ENABLE()        do { } while(0)
+#define __HAL_RCC_GPIOI_CLK_ENABLE()        do { } while(0)
+
+/**
+ * \brief   GPIO driver-facing HAL surface (fake bodies in stm32f4xx_hal_gpio.cpp).
+ *          The Pin driver includes only this umbrella, so the prototypes live
+ *          here rather than in a module header.
+ */
+void          HAL_GPIO_Init(GPIO_TypeDef* GPIOx, GPIO_InitTypeDef* GPIO_Init);
+void          HAL_GPIO_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
+GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+void          HAL_GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+void          HAL_GPIO_EXTI_IRQHandler(uint16_t GPIO_Pin);
+
+/* Defined by the driver (Pin.cpp); declared here so the definition links with C
+   linkage and the fake HAL_GPIO_EXTI_IRQHandler can dispatch into it. */
+void          HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+
+
 void __NOP(void);
+
+/* Cortex-M core intrinsics + Systick suspend/resume used by CpuWakeCounter. */
+uint32_t __get_PRIMASK(void);
+void     __disable_irq(void);
+void     __set_PRIMASK(uint32_t mask);
+void     __WFI(void);
+void     __WFE(void);
+void     HAL_SuspendTick(void);
+void     HAL_ResumeTick(void);
+
+/* Test hooks for the fake DWT cycle counter (see stm32f4xx_hal.c).
+   FakeDWT_SetCounting(0) freezes CYCCNT so CpuWakeCounter::Init()'s
+   counter-running probe fails; FakeDWT_SetSleepAdvance(n) makes each WFI/WFE
+   consume n cycles so a measurement window can be driven to completion. */
+void FakeDWT_Reset(void);
+void FakeDWT_SetCounting(int enabled);
+void FakeDWT_SetSleepAdvance(uint32_t cycles);
 
 void HAL_Delay(uint32_t Delay);
 
 #define UNUSED(X) (void)X      /* To avoid gcc/g++ warnings */
+
+
+/**
+ * \brief   Cortex-M NVIC control surface (fake). Bodies in stm32f4xx_hal.c
+ *          are no-ops: on real hardware the drivers call these purely for
+ *          their interrupt-controller side effects, which the native unit
+ *          tests neither configure nor observe. Shared by every driver that
+ *          installs an IRQ (DMA, SPI, I2C, USART, ...).
+ */
+void HAL_NVIC_SetPriority(IRQn_Type IRQn, uint32_t PreemptPriority, uint32_t SubPriority);
+void HAL_NVIC_EnableIRQ(IRQn_Type IRQn);
+void HAL_NVIC_DisableIRQ(IRQn_Type IRQn);
+void HAL_NVIC_ClearPendingIRQ(IRQn_Type IRQn);
+
+
+/**
+ * \brief   HAL status enumeration -- minimal subset, added for the RNG fake
+ *          surface needed by the L12 multi-thread Rng test. Matches the real
+ *          HAL ordering so HAL_OK is the canonical success token.
+ */
+typedef enum
+{
+    HAL_OK      = 0x00U,
+    HAL_ERROR   = 0x01U,
+    HAL_BUSY    = 0x02U,
+    HAL_TIMEOUT = 0x03U
+} HAL_StatusTypeDef;
+
+/**
+ * \brief   Reset and Clock Control -- minimal subset (only the fields
+ *          Rng::IsRngClockConfigured() reads). Backed by storage in the
+ *          companion fake .cpp; the test harness pre-fills CR/PLLCFGR so
+ *          the clock check passes.
+ */
+typedef struct
+{
+    volatile uint32_t CR;        ///< Clock control register
+    volatile uint32_t PLLCFGR;   ///< PLL configuration register
+    volatile uint32_t CFGR;      ///< Clock configuration register (APB prescalers)
+} RCC_TypeDef;
+
+extern RCC_TypeDef* const RCC;
+
+#define RCC_CR_PLLRDY            ((uint32_t)0x02000000U)   ///< CR bit 25: main PLL ready flag
+#define RCC_PLLCFGR_PLLQ         ((uint32_t)0x0F000000U)   ///< PLLCFGR PLLQ mask (bits 24..27)
+#define RCC_PLLCFGR_PLLQ_Pos     ((uint32_t)24U)           ///< PLLCFGR PLLQ bit position
+
+/* CFGR APB1/APB2 prescaler fields (read by GenericTimer to scale the timer
+   input clock). Real CMSIS bit positions; the timer-input doubling rule keys
+   off the DIV2 threshold. */
+#define RCC_CFGR_PPRE1           ((uint32_t)0x00001C00U)   ///< APB1 prescaler mask (bits 10..12)
+#define RCC_CFGR_PPRE1_DIV2      ((uint32_t)0x00001000U)   ///< APB1 prescaler /2
+#define RCC_CFGR_PPRE2           ((uint32_t)0x0000E000U)   ///< APB2 prescaler mask (bits 13..15)
+#define RCC_CFGR_PPRE2_DIV2      ((uint32_t)0x00008000U)   ///< APB2 prescaler /2
+
+/**
+ * \brief   RNG peripheral instance (opaque -- the fake never inspects it;
+ *          only Rng.cpp's `mHandle.Instance = RNG;` touches it).
+ */
+typedef struct
+{
+    uint32_t reserved;
+} RNG_TypeDef;
+
+extern RNG_TypeDef* const RNG;
+
+typedef struct
+{
+    RNG_TypeDef* Instance;   ///< Set to RNG by the driver; unread by the fake.
+} RNG_HandleTypeDef;
+
+#define __HAL_RCC_RNG_CLK_ENABLE()    do { } while(0)
+#define __HAL_RCC_RNG_CLK_DISABLE()   do { } while(0)
+
+/** Driver-facing HAL surface (fake implementations live in stm32f4xx_hal_rng.cpp). */
+HAL_StatusTypeDef HAL_RNG_Init(RNG_HandleTypeDef* hrng);
+HAL_StatusTypeDef HAL_RNG_DeInit(RNG_HandleTypeDef* hrng);
+HAL_StatusTypeDef HAL_RNG_GenerateRandomNumber(RNG_HandleTypeDef* hrng, uint32_t* random32bit);
+
+/**
+ * \brief   Test-only observation hooks for the L12 multi-thread Rng test.
+ * \details The fake's HAL_RNG_GenerateRandomNumber increments an atomic
+ *          counter on entry and decrements on exit, tracking the maximum
+ *          observed concurrent callers. The production atomic_flag guard
+ *          in Rng::GetRandom must keep this <= 1; the test asserts it.
+ */
+int  FakeRNG_MaxObservedConcurrentCallers(void);
+void FakeRNG_ResetObservation(void);
+
+
+/**
+ * \brief   APB peripheral-bus clock frequencies (fake). Fixed to the values
+ *          the drafted 168 MHz PLL config produces: PCLK1 (APB1) = 42 MHz,
+ *          PCLK2 (APB2) = 84 MHz. SPI1 sits on APB2, SPI2/3 on APB1, so the
+ *          SPI driver reads these to validate the requested bus speed and to
+ *          compute the baud-rate prescaler. Bodies in stm32f4xx_hal.c.
+ */
+uint32_t HAL_RCC_GetPCLK1Freq(void);
+uint32_t HAL_RCC_GetPCLK2Freq(void);
+
+
+/**
+ * \brief   SPI peripheral instance (opaque). The driver only stores it in
+ *          mHandle.Instance and compares handle->Instance == SPIx in its ISR
+ *          dispatch; the fake never inspects the contents.
+ */
+typedef struct
+{
+    uint32_t reserved;
+} SPI_TypeDef;
+
+extern SPI_TypeDef* const SPI1;
+extern SPI_TypeDef* const SPI2;
+extern SPI_TypeDef* const SPI3;
+
+/**
+ * \brief   SPI init config -- field names mirror the real HAL so SPI::Init
+ *          populates the handle exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t Mode;                ///< SPI_MODE_*
+    uint32_t Direction;           ///< SPI_DIRECTION_*
+    uint32_t DataSize;            ///< SPI_DATASIZE_*
+    uint32_t CLKPolarity;         ///< SPI_POLARITY_*
+    uint32_t CLKPhase;            ///< SPI_PHASE_*
+    uint32_t NSS;                 ///< SPI_NSS_*
+    uint32_t BaudRatePrescaler;   ///< SPI_BAUDRATEPRESCALER_*
+    uint32_t FirstBit;            ///< SPI_FIRSTBIT_*
+    uint32_t TIMode;              ///< SPI_TIMODE_*
+    uint32_t CRCCalculation;      ///< SPI_CRCCALCULATION_*
+    uint32_t CRCPolynomial;       ///< CRC polynomial
+} SPI_InitTypeDef;
+
+/* Forward declaration: the DMA handle is fully defined in stm32f4xx_hal_dma.h.
+   SPI_HandleTypeDef only needs pointers to it (the hdmatx/hdmarx slots wired
+   by __HAL_LINKDMA), so an incomplete type is sufficient here and avoids a
+   hard include dependency for the many TUs that pull in this umbrella header
+   without ever touching DMA. */
+struct __DMA_HandleTypeDef;
+
+/**
+ * \brief   SPI handle. hdmatx/hdmarx are populated by __HAL_LINKDMA when a
+ *          DMA stream is wired into the Tx/Rx slot; the WriteDMA/ReadDMA paths
+ *          guard on them being non-null.
+ */
+typedef struct __SPI_HandleTypeDef
+{
+    SPI_TypeDef*                Instance;   ///< Set to SPIx by the driver
+    SPI_InitTypeDef             Init;       ///< Configuration
+    struct __DMA_HandleTypeDef* hdmatx;     ///< Tx DMA slot (set by __HAL_LINKDMA)
+    struct __DMA_HandleTypeDef* hdmarx;     ///< Rx DMA slot (set by __HAL_LINKDMA)
+} SPI_HandleTypeDef;
+
+
+/**
+ * \brief   Cortex-M4 DWT cycle counter and CoreDebug DEMCR (fake). Drivers that
+ *          busy-wait on the cycle counter (e.g. I2C bus-recovery's
+ *          DelayMicroseconds) read these; storage lives in stm32f4xx_hal.c.
+ */
+typedef struct
+{
+    volatile uint32_t CTRL;     ///< Control register (CYCCNTENA in bit 0)
+    volatile uint32_t reserved[5];
+    volatile uint32_t CYCCNT;   ///< Cycle count register
+} DWT_TypeDef;
+
+typedef struct
+{
+    volatile uint32_t DEMCR;    ///< Debug Exception and Monitor Control (TRCENA in bit 24)
+} CoreDebug_TypeDef;
+
+extern DWT_TypeDef*       const DWT;
+extern CoreDebug_TypeDef* const CoreDebug;
+
+#define DWT_CTRL_CYCCNTENA_Msk     ((uint32_t)0x00000001U)   ///< CTRL: CYCCNT enable
+#define CoreDebug_DEMCR_TRCENA_Msk ((uint32_t)0x01000000U)   ///< DEMCR: trace enable
+
+/**
+ * \brief   Live core clock (fake). Deliberately 0 so the cycle budget
+ *          `(SystemCoreClock / 1000000) * us` computes to 0 and every
+ *          DWT-based busy-wait returns immediately: the fake DWT->CYCCNT does
+ *          not advance on read, so a non-zero budget would spin forever. Native
+ *          tests have no real bus, so a zero-length delay is the correct fake.
+ */
+extern uint32_t SystemCoreClock;
+
+
+/**
+ * \brief   I2C peripheral instance. Only CR1 is modelled (the bus-recovery
+ *          SWRST / PE-disable path writes it); the remaining registers are
+ *          omitted as no driver path inspects them.
+ */
+typedef struct
+{
+    volatile uint32_t CR1;   ///< Control register 1 (PE, SWRST)
+} I2C_TypeDef;
+
+extern I2C_TypeDef* const I2C1;
+extern I2C_TypeDef* const I2C2;
+extern I2C_TypeDef* const I2C3;
+
+/**
+ * \brief   I2C init config -- field names mirror the real HAL so I2C::Init
+ *          populates the handle exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t ClockSpeed;        ///< Bus clock in Hz
+    uint32_t DutyCycle;         ///< I2C_DUTYCYCLE_*
+    uint32_t OwnAddress1;       ///< First device own address
+    uint32_t AddressingMode;    ///< I2C_ADDRESSINGMODE_*
+    uint32_t DualAddressMode;   ///< I2C_DUALADDRESS_*
+    uint32_t OwnAddress2;       ///< Second device own address
+    uint32_t GeneralCallMode;   ///< I2C_GENERALCALL_*
+    uint32_t NoStretchMode;     ///< I2C_NOSTRETCH_*
+} I2C_InitTypeDef;
+
+/**
+ * \brief   I2C handle. hdmatx/hdmarx are populated by __HAL_LINKDMA; Devaddress
+ *          and ErrorCode are read by the Sleep abort path / completion ISRs.
+ */
+typedef struct __I2C_HandleTypeDef
+{
+    I2C_TypeDef*                Instance;     ///< Set to I2Cx by the driver
+    I2C_InitTypeDef             Init;         ///< Configuration
+    struct __DMA_HandleTypeDef* hdmatx;       ///< Tx DMA slot (set by __HAL_LINKDMA)
+    struct __DMA_HandleTypeDef* hdmarx;       ///< Rx DMA slot (set by __HAL_LINKDMA)
+    uint16_t                    Devaddress;   ///< Target address of an in-flight transfer
+    uint32_t                    ErrorCode;    ///< HAL_I2C_ERROR_* of the last transfer
+} I2C_HandleTypeDef;
+
+
+/**
+ * \brief   USART peripheral instance. SR is read by the IDLE-flag check and DR
+ *          by the Rx-complete dummy read; the remaining registers are omitted.
+ */
+typedef struct
+{
+    volatile uint32_t SR;   ///< Status register (IDLE flag)
+    volatile uint32_t DR;   ///< Data register
+} USART_TypeDef;
+
+extern USART_TypeDef* const USART1;
+extern USART_TypeDef* const USART2;
+extern USART_TypeDef* const USART3;
+extern USART_TypeDef* const USART6;
+
+/**
+ * \brief   UART init config -- field names mirror the real HAL so USART::Init
+ *          populates the handle exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t BaudRate;      ///< Bus baud rate
+    uint32_t WordLength;    ///< UART_WORDLENGTH_*
+    uint32_t StopBits;      ///< UART_STOPBITS_*
+    uint32_t Parity;        ///< UART_PARITY_*
+    uint32_t Mode;          ///< UART_MODE_*
+    uint32_t HwFlowCtl;     ///< UART_HWCONTROL_*
+    uint32_t OverSampling;  ///< UART_OVERSAMPLING_*
+} UART_InitTypeDef;
+
+/**
+ * \brief   UART handle. hdmatx/hdmarx are populated by __HAL_LINKDMA;
+ *          RxXferSize/RxXferCount are read by the Rx-complete ISR to compute
+ *          the received byte count.
+ */
+typedef struct __UART_HandleTypeDef
+{
+    USART_TypeDef*              Instance;     ///< Set to USARTx by the driver
+    UART_InitTypeDef            Init;         ///< Configuration
+    struct __DMA_HandleTypeDef* hdmatx;       ///< Tx DMA slot (set by __HAL_LINKDMA)
+    struct __DMA_HandleTypeDef* hdmarx;       ///< Rx DMA slot (set by __HAL_LINKDMA)
+    uint16_t                    RxXferSize;   ///< Bytes expected in the active Rx
+    uint16_t                    RxXferCount;  ///< Bytes still outstanding in the active Rx
+} UART_HandleTypeDef;
+
+
+/**
+ * \brief   DAC peripheral instance (opaque -- the driver only stores it in
+ *          mHandle.Instance; the fake never inspects it).
+ * \note    The class is named `Dac` (not `DAC`) precisely because CMSIS
+ *          bare-defines `DAC` as this instance pointer macro on the F407.
+ */
+typedef struct
+{
+    uint32_t reserved;
+} DAC_TypeDef;
+
+extern DAC_TypeDef* const DAC;
+
+/**
+ * \brief   DAC handle. DMA_Handle1/2 are populated by __HAL_LINKDMA when a DMA
+ *          stream is wired into the per-channel slot; StartWaveform guards on
+ *          the relevant slot being non-null.
+ */
+typedef struct __DAC_HandleTypeDef
+{
+    DAC_TypeDef*                Instance;     ///< Set to DAC by the driver
+    struct __DMA_HandleTypeDef* DMA_Handle1;  ///< Channel-1 DMA slot (set by __HAL_LINKDMA)
+    struct __DMA_HandleTypeDef* DMA_Handle2;  ///< Channel-2 DMA slot (set by __HAL_LINKDMA)
+} DAC_HandleTypeDef;
+
+
+/**
+ * \brief   ADC peripheral instance (opaque -- the driver only stores it in
+ *          mHandle.Instance and compares handle->Instance == ADCx in the
+ *          conversion-complete ISR dispatch; the fake never inspects it).
+ */
+typedef struct
+{
+    uint32_t reserved;
+} ADC_TypeDef;
+
+extern ADC_TypeDef* const ADC1;
+extern ADC_TypeDef* const ADC2;
+extern ADC_TypeDef* const ADC3;
+
+/**
+ * \brief   ADC init config -- field names mirror the real HAL so Adc::Init
+ *          populates the handle exactly as on hardware. All fields are kept as
+ *          uint32_t (the FunctionalState DISABLE values the driver assigns are
+ *          0, which converts cleanly).
+ */
+typedef struct
+{
+    uint32_t ClockPrescaler;         ///< ADC_CLOCK_SYNC_PCLK_DIV*
+    uint32_t Resolution;             ///< ADC_RESOLUTION_*
+    uint32_t DataAlign;              ///< ADC_DATAALIGN_*
+    uint32_t ScanConvMode;           ///< DISABLE for single conversion
+    uint32_t EOCSelection;           ///< ADC_EOC_*
+    uint32_t ContinuousConvMode;     ///< DISABLE for single conversion
+    uint32_t NbrOfConversion;        ///< Number of regular conversions
+    uint32_t DiscontinuousConvMode;  ///< DISABLE
+    uint32_t NbrOfDiscConversion;    ///< Number of discontinuous conversions
+    uint32_t ExternalTrigConv;       ///< ADC_SOFTWARE_START
+    uint32_t ExternalTrigConvEdge;   ///< ADC_EXTERNALTRIGCONVEDGE_*
+    uint32_t DMAContinuousRequests;  ///< DISABLE
+} ADC_InitTypeDef;
+
+/**
+ * \brief   ADC handle. Only Instance + Init are touched by the driver; the
+ *          fake never reads the configuration back.
+ */
+typedef struct __ADC_HandleTypeDef
+{
+    ADC_TypeDef*    Instance;   ///< Set to ADCx by the driver
+    ADC_InitTypeDef Init;       ///< Configuration
+} ADC_HandleTypeDef;
+
+
+/**
+ * \brief   TIM peripheral instance (opaque -- the driver only stores it in
+ *          mHandle.Instance and compares handle->Instance == TIMx in the
+ *          period-elapsed dispatch; the fake never inspects the contents).
+ * \note    The instances are named TIMn (not bare TIM) -- the F407 CMSIS
+ *          bare-defines TIM1..TIM14 as instance pointer macros, mirrored here.
+ *          Shared by every timer driver (GenericTimer, BasicTimer, PWM) plus
+ *          the TimerIRQ dispatcher.
+ */
+typedef struct
+{
+    uint32_t reserved;
+} TIM_TypeDef;
+
+extern TIM_TypeDef* const TIM1;
+extern TIM_TypeDef* const TIM2;
+extern TIM_TypeDef* const TIM3;
+extern TIM_TypeDef* const TIM4;
+extern TIM_TypeDef* const TIM5;
+extern TIM_TypeDef* const TIM6;
+extern TIM_TypeDef* const TIM7;
+extern TIM_TypeDef* const TIM8;
+extern TIM_TypeDef* const TIM9;
+extern TIM_TypeDef* const TIM10;
+extern TIM_TypeDef* const TIM11;
+extern TIM_TypeDef* const TIM12;
+extern TIM_TypeDef* const TIM13;
+extern TIM_TypeDef* const TIM14;
+
+/**
+ * \brief   TIM time-base init config -- field names mirror the real HAL so the
+ *          timer drivers populate the handle exactly as on hardware.
+ */
+typedef struct
+{
+    uint32_t Prescaler;          ///< Clock prescaler (CK_CNT = fCK_PSC / (Prescaler + 1))
+    uint32_t CounterMode;        ///< TIM_COUNTERMODE_*
+    uint32_t Period;             ///< Auto-reload (TIM_ARR)
+    uint32_t ClockDivision;      ///< TIM_CLOCKDIVISION_*
+    uint32_t RepetitionCounter;  ///< Advanced-timer repetition counter (unused by the base path)
+    uint32_t AutoReloadPreload;  ///< TIM_AUTORELOAD_PRELOAD_*
+} TIM_Base_InitTypeDef;
+
+/**
+ * \brief   TIM handle. Only Instance + Init are touched by the base-timer
+ *          drivers; the fake never reads the configuration back.
+ */
+typedef struct __TIM_HandleTypeDef
+{
+    TIM_TypeDef*         Instance;   ///< Set to TIMx by the driver
+    TIM_Base_InitTypeDef Init;       ///< Configuration
+} TIM_HandleTypeDef;
+
+
+/**
+ * \brief   RTC peripheral instance (opaque -- the driver only stores it in
+ *          mHandle.Instance; the fake never inspects it).
+ * \note    The class is named `Rtc` (not `RTC`) precisely because CMSIS
+ *          bare-defines `RTC` as this instance pointer macro on the F407.
+ */
+typedef struct
+{
+    uint32_t reserved;
+} RTC_TypeDef;
+
+extern RTC_TypeDef* const RTC;
+
+/**
+ * \brief   RTC init config -- field names mirror the real HAL so Rtc::Init
+ *          populates the handle exactly as on hardware. The fake never reads
+ *          the configuration back.
+ */
+typedef struct
+{
+    uint32_t HourFormat;       ///< RTC_HOURFORMAT_*
+    uint32_t AsynchPrediv;     ///< Asynchronous prescaler
+    uint32_t SynchPrediv;      ///< Synchronous prescaler
+    uint32_t OutPut;           ///< RTC_OUTPUT_*
+    uint32_t OutPutPolarity;   ///< RTC_OUTPUT_POLARITY_*
+    uint32_t OutPutType;       ///< RTC_OUTPUT_TYPE_*
+} RTC_InitTypeDef;
+
+/**
+ * \brief   RTC handle. Only Instance + Init are touched by the driver. Declared
+ *          in the umbrella because Rtc.hpp holds it as a member (it includes
+ *          only this umbrella, not the module rtc header).
+ */
+typedef struct __RTC_HandleTypeDef
+{
+    RTC_TypeDef*    Instance;   ///< Set to RTC by the driver
+    RTC_InitTypeDef Init;       ///< Configuration
+} RTC_HandleTypeDef;
+
+
+/**
+ * \brief   IWDG (independent watchdog) peripheral instance (opaque -- the
+ *          driver only stores it in mHandle.Instance; the fake never inspects
+ *          it).
+ */
+typedef struct
+{
+    uint32_t reserved;
+} IWDG_TypeDef;
+
+extern IWDG_TypeDef* const IWDG;
+
+/**
+ * \brief   IWDG init config -- field names mirror the real HAL so Watchdog::Init
+ *          populates the handle exactly as on hardware. The fake never reads the
+ *          configuration back.
+ */
+typedef struct
+{
+    uint32_t Prescaler;   ///< IWDG_PRESCALER_*
+    uint32_t Reload;      ///< Down-counter reload value [0..0x0FFF]
+} IWDG_InitTypeDef;
+
+/**
+ * \brief   IWDG handle. Only Instance + Init are touched by the driver. Declared
+ *          in the umbrella because Watchdog.hpp holds it as a member (it includes
+ *          only this umbrella, not the module iwdg header).
+ */
+typedef struct __IWDG_HandleTypeDef
+{
+    IWDG_TypeDef*    Instance;   ///< Set to IWDG by the driver
+    IWDG_InitTypeDef Init;       ///< Configuration
+} IWDG_HandleTypeDef;
 
 
 #ifdef __cplusplus

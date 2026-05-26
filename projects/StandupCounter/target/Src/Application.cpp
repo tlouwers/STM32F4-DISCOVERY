@@ -25,15 +25,7 @@
 #include <functional>
 #include "Application.hpp"
 #include "board/BoardConfig.hpp"
-#include "components/HI-M1388AR/HI-M1388AR_Lib.hpp"
 #include "utility/Assert/Assert.h"
-
-
-/************************************************************************/
-/* Constants                                                            */
-/************************************************************************/
-static constexpr uint32_t MAX_LOOP_COUNT = 10;      // Do not set above 10, display logic can represent only a single digit!
-static constexpr uint32_t LONG_DELAY_MS  = 105000;
 
 
 /************************************************************************/
@@ -53,10 +45,10 @@ Application::Application() :
     mPWM(PwmTimerInstance::TIMER_2),
     mSPI(SPIInstance::SPI_2),
     mMatrix(mSPI, PIN_SPI2_CS),
-    mButtonPressed(false)
+    mLogic(mMatrix, mPWM, mLedGreen, mLedOrange, mLedRed, mDelay)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
-    mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
+    mButton.Interrupt(Trigger::RISING, [this]() { mLogic.OnButtonPressed(); } );
 }
 
 /**
@@ -95,84 +87,7 @@ bool Application::Init()
  */
 void Application::Process()
 {
-    uint32_t SHORT_DELAY_MS = 2000;
-    uint32_t BEEP_LONG_MS   = 1000;
-    uint32_t BEEP_SHORT_MS  = 200;
-
-    if (mButtonPressed)
-    {
-        bool result = false;
-
-        mLedGreen.Set(Level::HIGH);
-        mMatrix.WriteDigits(symbol_smiley);
-
-        // Since waiting and beeping is the only function of the device, put this in
-        // blocking delays. Power is not an issue, we are connected to USB.
-
-        // Person starts to speak, wait uninterrupted
-        HAL_Delay(LONG_DELAY_MS);
-
-        // Start of beep loop
-        mLedGreen.Set(Level::LOW);
-        mLedOrange.Set(Level::HIGH);
-        for (uint32_t i = 0; i < MAX_LOOP_COUNT; i++)
-        {
-            // Display digit - countdown
-            uint32_t j = MAX_LOOP_COUNT - i - 1;
-            switch (j) {
-                case 0: { result = mMatrix.WriteDigits(digit_zero);  } break;
-                case 1: { result = mMatrix.WriteDigits(digit_one);   } break;
-                case 2: { result = mMatrix.WriteDigits(digit_two);   } break;
-                case 3: { result = mMatrix.WriteDigits(digit_three); } break;
-                case 4: { result = mMatrix.WriteDigits(digit_four);  } break;
-                case 5: { result = mMatrix.WriteDigits(digit_five);  } break;
-                case 6: { result = mMatrix.WriteDigits(digit_six);   } break;
-                case 7: { result = mMatrix.WriteDigits(digit_seven); } break;
-                case 8: { result = mMatrix.WriteDigits(digit_eight); } break;
-                case 9: { result = mMatrix.WriteDigits(digit_nine);  } break;
-                default: break;
-            };
-            EXPECT(result);
-
-            // Short beep
-            result = mPWM.Start(PWM::Channel::Channel_1);
-            EXPECT(result);
-            HAL_Delay(BEEP_SHORT_MS);
-            result = mPWM.Stop(PWM::Channel::Channel_1);
-            EXPECT(result);
-
-            // Wait before next loop
-            HAL_Delay(SHORT_DELAY_MS);
-
-            // Make delays between loops shorter each iteration
-            BEEP_SHORT_MS  += 10;
-            SHORT_DELAY_MS -= 150;
-        }
-
-        // Last long beep
-        mLedOrange.Set(Level::LOW);
-        mLedRed.Set(Level::HIGH);
-        mMatrix.WriteDigits(symbol_sadface);
-        result = mPWM.Start(PWM::Channel::Channel_1);
-        EXPECT(result);
-        HAL_Delay(BEEP_LONG_MS);
-        result = mPWM.Stop(PWM::Channel::Channel_1);
-        EXPECT(result);
-
-        // Reset counters
-        SHORT_DELAY_MS = 2000;
-        BEEP_LONG_MS   = 1000;
-        BEEP_SHORT_MS  = 200;
-
-        // Wait before returning to default state
-        HAL_Delay(SHORT_DELAY_MS);
-
-        // Prepare for new person
-        mLedRed.Set(Level::LOW);
-        mMatrix.ClearDisplay();
-
-        mButtonPressed = false;
-    }
+    mLogic.Process();
 }
 
 /**
@@ -195,16 +110,4 @@ void Application::Error()
         mLedRed.Toggle();
         HAL_Delay(250);
     }
-}
-
-
-/************************************************************************/
-/* Private Methods                                                      */
-/************************************************************************/
-/**
- * \brief   Callback for the button pressed event.
- */
-void Application::ButtonPressedCallback()
-{
-    mButtonPressed = true;
 }

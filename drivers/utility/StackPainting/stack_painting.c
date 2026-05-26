@@ -117,7 +117,7 @@ uint32_t get_used_stack(void)
 
     // Bottom of the actual stack region (see paint_stack() for rationale).
     const uint32_t* stack_bottom = (const uint32_t*)((uint32_t)&_estack - (uint32_t)&_Min_Stack_Size);
-    const uint32_t words_to_search = sp - stack_bottom;
+    const uint32_t words_to_search = (uint32_t)(sp - stack_bottom);
 
     // Search from current SP downward, stop at the first surviving paint.
     for (uint32_t i = 0; i < words_to_search; i++)

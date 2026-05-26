@@ -1,3 +1,25 @@
+/**
+ * \file    Pin.hpp
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ *
+ * \class   Pin
+ *
+ * \brief   Fake Pin driver for FreeRTOSProject native unit tests. Mirrors the
+ *          real Pin API as no-ops so non-injected components compile against it.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/FreeRTOSProject/tests/Fake/drivers/Pin
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    05-2026
+ */
+
 #ifndef PIN_HPP_
 #define PIN_HPP_
 

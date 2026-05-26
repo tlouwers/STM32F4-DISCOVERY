@@ -99,22 +99,39 @@ bool Rng::Sleep()
  * \returns True if a random number was generated, else false.
  * \note    Blocking call -- the HAL polls RNG_SR.DRDY for up to ~40 ms
  *          before returning HAL_TIMEOUT.
- * \note    Soft-asserts when the HAL returned a non-OK status (clock
- *          error, seed error, timeout, or peripheral busy).
+ * \note    Reentrancy: an internal `std::atomic_flag` guards entry into
+ *          the HAL call. The HAL's own `__HAL_LOCK(hrng)` is a
+ *          non-atomic flag write that can be raced past by concurrent
+ *          callers (multi-thread, or main-vs-ISR); the outer flag here
+ *          makes that race impossible. The losing caller returns false
+ *          silently -- this is expected contention, not a fault, and
+ *          the caller chooses its own retry policy.
+ * \note    Soft-asserts only when the HAL returned a non-OK status that
+ *          is NOT contention (the outer guard makes HAL_BUSY
+ *          unreachable, so this covers genuine HAL_ERROR -- clock or
+ *          seed fault -- and HAL_TIMEOUT after the ~40 ms poll budget).
  */
 bool Rng::GetRandom(uint32_t& out)
 {
     if (!mInitialized) { return false; }
 
-    uint32_t random = 0;
+    if (mInUse.test_and_set(std::memory_order_acquire))
+    {
+        return false;    // Contention: another caller is already inside the HAL call.
+    }
 
-    if (HAL_RNG_GenerateRandomNumber(&mHandle, &random) == HAL_OK)
+    uint32_t random = 0;
+    const HAL_StatusTypeDef status = HAL_RNG_GenerateRandomNumber(&mHandle, &random);
+
+    mInUse.clear(std::memory_order_release);
+
+    if (HAL_OK == status)
     {
         out = random;
         return true;
     }
 
-    EXPECT(false);    // HAL gave error, timeout or peripheral still busy
+    EXPECT(false);    // HAL_ERROR (clock/seed) or HAL_TIMEOUT; HAL_BUSY unreachable past the outer guard
     return false;
 }
 

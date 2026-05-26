@@ -47,13 +47,10 @@ Application::Application() :
     mDMA_SPI_Tx(DMA::Stream::Dma2_Stream3),
     mDMA_SPI_Rx(DMA::Stream::Dma2_Stream0),
     mLIS3DSH(mSPI, PIN_SPI1_CS, PIN_MOTION_INT1, PIN_MOTION_INT2),
-//    mButtonPressed(false),
-    mMotionDataAvailable(false),
-    mMotionLength(0)
+    mLogic(mLIS3DSH, mLedOrange)
 {
     // Note: button conflicts with the accelerometer int1 pin. This is a board layout issue.
-    //mButton.Interrupt(Trigger::RISING, [this]() { this->ButtonPressedCallback(); } );
-    mLIS3DSH.SetHandler( [this](uint8_t length) { this->MotionDataReceived(length); } );
+    mLIS3DSH.SetHandler( [this](uint8_t length) { mLogic.OnMotionData(length); } );
 }
 
 /**
@@ -85,10 +82,8 @@ bool Application::Init()
     ASSERT(result);
 
     // Hardware FIFO on: Process() drains a 25-sample watermark batch.
-    result = mLIS3DSH.Init(LIS3DSH::Config(true, LIS3DSH::SampleFrequency::_50_Hz));
+    result = mLIS3DSH.Init(LIS3DSH::Config(mLIS3DSHBuf, sizeof(mLIS3DSHBuf), true, LIS3DSH::SampleFrequency::_50_Hz));
     ASSERT(result);
-    mMotionDataAvailable = false;
-    mMotionLength = 0;
 
     result = mLIS3DSH.Enable();
     ASSERT(result);
@@ -104,27 +99,7 @@ bool Application::Init()
  */
 void Application::Process()
 {
-    static uint8_t motionArray[25 * 3 * 2] = {};
-
-/*
-    if (mButtonPressed)
-    {
-        mButtonPressed = false;
-
-        mLedGreen.Set(Level::LOW);
-    }
-*/
-
-    if (mMotionDataAvailable)
-    {
-        mMotionDataAvailable = false;
-
-        bool retrieveResult = mLIS3DSH.RetrieveAxesData(motionArray, mMotionLength);
-        EXPECT(retrieveResult);
-        (void)(retrieveResult);
-
-        // Deinterleave to X,Y,Z samples
-    }
+    mLogic.Process();
 }
 
 /**
@@ -147,30 +122,4 @@ void Application::Error()
         mLedRed.Toggle();
         HAL_Delay(250);
     }
-}
-
-
-/************************************************************************/
-/* Private Methods                                                      */
-/************************************************************************/
-/**
- * \brief   Callback for the button pressed event.
- */
-/*
-void Application::ButtonPressedCallback()
-{
-    mButtonPressed = true;
-    mLedGreen.Set(Level::HIGH);
-}
-*/
-
-/**
- * \brief   Callback called for the motion data received callback.
- */
-void Application::MotionDataReceived(uint8_t length)
-{
-    mLedOrange.Toggle();
-
-    mMotionDataAvailable = true;
-    mMotionLength = length;
 }

@@ -205,10 +205,10 @@ bool SPI::WriteDMA(const uint8_t* src, uint16_t length, const std::function<void
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
+    if (nullptr == src) { return false; }
+    if (0 == length)    { return false; }
     if (!mInitialized)  { return false; }
-    if (mHandle.hdmatx == nullptr) { return false; }
+    if (nullptr == mHandle.hdmatx) { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
 
@@ -234,12 +234,12 @@ bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr)  { return false; }
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == src)  { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
-    if (mHandle.hdmatx == nullptr) { return false; }
-    if (mHandle.hdmarx == nullptr) { return false; }
+    if (nullptr == mHandle.hdmatx) { return false; }
+    if (nullptr == mHandle.hdmarx) { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
 
@@ -266,10 +266,10 @@ bool SPI::ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& h
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
-    if (mHandle.hdmarx == nullptr) { return false; }
+    if (nullptr == mHandle.hdmarx) { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
 
@@ -295,8 +295,8 @@ bool SPI::WriteInterrupt(const uint8_t* src, uint16_t length, const std::functio
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
+    if (nullptr == src) { return false; }
+    if (0 == length)    { return false; }
     if (!mInitialized)  { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
@@ -322,9 +322,9 @@ bool SPI::WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length,
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr)  { return false; }
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == src)  { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
@@ -346,8 +346,8 @@ bool SPI::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
     mSPICallbacks.callbackTxRx = handler;
@@ -368,8 +368,8 @@ bool SPI::WriteBlocking(const uint8_t* src, uint16_t length)
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr) { return false; }
-    if (length == 0)    { return false; }
+    if (nullptr == src) { return false; }
+    if (0 == length)    { return false; }
     if (!mInitialized)  { return false; }
 
     return (HAL_SPI_Transmit(&mHandle, const_cast<uint8_t*>(src), length, HAL_MAX_DELAY) == HAL_OK);
@@ -392,9 +392,9 @@ bool SPI::WriteReadBlocking(const uint8_t* src, uint8_t* dest, uint16_t length)
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (src == nullptr)  { return false; }
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == src)  { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
     return (HAL_SPI_TransmitReceive(&mHandle, const_cast<uint8_t*>(src), dest, length, HAL_MAX_DELAY) == HAL_OK);
@@ -413,8 +413,8 @@ bool SPI::ReadBlocking(uint8_t* dest, uint16_t length)
     EXPECT(length > 0);
 
     // Note: HAL will NOT check on parameters
-    if (dest == nullptr) { return false; }
-    if (length == 0)     { return false; }
+    if (nullptr == dest) { return false; }
+    if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
     return (HAL_SPI_Receive(&mHandle, dest, length, HAL_MAX_DELAY) == HAL_OK);

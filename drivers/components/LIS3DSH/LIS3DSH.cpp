@@ -22,7 +22,6 @@
 /************************************************************************/
 #include "components/LIS3DSH/LIS3DSH.hpp"
 #include "utility/Assert/Assert.h"
-#include <algorithm>
 #include <cstring>
 
 
@@ -107,9 +106,9 @@ static constexpr uint8_t READ_MASK        = 0x80;                               
 static constexpr uint8_t MULTI_BYTE_MASK  = 0x40;                               // MS bit: 1 = auto-increment register address (datasheet §5.2.1)
 static constexpr uint8_t SAMPLE_LENGTH    = 0x06;                               // X,Y,Z * int16_t
 static constexpr uint8_t WATERMARK_LEVEL  = 0x19;                               // 25 samples X,Y,Z default - fifo size max = 32
-static constexpr uint8_t READ_BUFFER_SIZE = SAMPLE_LENGTH * WATERMARK_LEVEL;    // X,Y,Z * int16_t * 25 samples (in fifo)
 static constexpr uint8_t AXES_ENABLED     = 0x07;
 static constexpr uint8_t FIFO_EMPTY       = 0x20;
+static constexpr uint8_t FIFO_MAX_SAMPLES = 0x20;                              // FIFO depth = 32; bounds the ClearFifo drain buffer
 
 
 /************************************************************************/
@@ -143,21 +142,40 @@ LIS3DSH::~LIS3DSH()
 }
 
 /**
- * \brief   Initializes the LIS3DSH, performs test to check if it can
- *          communicate with the sensor, then configures the sensor for fifo
- *          based readouts. Fifo is cleared before use.
- * \param   config  Configuration struct for LIS3DSH.
+ * \brief   Initializes the LIS3DSH, validates the caller-supplied read
+ *          buffer, performs a test to check if it can communicate with
+ *          the sensor, then configures the sensor for fifo based readouts.
+ *          Fifo is cleared before use.
+ * \param   config  Configuration struct for LIS3DSH. Must carry a non-null
+ *                  read buffer of at least FIFO_READ_BUFFER_SIZE bytes when
+ *                  hardware FIFO is enabled, else SINGLE_READ_BUFFER_SIZE
+ *                  bytes. The buffer is non-owning; the caller retains
+ *                  ownership and must keep it valid until Sleep().
  * \returns True if the sensor could be initialized, else false.
  */
 bool LIS3DSH::Init(const IConfig& config)
 {
+    EXPECT(config.ConfigId() == Config::Id());
+    if (config.ConfigId() != Config::Id()) { return false; }
+
+    const Config& cfg = static_cast<const Config&>(config);
+
+    const size_t required = (cfg.mUseHardwareFifo) ? FIFO_READ_BUFFER_SIZE : SINGLE_READ_BUFFER_SIZE;
+    EXPECT(cfg.mReadBuffer != nullptr);
+    EXPECT(cfg.mReadBufferSize >= required);
+    if (nullptr == cfg.mReadBuffer)     { return false; }
+    if (cfg.mReadBufferSize < required) { return false; }
+
+    mReadBuffer      = cfg.mReadBuffer;
+    mUseHardwareFifo = cfg.mUseHardwareFifo;
+
     mChipSelect.Configure(Level::HIGH);
 
     bool result = SelfTest();
 
     if (result)
     {
-        result &= Configure(config);
+        result &= Configure(cfg);
         EXPECT(result);
 
         if (result)
@@ -189,7 +207,8 @@ bool LIS3DSH::IsInit() const
 
 /**
  * \brief   Puts the LIS3DSH module in sleep mode.
- * \details Configures pins to HIGHZ, deletes read buffer.
+ * \details Configures pins to HIGHZ and drops the (non-owning) read-buffer
+ *          pointer. The buffer itself is caller-owned and is not freed here.
  * \returns True if the LIS3DSH module could be put in sleep mode, else false.
  */
 bool LIS3DSH::Sleep()
@@ -205,12 +224,7 @@ bool LIS3DSH::Sleep()
     mMotionInt2.Configure(PullUpDown::HIGHZ);
 
     mInitialized = false;
-
-    if (mReadBuffer)
-    {
-        delete[] mReadBuffer;
-        mReadBuffer = nullptr;
-    }
+    mReadBuffer  = nullptr;
 
     return result;
 }
@@ -295,14 +309,14 @@ void LIS3DSH::SetHandler(const std::function<void(uint8_t length)>& handler)
  */
 bool LIS3DSH::RetrieveAxesData(uint8_t* dest, uint8_t length)
 {
-    const uint8_t maxLength = (mUseHardwareFifo) ? READ_BUFFER_SIZE : SAMPLE_LENGTH;
+    const size_t maxLength = (mUseHardwareFifo) ? FIFO_READ_BUFFER_SIZE : SINGLE_READ_BUFFER_SIZE;
 
     EXPECT(dest);
     EXPECT(length > 0);
     EXPECT(length <= maxLength);
 
-    if (dest == nullptr)    { return false; }
-    if (length == 0)        { return false; }
+    if (nullptr == dest)    { return false; }
+    if (0 == length)        { return false; }
     if (length > maxLength) { return false; }
 
     std::memcpy(dest, mReadBuffer, length);
@@ -345,29 +359,23 @@ bool LIS3DSH::SelfTest()
 
 /**
  * \brief   Configure the LIS3DSH with the given configuration parameters.
- * \param   config  Configuration struct for LIS3DSH.
+ * \param   cfg     Configuration struct for LIS3DSH. ConfigId / cast already
+ *                  validated by Init().
  * \returns True if the LIS3DSH could be configured successfully, else false.
  * \note    Intended is to use the hardware FIFO (fifo mode: stream). Else
  *          the Data Ready signal is used to indicate a sample is available
  *          at the configured sample frequency.
  * \note    AN3393 - LIS3DSH - Application note - 10.3.1 Bypass mode - last few lines.
  */
-bool LIS3DSH::Configure(const IConfig& config)
+bool LIS3DSH::Configure(const Config& cfg)
 {
-    EXPECT(config.ConfigId() == Config::Id());
-    if (config.ConfigId() != Config::Id()) { return false; }
-
-    const Config& cfg = static_cast<const Config&>(config);
-
     uint8_t ODR    = GetSampleFrequencyAsODR(cfg.mSampleFrequency);
     uint8_t FSCALE = GetScaleAsFSCALE(cfg.mScale);
     uint8_t BW     = GetAntiAliasingFilterAsBW(cfg.mAntiAliasingFilter);
 
-    mUseHardwareFifo = cfg.mUseHardwareFifo;
-
     const uint8_t BDU = (mUseHardwareFifo) ? 0 : 1;     // 0: disabled (default if fifo is used), 1: enabled
 
-    uint8_t src = (ODR | (BDU << 3) | AXES_ENABLED);    // Set sample frequency, all axes enabled, not using BDU
+    uint8_t src = static_cast<uint8_t>(ODR | (BDU << 3) | AXES_ENABLED);    // Set sample frequency, all axes enabled, not using BDU
     bool result = WriteRegister(CTRL_REG4, &src, 1);
     EXPECT(result);
 
@@ -377,8 +385,7 @@ bool LIS3DSH::Configure(const IConfig& config)
 
     if (mUseHardwareFifo)
     {
-        result &= PrepareReadBuffer(READ_BUFFER_SIZE);
-        EXPECT(result);
+        std::memset(mReadBuffer, 0, FIFO_READ_BUFFER_SIZE);
 
         src = 0x68;                                     // INT1 enabled, active high, pulsed
         result &= WriteRegister(CTRL_REG3, &src, 1);
@@ -390,8 +397,7 @@ bool LIS3DSH::Configure(const IConfig& config)
     }
     else
     {
-        result &= PrepareReadBuffer(SAMPLE_LENGTH);     // X,Y,Z * int16_t
-        EXPECT(result);
+        std::memset(mReadBuffer, 0, SINGLE_READ_BUFFER_SIZE);
 
         src = 0xE8;                                     // DR enabled (on INT1), active high, pulsed
         result &= WriteRegister(CTRL_REG3, &src, 1);
@@ -405,29 +411,6 @@ bool LIS3DSH::Configure(const IConfig& config)
     EXPECT(result);
 
     return result;
-}
-
-/**
- * \brief   Prepare the read buffer by claiming memory on the heap to store
- *          the read fifo data into.
- * \param   bufferSize  Read buffer size.
- * \returns True if the read buffer could be prepared successfully, else false.
- */
-bool LIS3DSH::PrepareReadBuffer(uint8_t bufferSize)
-{
-    // If we had claimed memory before: delete it
-    if (mReadBuffer != nullptr) { delete [] mReadBuffer; }
-
-    // Claim new segment in heap memory to retrieve sample data.
-    mReadBuffer = new(std::nothrow) uint8_t[bufferSize];
-
-    // Clear buffer: fill with 0
-    if (mReadBuffer != nullptr)
-    {
-        std::fill_n(mReadBuffer, bufferSize, 0);
-        return true;
-    }
-    return false;
 }
 
 /**
@@ -449,7 +432,7 @@ bool LIS3DSH::ClearFifo()
         if (nrSamplesInFifo > 0)
         {
             const uint8_t length = SAMPLE_LENGTH * nrSamplesInFifo;     // X,Y,Z * int16_t * samples in fifo
-            uint8_t samples[length] = {};
+            uint8_t samples[SAMPLE_LENGTH * FIFO_MAX_SAMPLES] = {};     // max-sized; ISO C++ forbids a VLA
             result &= ReadRegister(OUT_X_L, samples, length);
             EXPECT(result);
         }
@@ -569,7 +552,7 @@ void LIS3DSH::ReadAxesCompleted()
     {
         if (mUseHardwareFifo)
         {
-            mHandler(READ_BUFFER_SIZE);
+            mHandler(static_cast<uint8_t>(FIFO_READ_BUFFER_SIZE));
         }
         else
         {
@@ -641,9 +624,9 @@ bool LIS3DSH::ReadRegister(uint8_t reg, uint8_t* dest, uint16_t length)
  */
 void LIS3DSH::CallbackInt1()
 {
-    const uint8_t bufferSize = (mUseHardwareFifo) ? READ_BUFFER_SIZE : SAMPLE_LENGTH;
+    const size_t bufferSize = (mUseHardwareFifo) ? FIFO_READ_BUFFER_SIZE : SINGLE_READ_BUFFER_SIZE;
 
-    if ((mReadBuffer != nullptr) && (bufferSize > 0))
+    if ((nullptr != mReadBuffer) && (bufferSize > 0))
     {
         uint8_t reg = OUT_X_L | READ_MASK | MULTI_BYTE_MASK;
 
@@ -652,7 +635,7 @@ void LIS3DSH::CallbackInt1()
         EXPECT(result);
         if (result)
         {
-            result &= mSpi.ReadDMA(mReadBuffer, bufferSize, [this]() { this->ReadAxesCompleted(); } );
+            result &= mSpi.ReadDMA(mReadBuffer, static_cast<uint16_t>(bufferSize), [this]() { this->ReadAxesCompleted(); } );
             EXPECT(result);
         }
         if (!result)
