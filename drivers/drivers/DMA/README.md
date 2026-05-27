@@ -8,7 +8,7 @@ Intended use is to provide a plug-n-play DMA object to link with a peripheral vi
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
 - C++14
-- A configured peripheral, for example Usart
+- A configured peripheral, for example USART
 
 ## Notes
 The callbacks are called within ISR context.
@@ -36,7 +36,7 @@ bool Application::Initialize()
     result = mDMA_Usart2_Rx.Configure(DMA::Channel::Channel4, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     assert(result);
 
-    // Link the DMA objects with a previously configured peripheral, for example Usart.
+    // Link the DMA objects with a previously configured peripheral, for example USART.
     // The peripheral picks hdmatx / hdmarx from the DMA's configured Direction.
     result = mUsart2.LinkDma(mDMA_Usart2_Tx);
     assert(result);

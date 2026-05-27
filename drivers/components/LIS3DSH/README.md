@@ -21,10 +21,11 @@ If you happen to find an issue, and are able to provide a reproducible scenario 
 ## Example
 ```cpp
 // Declare the required classes (in Application.hpp for example):
-DMA mDMA_SPI_Tx;
-DMA mDMA_SPI_Rx;
-SPI mSPI;
+DMA     mDMA_SPI_Tx;
+DMA     mDMA_SPI_Rx;
+SPI     mSPI;
 LIS3DSH mLIS3DSH;
+uint8_t mLIS3DSHBuf[LIS3DSH::FIFO_READ_BUFFER_SIZE];   // Caller-owned read buffer; must outlive the driver.
 
 // Construct the classes, fill the right parameters:
 Application::Application() :
@@ -51,8 +52,8 @@ bool Application::Initialize()
     // Initialize SPI
     mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
 
-    // Initialize the LIS3DSH
-    mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
+    // Initialize the LIS3DSH (hardware FIFO enabled, 50 Hz sampling, caller-supplied read buffer)
+    mLIS3DSH.Init(LIS3DSH::Config(mLIS3DSHBuf, sizeof(mLIS3DSHBuf), true, LIS3DSH::SampleFrequency::_50_Hz));
 
     // Helper variables
     mMotionDataAvailable = false;
