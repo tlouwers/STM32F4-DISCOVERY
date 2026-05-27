@@ -391,7 +391,7 @@ bool LIS3DSH::Configure(const Config& cfg)
         result &= WriteRegister(CTRL_REG3, &src, 1);
         EXPECT(result);
 
-        src = 0x54;                                     // FIFO enabled, watermark on INT1
+        src = 0x74;                                     // FIFO enabled, WTM_EN, watermark on INT1
         result &= WriteRegister(CTRL_REG6, &src, 1);
         EXPECT(result);
     }
