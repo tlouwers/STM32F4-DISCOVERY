@@ -9,7 +9,7 @@ The latter requires a buffer filled with values of the precision configured (8 o
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - Pins already configured for DAC
 
 ## Notes
@@ -52,7 +52,7 @@ DMA        mDMA_DAC_Ch1;
 // Construct the class, indicate the instance to use:
 Application::Application() :
     mBasicTimer(BasicTimerInstance::TIMER_6),
-    mDMA_DAC_Ch1(DMA::Stream::Dma1_Stream5),
+    mDMA_DAC_Ch1(DMA::Stream::Dma1_Stream5)
 {}
 
 // Initialize the class:

@@ -7,11 +7,11 @@ Intended use is to provide a plug-n-play DMA object to link with a peripheral vi
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - A configured peripheral, for example Usart
 
 ## Notes
-The callbacks are called withing ISR context.
+The callbacks are called within ISR context.
 This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
 If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.
 
@@ -24,16 +24,16 @@ DMA   mDMA_Usart2_Tx;
 // Construct the class(es), indicate the stream to use:
 Application::Application() :
     mDMA_Usart2_Rx(DMA::Stream::Dma1_Stream5),
-    mDMA_Usart2_Tx(DMA::Stream::Dma1_Stream6),
+    mDMA_Usart2_Tx(DMA::Stream::Dma1_Stream6)
 {}
 
 // Configure the objects:
 bool Application::Initialize()
 {
-    bool result = mDMA_Usart2_Tx.Configure(DMA::Channel::Channel4, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    bool result = mDMA_Usart2_Tx.Configure(DMA::Channel::Channel4, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     assert(result);
 
-    result = mDMA_Usart2_Rx.Configure(DMA::Channel::Channel4, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    result = mDMA_Usart2_Rx.Configure(DMA::Channel::Channel4, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
     assert(result);
 
     // Link the DMA objects with a previously configured peripheral, for example Usart.

@@ -8,7 +8,7 @@ By replacing the default enter/exit sleep mode call, some functionality is added
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - DWT block as present on an ARM Cortex-M3, M4 or M7
 
 ## Notes

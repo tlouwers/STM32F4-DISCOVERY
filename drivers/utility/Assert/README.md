@@ -13,7 +13,7 @@ The header is implemented as classic '.h' file to allow it to be used in C code 
 
 # Requirements
 * ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-* C++11 is assumed
+* C++14 is assumed
 * A 'config.h' file in which the defines 'EXPECT_MODE' and 'ASSERT_MODE' are set.
 
 # Notes

@@ -9,7 +9,7 @@ There are many other use cases and configuration possible for the generic timers
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 
 ## Notes
 The timer is assumed to be used as period elapsed trigger only.
@@ -22,7 +22,7 @@ GenericTimer mGenericTimer;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
-    mGenericTimer(GenericTimerInstance::TIMER_2),
+    mGenericTimer(GenericTimerInstance::TIMER_2)
 {}
 
 // Initialize the class:
@@ -33,7 +33,7 @@ bool Application::Initialize()
     ASSERT(result);
 
     // Start the period tick. Provide callback to call when period elapsed.
-    result = mTim.Start( [this]() { this->TimerElapsed(); } );
+    result = mGenericTimer.Start( [this]() { this->TimerElapsed(); } );
     ASSERT(result);
 
     // Other stuff...

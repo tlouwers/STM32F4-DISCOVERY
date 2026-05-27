@@ -9,7 +9,7 @@ To be able to decouple from the ISR as much as possible, data is read to interna
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - DMA utility class
 - SPI peripheral class
 - Pins already configured for SPI
@@ -41,8 +41,8 @@ Application::Application() :
 bool Application::Initialize()
 {
     // Configure DMA for SPI. Note: not checking for returned result for simplicity.
-    mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
 
     // Link DMA utility class with SPI (direction inferred from each DMA's configured Direction)
     mSPI.LinkDma(mDMA_SPI_Tx);

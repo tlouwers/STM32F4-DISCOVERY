@@ -20,7 +20,8 @@ Reusable C++ components for the STM32F407G-DISC1 kit.
 | drivers/drivers/Rng | Hardware random number generator. Uses PLL (40 clock cycles) and analog noise to generate true 32-bit random number. |
 | drivers/drivers/Rtc | Rtc peripheral driver class. Provides easier handling of Date and Time. |
 | drivers/drivers/SPI | SPI peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
-| drivers/drivers/Usart | USART peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
+| drivers/drivers/TimerIRQ | TimerIRQ infrastructure: single owner of all STM32F407 timer interrupt vectors, fans shared IRQ lines to per-timer dispatch slots. |
+| drivers/drivers/USART | USART peripheral driver class. Has blocking and asynchronous (DMA and interrupt based) methods. |
 | drivers/drivers/Watchdog | Watchdog (IWDG) peripheral driver class. |
 | drivers/interfaces | Various interfaces for peripheral drivers. |
 | drivers/utility/Assert | Alternate 'assert' logic for embedded systems with more fine-grained control. |

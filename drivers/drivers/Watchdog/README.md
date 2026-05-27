@@ -7,7 +7,7 @@ Intended use is to provide an easy means to use the Watchdog (IWDG). This class 
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - LSI already configured.
 
 ## Notes

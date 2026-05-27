@@ -8,7 +8,7 @@ Via the HI-M1388AR_Lib header file various digits, letters and symbols are provi
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - SPI peripheral class
 - Pins already configured for SPI
 
@@ -32,19 +32,17 @@ Application::Application() :
 bool Application::Initialize()
 {
     // Initialize SPI
-    mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
+    bool result = mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
 
     // Initialize the HI-M1388AR
-    mMatrix.Init(HI_M1388AR::Config(8));
-
+    result &= mMatrix.Init(HI_M1388AR::Config(8));
 
     // Other stuff...
-
 
     return result;
 }
 
-// To diplay something on the screen:
+// To display something on the screen:
 {
     // Display a '0'
     mMatrix.WriteDigits(digit_zero);

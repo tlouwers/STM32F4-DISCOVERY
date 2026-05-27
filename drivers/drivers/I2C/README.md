@@ -7,7 +7,7 @@ Intended use is to provide an easier means to work with the I2C peripheral. This
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - Pins already configured for I2C
 
 ## Notes
@@ -51,7 +51,7 @@ void Application::TestReadIdCS43L22()
     if (mI2C.WriteBlocking(DEVICE_ADDRESS, &reg, 1))
     {
         // Then read 1 byte from the slave (the register indicated before)
-        result = mI2C.ReadBlocking(DEVICE_ADDRESS, dest, 1);
+        result = mI2C.ReadBlocking(DEVICE_ADDRESS, &dest, 1);
         if (result)
         {
             // Do stuff with the received variable

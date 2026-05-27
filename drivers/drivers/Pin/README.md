@@ -21,7 +21,7 @@ This can then be used as more human readable named ID of a pin. In a "Board.cpp"
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 
 ## Notes
 All pin interrupts share the same interrupt priority, which can be set via INTERRUPT_PRIORITY in the cpp file.
