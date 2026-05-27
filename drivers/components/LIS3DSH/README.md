@@ -9,7 +9,7 @@ To be able to decouple from the ISR as much as possible, data is read to interna
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - DMA utility class
 - SPI peripheral class
 - Pins already configured for SPI
@@ -21,10 +21,11 @@ If you happen to find an issue, and are able to provide a reproducible scenario 
 ## Example
 ```cpp
 // Declare the required classes (in Application.hpp for example):
-DMA mDMA_SPI_Tx;
-DMA mDMA_SPI_Rx;
-SPI mSPI;
+DMA     mDMA_SPI_Tx;
+DMA     mDMA_SPI_Rx;
+SPI     mSPI;
 LIS3DSH mLIS3DSH;
+uint8_t mLIS3DSHBuf[LIS3DSH::FIFO_READ_BUFFER_SIZE];   // Caller-owned read buffer; must outlive the driver.
 
 // Construct the classes, fill the right parameters:
 Application::Application() :
@@ -41,8 +42,8 @@ Application::Application() :
 bool Application::Initialize()
 {
     // Configure DMA for SPI. Note: not checking for returned result for simplicity.
-    mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
-    mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    mDMA_SPI_Tx.Configure(DMA::Channel::Channel3, DMA::Direction::MemoryToPeripheral, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
+    mDMA_SPI_Rx.Configure(DMA::Channel::Channel3, DMA::Direction::PeripheralToMemory, DMA::BufferMode::Normal, DMA::DataWidth::Byte, DMA::Priority::Low, DMA::HalfBufferInterrupt::Disabled);
 
     // Link DMA utility class with SPI (direction inferred from each DMA's configured Direction)
     mSPI.LinkDma(mDMA_SPI_Tx);
@@ -51,8 +52,8 @@ bool Application::Initialize()
     // Initialize SPI
     mSPI.Init(SPI::Config(11, SPI::Mode::_3, 1000000));
 
-    // Initialize the LIS3DSH
-    mLIS3DSH.Init(LIS3DSH::Config(LIS3DSH::SampleFrequency::_50_Hz));
+    // Initialize the LIS3DSH (hardware FIFO enabled, 50 Hz sampling, caller-supplied read buffer)
+    mLIS3DSH.Init(LIS3DSH::Config(mLIS3DSHBuf, sizeof(mLIS3DSHBuf), true, LIS3DSH::SampleFrequency::_50_Hz));
 
     // Helper variables
     mMotionDataAvailable = false;

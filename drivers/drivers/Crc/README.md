@@ -7,7 +7,7 @@ Crc peripheral driver, uses the STM32F4 hardware CRC module to calculate a CRC32
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1
-- C++11
+- C++14
 
 ## Notes
 If you happen to find an issue, and are able to provide a reproducible scenario I am happy to have a look. If you have a fix, or a refactoring that would improve the code please let me know so I can update it.

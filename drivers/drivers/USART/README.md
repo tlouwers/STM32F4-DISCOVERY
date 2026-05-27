@@ -7,7 +7,7 @@ Intended use is to provide an easier means to work with the USART peripheral. Th
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - Pins already configured for USART
 
 ## Notes
@@ -18,7 +18,7 @@ This class assumes the HAL has set NVIC_PRIORITYGROUP_4.
 ## Example
 ```cpp
 // Declare the class (in Application.hpp for example):
-Usart mUsart;
+USART mUsart;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
@@ -28,7 +28,7 @@ Application::Application() :
 // Initialize the class:
 bool Application::Initialize()
 {
-    bool result = mUsart.Init(Usart::Config(10, false, Usart::Baudrate::_9600));
+    bool result = mUsart.Init(USART::Config(10, false, USART::Baudrate::_9600));
     assert(result);
 
     // Other stuff...

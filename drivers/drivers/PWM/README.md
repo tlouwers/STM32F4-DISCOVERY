@@ -7,7 +7,7 @@ Intended use is to provide an easier means to work with PWM channels. For this d
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - Pins already configured for PWM channels
 
 ## Notes
@@ -22,14 +22,14 @@ PWM mPwm;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
-    mPWM(PwmTimerInstance::TIMER_2)
+    mPwm(PwmTimerInstance::TIMER_2)
 {}
 
 // Initialize the class to setup the PWM frequency:
 bool result = mPwm.Init(PWM::Config(500.0));    // 500.0 Hz
 
 // Configure a channel, here channel 1 using 50% duty cycle:
-bool result = mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50, PWM::Polarity::High));
+bool result = mPwm.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 50, PWM::Polarity::High));
 
 // To start the channel:
 bool result = mPwm.Start(PWM::Channel::Channel_1);

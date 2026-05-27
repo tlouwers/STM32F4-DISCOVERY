@@ -3,11 +3,11 @@
 Rtc peripheral driver class.
 
 ## Description
-Intended use is to provide an easier means to work with the Real Time Clock, providing a settable/gettable Date and Time sturcture.
+Intended use is to provide an easier means to work with the Real Time Clock, providing a settable/gettable Date and Time structure.
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 
 ## Notes
 The clock source of the RTC must be configured correctly, so take care.
@@ -28,9 +28,9 @@ bool Application::Initialize()
 
     // At this point the RTC runs, but with default date and time.
 
-    // Configure the proper date and time (retreived via external UART maybe?)
+    // Configure the proper date and time (retrieved via external UART maybe?)
     DateTime dateTime = { 2021, 6, 4, 10, 4, 25 };
-    bool result = mRtc.SetDateTime(dateTime);
+    result = mRtc.SetDateTime(dateTime);
     ASSERT(result);
 
     // Other stuff...

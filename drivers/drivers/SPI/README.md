@@ -7,7 +7,7 @@ Intended use is to provide an easier means to work with the SPI peripheral. This
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - Pins already configured for SPI
 
 ## Notes

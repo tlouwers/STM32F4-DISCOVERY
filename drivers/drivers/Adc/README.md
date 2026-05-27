@@ -8,7 +8,7 @@ It has 2 modes implemented: either use only GetValue() as blocking method to get
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 - Pins already configured for ADC
 
 ## Notes

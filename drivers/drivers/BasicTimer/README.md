@@ -8,7 +8,7 @@ Envisioned is to create and enable a 'heartbeat' tick of a certain frequency, wh
 
 ## Requirements
 - ST Microelectronics STM32F407G-DISC1 (can be ported easily to other ST microcontrollers)
-- C++11
+- C++14
 
 ## Notes
 The timer is assumed to be used as trigger for the DMA for the DAC.
@@ -23,7 +23,7 @@ BasicTimer  mBasicTimer;
 
 // Construct the class, indicate the instance to use:
 Application::Application() :
-    mBasicTimer(BasicTimerInstance::TIMER_7),
+    mBasicTimer(BasicTimerInstance::TIMER_7)
 {}
 
 // Initialize the class:
