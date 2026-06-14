@@ -47,3 +47,20 @@ public class ConnectionLostException : Exception
 {
     public ConnectionLostException(string message) : base(message) { }
 }
+
+/// <summary>
+/// Thrown when the device-computed CRC does not match the firmware image after
+/// the maximum number of write attempts.
+/// </summary>
+public class ChecksumMismatchException : Exception
+{
+    public uint Expected { get; }
+    public uint Actual { get; }
+
+    public ChecksumMismatchException(uint expected, uint actual)
+        : base($"CRC32 mismatch after write: expected 0x{expected:X8}, device reported 0x{actual:X8}")
+    {
+        Expected = expected;
+        Actual = actual;
+    }
+}

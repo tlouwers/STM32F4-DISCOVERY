@@ -661,7 +661,7 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 
 **Exit criteria:** All AN3155 commands pass xUnit tests with MockSerial; CRC32 matches STM32 hardware output; `dotnet test` green. ✓
 
-### Phase 3 — Factory reset orchestrator
+### Phase 3 — Factory reset orchestrator (complete)
 **Goal:** High-level `FactoryResetSession` that sequences the full operation, tested end-to-end on host.
 
 | Deliverable | Detail |
@@ -671,7 +671,7 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 | State machine | States: `Idle` → `Connecting` → `Erasing` → `Writing` → `Verifying` → `Booting` → `Done` / `Failed` |
 | Mock end-to-end test | `FactoryResetSession` runs to completion over `MockSerial`; simulates mid-write disconnect and retry |
 
-**Exit criteria:** Full factory reset sequence completes and verifies successfully on host with MockSerial.
+**Exit criteria:** Full factory reset sequence completes and verifies successfully on host with MockSerial. ✓
 
 ### Phase 4 — Application firmware + BootloaderEntry module
 **Goal:** Minimal application firmware with the BootloaderEntry module; first real hardware test. Unit tests use GoogleTest.
