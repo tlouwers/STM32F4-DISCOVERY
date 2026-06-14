@@ -1,0 +1,105 @@
+/**
+ * \file    Stm32BootloaderHal.cpp
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ * \class   Stm32BootloaderHal
+ *
+ * \brief   STM32F4 implementation of IBootloaderHal.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader/shared/bootloader
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    06-2026
+ */
+
+/************************************************************************/
+/* Includes                                                             */
+/************************************************************************/
+#include "bootloader/Stm32BootloaderHal.hpp"
+
+#include "stm32f4xx_hal.h"
+
+
+/************************************************************************/
+/* Public Methods                                                       */
+/************************************************************************/
+/**
+ * \brief   Constructs the STM32F4 bootloader HAL.
+ */
+Stm32BootloaderHal::Stm32BootloaderHal()
+{
+}
+
+/**
+ * \brief   Destructor.
+ */
+Stm32BootloaderHal::~Stm32BootloaderHal()
+{
+}
+
+/**
+ * \brief   Reads RTC backup register 0.
+ * \details Enables the PWR clock and backup-domain access first; the backup
+ *          registers retain their value across a system reset.
+ * \returns The stored 32-bit value.
+ */
+uint32_t Stm32BootloaderHal::ReadMagic() const
+{
+    __HAL_RCC_PWR_CLK_ENABLE();
+    HAL_PWR_EnableBkUpAccess();
+    return RTC->BKP0R;
+}
+
+/**
+ * \brief   Writes RTC backup register 0.
+ * \param   value   Value to store (the magic, or 0 to clear).
+ */
+void Stm32BootloaderHal::WriteMagic(uint32_t value)
+{
+    __HAL_RCC_PWR_CLK_ENABLE();
+    HAL_PWR_EnableBkUpAccess();
+    RTC->BKP0R = value;
+}
+
+/**
+ * \brief   Issues a software system reset. Does not return.
+ */
+void Stm32BootloaderHal::SystemReset()
+{
+    HAL_NVIC_SystemReset();
+}
+
+/**
+ * \brief   Deinitialises peripherals, remaps system memory to 0x00000000, and
+ *          jumps to the ST system memory bootloader. Does not return.
+ *
+ * \details Interrupts are disabled and the clock tree and HAL are torn down so
+ *          the bootloader starts from a known state. The bootloader's initial
+ *          stack pointer and reset vector are taken from the first two words at
+ *          0x1FFF0000.
+ */
+void Stm32BootloaderHal::JumpToSystemMemory()
+{
+    __disable_irq();
+
+    HAL_RCC_DeInit();
+    HAL_DeInit();
+
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
+    __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();
+
+    const uint32_t* sysMem = reinterpret_cast<const uint32_t*>(kSystemMemoryBase);
+    __set_MSP(sysMem[0]);
+    reinterpret_cast<void (*)()>(sysMem[1])();
+
+    // Never reached.
+    while (1)
+    {
+    }
+}

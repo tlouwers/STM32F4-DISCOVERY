@@ -9,6 +9,9 @@ set(HAL_ROOT    "${CMAKE_SOURCE_DIR}/../../../hal")
 set(SHARED_DIR  "${CMAKE_SOURCE_DIR}/../shared")
 
 file(GLOB_RECURSE APP_SOURCES   "*.c" "*.cpp")
+# Drop CMake's in-tree compiler-probe sources so an in-source build/ dir does
+# not pull a second main() into the link.
+list(FILTER APP_SOURCES EXCLUDE REGEX "CMakeFiles/")
 file(GLOB_RECURSE HAL_SOURCES   "${HAL_ROOT}/STM32F4xx_HAL_Driver/Src/*.c")
 file(GLOB_RECURSE CMSIS_SOURCES "${HAL_ROOT}/CMSIS/Device/ST/STM32F4xx/Source/*.c")
 
@@ -16,6 +19,8 @@ set(EXECUTABLE blink_green)
 
 add_executable(${EXECUTABLE}
     ${APP_SOURCES}
+    ${SHARED_DIR}/bootloader/BootloaderEntry.cpp
+    ${SHARED_DIR}/bootloader/Stm32BootloaderHal.cpp
     ${SHARED_DIR}/Startup/startup_stm32f407xx.s
     ${HAL_SOURCES}
     ${CMSIS_SOURCES}

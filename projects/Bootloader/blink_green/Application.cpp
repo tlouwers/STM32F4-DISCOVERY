@@ -2,7 +2,8 @@
 #include "board/Board.hpp"
 #include "stm32f4xx_hal.h"
 
-Application::Application()
+Application::Application(BootloaderEntry& bootloaderEntry) :
+    mBootloaderEntry(bootloaderEntry)
 {
 }
 
@@ -15,6 +16,14 @@ bool Application::Init()
 
 void Application::Process()
 {
+}
+
+void Application::HandleCommand(uint8_t command)
+{
+    if (kFactoryResetCommand == command)
+    {
+        mBootloaderEntry.TriggerFactoryReset();   // does not return
+    }
 }
 
 void Application::Error()

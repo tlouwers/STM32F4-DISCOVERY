@@ -673,18 +673,19 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 
 **Exit criteria:** Full factory reset sequence completes and verifies successfully on host with MockSerial. ✓
 
-### Phase 4 — Application firmware + BootloaderEntry module
+### Phase 4 — Application firmware + BootloaderEntry module (host portion complete)
 **Goal:** Minimal application firmware with the BootloaderEntry module; first real hardware test. Unit tests use GoogleTest.
 
-| Deliverable | Detail |
-|---|---|
-| `BootloaderEntry` | Startup magic check, `JumpToSystemMemory()`, `TriggerFactoryReset()` command handler |
-| Startup hook | Checks RTC BKP0R before `SystemInit()`; jumps to `0x1FFF0000` if magic present |
-| App firmware | Simple blink app that exposes the factory reset command over UART (at app baud rate) |
-| Linker script | `shared/linker/stm32f4_app.ld` — app starts at `0x08000000` |
-| Unit tests | GoogleTest tests for BootloaderEntry logic (magic register check, jump guard conditions) |
+| Deliverable | Detail | Status |
+|---|---|---|
+| `BootloaderEntry` | Startup magic check, `JumpToSystemMemory()`, `TriggerFactoryReset()` command handler | Done — `shared/bootloader/`, behind `IBootloaderHal` seam |
+| Startup hook | Checks RTC BKP0R before peripheral init; jumps to `0x1FFF0000` if magic present | Done — `CheckAndEnterBootloader()` at top of `main()`, before `HAL_Init()` |
+| App firmware | Simple blink app that exposes the factory reset command (minimal command hook; full USART RX driver deferred to hardware bring-up) | Done — `Application::HandleCommand()` in `blink_green`/`blink_orange` |
+| Linker script | `shared/linker/stm32f4_app.ld` — app starts at `0x08000000` | Done — relocated from `0x08020000` to `0x08000000`, full 1 MB (Option A) |
+| Unit tests | GoogleTest tests for BootloaderEntry logic (magic register check, jump guard conditions) | Done — `tests/TestBootloaderEntry.cpp` (5 tests) + `MockBootloaderHal` |
 
-**Exit criteria:** Sending factory reset command from PC causes device to jump to ST bootloader; host polls 0x7F and gets ACK.
+**Exit criteria (host):** BootloaderEntry logic verified on host via GoogleTest; firmware cross-compiles and links at `0x08000000`. ✓
+**Exit criteria (hardware, pending board):** Sending factory reset command from PC causes device to jump to ST bootloader; host polls 0x7F and gets ACK.
 
 ### Phase 5 — GUI + CLI mode
 **Goal:** Polished Avalonia GUI (default) and CLI mode in the same executable.

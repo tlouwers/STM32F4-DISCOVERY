@@ -12,17 +12,19 @@ target_sources(TestRunner
         # Unit test files
         TestRunner.cpp
         TestBootloader.cpp
+        TestBootloaderEntry.cpp
         # Fakes
         Fake/stm32f4xx_hal.c
-        # Test subjects (add bootloader_fw modules here as they are extracted from main)
-        # Ex: ../bootloader_fw/BootDecision.cpp
-        # Ex: ../bootloader_fw/FlashDriver.cpp
-        # Ex: ../bootloader_fw/Protocol.cpp
+        # Test subjects (shared firmware modules; Stm32BootloaderHal.cpp is
+        # firmware-only and substituted here by MockBootloaderHal)
+        ../shared/bootloader/BootloaderEntry.cpp
+        # Ex: ../shared/<module>/<Module>.cpp
 )
 
-# Include real and Fake source directories
+# Include real, shared, Mock, and Fake source directories
 target_include_directories(TestRunner PRIVATE
-    ../bootloader_fw
+    ../shared
+    ./Mock
     ./Fake
 )
 

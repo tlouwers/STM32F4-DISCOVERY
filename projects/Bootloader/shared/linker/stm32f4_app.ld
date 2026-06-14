@@ -1,13 +1,15 @@
 /*
  * STM32F4 Application Linker Script
  *
- * Application region starts at 0x08020000 (sector 5).
+ * Under Option A (ST system memory bootloader, no custom bootloader in user
+ * flash), the application owns the full 1 MB and starts at 0x08000000
+ * (sector 0). See plan.md section 9.
  */
 
 MEMORY
 {
     CCMRAM    (xrw) : ORIGIN = 0x10000000, LENGTH = 64K
-    FLASH_APP (rx)  : ORIGIN = 0x08020000, LENGTH = 896K
+    FLASH_APP (rx)  : ORIGIN = 0x08000000, LENGTH = 1024K
     RAM       (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
 }
 
