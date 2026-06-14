@@ -12,5 +12,6 @@ include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 add_subdirectory(tests)
 
-# Note: bootloader_fw is built separately (cross-compiled via bootloader_fw/CMakeLists.txt)
-# Note: host is built separately (host/CMakeLists.txt)
+# Note: device firmware (target/) is built separately, cross-compiled for ARM
+#       via target/CMakeLists.txt + target/arm-none-eabi-gcc.cmake.
+# Note: the host tool (host/) is a separate .NET solution (host/BootloaderTool.sln).

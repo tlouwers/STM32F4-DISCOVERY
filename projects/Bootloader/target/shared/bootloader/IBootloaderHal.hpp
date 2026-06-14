@@ -16,7 +16,7 @@
  *          entry logic be unit tested on the host with a GMock substitute,
  *          while the real implementation (Stm32BootloaderHal) pokes hardware.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader/shared/bootloader
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader/target/shared/bootloader
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0

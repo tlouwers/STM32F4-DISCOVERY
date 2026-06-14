@@ -4,89 +4,68 @@
     "version": "2.0.0",
     "tasks": [
 
-        // ── Blink Green (LD4, PD12) ──────────────────────────────────────────
+        // ── Firmware (target/, cross-compiled — builds both blink apps) ──────
         {
-            "label": "Configure - Blink Green [Debug]",
+            "label": "Configure - Firmware [Debug]",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/blink_green"
+                "cwd": "${workspaceFolder}/target"
             },
             "command": "cmake",
             "args": [
                 "-B./build",
                 "-GNinja",
-                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/target/arm-none-eabi-gcc.cmake",
                 "-DCMAKE_BUILD_TYPE=Debug"
             ],
             "problemMatcher": []
         },
         {
-            "label": "Configure - Blink Green [Release]",
+            "label": "Configure - Firmware [Release]",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/blink_green"
+                "cwd": "${workspaceFolder}/target"
             },
             "command": "cmake",
             "args": [
                 "-B./build",
                 "-GNinja",
-                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/target/arm-none-eabi-gcc.cmake",
                 "-DCMAKE_BUILD_TYPE=Release"
             ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build - Firmware (all)",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/target/build"
+            },
+            "command": "ninja",
             "problemMatcher": []
         },
         {
             "label": "Build - Blink Green",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/blink_green/build"
+                "cwd": "${workspaceFolder}/target/build"
             },
             "command": "ninja",
-            "problemMatcher": []
-        },
-
-        // ── Blink Orange (LD3, PD13) ─────────────────────────────────────────
-        {
-            "label": "Configure - Blink Orange [Debug]",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/blink_orange"
-            },
-            "command": "cmake",
-            "args": [
-                "-B./build",
-                "-GNinja",
-                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Configure - Blink Orange [Release]",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/blink_orange"
-            },
-            "command": "cmake",
-            "args": [
-                "-B./build",
-                "-GNinja",
-                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/shared/arm-none-eabi-gcc.cmake",
-                "-DCMAKE_BUILD_TYPE=Release"
-            ],
+            "args": ["blink_green.elf"],
             "problemMatcher": []
         },
         {
             "label": "Build - Blink Orange",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/blink_orange/build"
+                "cwd": "${workspaceFolder}/target/build"
             },
             "command": "ninja",
+            "args": ["blink_orange.elf"],
             "problemMatcher": []
         },
 
-        // ── Firmware Unit Tests ──────────────────────────────────────────────
+        // ── Firmware Unit Tests (native PC) ──────────────────────────────────
         {
             "label": "Configure - Unit Tests",
             "type": "shell",
@@ -124,7 +103,7 @@
             "label": "Coverage - Unit Tests",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/shared"
+                "cwd": "${workspaceFolder}"
             },
             "command": "gcovr",
             "args": [

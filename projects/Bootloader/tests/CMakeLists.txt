@@ -17,13 +17,13 @@ target_sources(TestRunner
         Fake/stm32f4xx_hal.c
         # Test subjects (shared firmware modules; Stm32BootloaderHal.cpp is
         # firmware-only and substituted here by MockBootloaderHal)
-        ../shared/bootloader/BootloaderEntry.cpp
-        # Ex: ../shared/<module>/<Module>.cpp
+        ../target/shared/bootloader/BootloaderEntry.cpp
+        # Ex: ../target/shared/<module>/<Module>.cpp
 )
 
 # Include real, shared, Mock, and Fake source directories
 target_include_directories(TestRunner PRIVATE
-    ../shared
+    ../target/shared
     ./Mock
     ./Fake
 )

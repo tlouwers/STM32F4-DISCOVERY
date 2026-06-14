@@ -517,7 +517,7 @@ Host                              Device (ST system memory BL)
 | 5 | 0x0802_0000 | 128 KB |
 | 6–11 | 0x0804_0000+ | 128 KB each |
 
-Linker script: `shared/linker/stm32f4_app.ld` (application starts at `0x08000000`).
+Linker script: `target/shared/linker/stm32f4_app.ld` (application starts at `0x08000000`).
 Memory map details: `docs/memory_map.md`.
 
 ## 10. Hardware Considerations
@@ -634,7 +634,7 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 
 | Deliverable | Detail | Status |
 |---|---|---|
-| Build system | `host/CMakeLists.txt`, toolchain `shared/arm-none-eabi-gcc.cmake` (for app firmware only) | Done |
+| Build system | `host/CMakeLists.txt`, toolchain `target/arm-none-eabi-gcc.cmake` (for app firmware only) | Done |
 | `ICrc` interface | Pure virtual; `SoftwareCrc32` implementation (C++) | Done |
 | CRC32 | Software, polynomial `0x04C11DB7` (matches STM32F4 hardware CRC unit) | Done |
 | `ISerial` / `SerialWin` / `SerialPosix` | C++ serial port abstraction | Done |
@@ -678,10 +678,10 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 
 | Deliverable | Detail | Status |
 |---|---|---|
-| `BootloaderEntry` | Startup magic check, `JumpToSystemMemory()`, `TriggerFactoryReset()` command handler | Done — `shared/bootloader/`, behind `IBootloaderHal` seam |
+| `BootloaderEntry` | Startup magic check, `JumpToSystemMemory()`, `TriggerFactoryReset()` command handler | Done — `target/shared/bootloader/`, behind `IBootloaderHal` seam |
 | Startup hook | Checks RTC BKP0R before peripheral init; jumps to `0x1FFF0000` if magic present | Done — `CheckAndEnterBootloader()` at top of `main()`, before `HAL_Init()` |
-| App firmware | Simple blink app that exposes the factory reset command (minimal command hook; full USART RX driver deferred to hardware bring-up) | Done — `Application::HandleCommand()` in `blink_green`/`blink_orange` |
-| Linker script | `shared/linker/stm32f4_app.ld` — app starts at `0x08000000` | Done — relocated from `0x08020000` to `0x08000000`, full 1 MB (Option A) |
+| App firmware | Simple blink app that exposes the factory reset command (minimal command hook; full USART RX driver deferred to hardware bring-up) | Done — `Application::HandleCommand()` in `target/blink_green`/`target/blink_orange` |
+| Linker script | `target/shared/linker/stm32f4_app.ld` — app starts at `0x08000000` | Done — relocated from `0x08020000` to `0x08000000`, full 1 MB (Option A) |
 | Unit tests | GoogleTest tests for BootloaderEntry logic (magic register check, jump guard conditions) | Done — `tests/TestBootloaderEntry.cpp` (5 tests) + `MockBootloaderHal` |
 
 **Exit criteria (host):** BootloaderEntry logic verified on host via GoogleTest; firmware cross-compiles and links at `0x08000000`. ✓
