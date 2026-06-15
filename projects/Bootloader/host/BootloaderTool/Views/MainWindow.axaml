@@ -1,0 +1,104 @@
+<!--
+    MainWindow.axaml — primary GUI window for BootloaderTool.
+    Panels: Device (port + connect), Firmware (file + options), Factory Reset
+    action, Progress, Activity log, and an Error/recovery banner.
+    Compiled bindings (x:DataType) validate every binding at build time.
+-->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:BootloaderTool.ViewModels"
+        x:Class="BootloaderTool.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="640" Height="600"
+        MinWidth="520" MinHeight="520"
+        Title="BootloaderTool — STM32 UART Bootloader">
+
+    <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="12">
+
+        <!-- Device panel -->
+        <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="12">
+            <StackPanel Spacing="8">
+                <TextBlock Text="Device" FontWeight="Bold" />
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <ComboBox Grid.Column="0"
+                              HorizontalAlignment="Stretch"
+                              PlaceholderText="Select serial port"
+                              ItemsSource="{Binding Ports}"
+                              SelectedItem="{Binding SelectedPort, Mode=TwoWay}" />
+                    <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshPortsCommand}" />
+                    <Button Grid.Column="2" Content="Connect" Command="{Binding ConnectCommand}" />
+                </Grid>
+                <TextBlock Text="{Binding DeviceInfo}" Foreground="Gray" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- Firmware panel -->
+        <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="12">
+            <StackPanel Spacing="8">
+                <TextBlock Text="Firmware" FontWeight="Bold" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Grid.Column="0"
+                             IsReadOnly="True"
+                             PlaceholderText="No image selected"
+                             Text="{Binding FirmwarePath}" />
+                    <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseFirmwareCommand}" />
+                </Grid>
+                <TextBlock Text="{Binding FirmwareInfo}" Foreground="Gray" TextWrapping="Wrap" />
+                <CheckBox Content="Boot application after reset (Go)" IsChecked="{Binding RunGo, Mode=TwoWay}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Action -->
+        <Button Grid.Row="2"
+                Content="Factory Reset"
+                Command="{Binding FactoryResetCommand}"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Padding="0,10"
+                FontWeight="SemiBold" />
+
+        <!-- Progress -->
+        <StackPanel Grid.Row="3" Spacing="4">
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Grid.Column="0" Text="{Binding Stage}" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="1" Text="{Binding ProgressText}" HorizontalAlignment="Right" Foreground="Gray" />
+            </Grid>
+            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" />
+        </StackPanel>
+
+        <!-- Activity log -->
+        <Border Grid.Row="4" BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="6">
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Log}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LogEntry">
+                            <TextBlock Text="{Binding Display}"
+                                       FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                       FontSize="12"
+                                       TextWrapping="Wrap" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Error / recovery banner -->
+        <Border Grid.Row="5"
+                IsVisible="{Binding HasError}"
+                Background="#3A1212"
+                BorderBrush="#7A2A2A"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ErrorMessage}"
+                           Foreground="#FFB4B4"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="Retry" Command="{Binding FactoryResetCommand}" />
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>

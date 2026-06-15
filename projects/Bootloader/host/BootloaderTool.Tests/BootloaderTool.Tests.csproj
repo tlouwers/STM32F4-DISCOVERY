@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BootloaderTool.Protocol\BootloaderTool.Protocol.csproj" />
+    <ProjectReference Include="..\BootloaderTool\BootloaderTool.csproj" />
   </ItemGroup>
 
 </Project>

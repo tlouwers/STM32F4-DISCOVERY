@@ -687,18 +687,21 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 **Exit criteria (host):** BootloaderEntry logic verified on host via GoogleTest; firmware cross-compiles and links at `0x08000000`. ✓
 **Exit criteria (hardware, pending board):** Sending factory reset command from PC causes device to jump to ST bootloader; host polls 0x7F and gets ACK.
 
-### Phase 5 — GUI + CLI mode
+### Phase 5 — GUI + CLI mode (host portion complete)
 **Goal:** Polished Avalonia GUI (default) and CLI mode in the same executable.
 
-| Deliverable | Detail |
-|---|---|
-| Avalonia GUI | MVVM: serial port selector, firmware file picker, device info panel, progress bar with stage labels, ETA, scrollable log, error recovery panel |
-| CLI mode | Verb commands: `factory-reset`, `upload`, `verify`, `info`, `read`, `go`, `list` — console progress bar |
-| Serial backend | `SerialPortAdapter` using `System.IO.Ports` — 8E1, configurable baud |
-| Reconnect loop | Auto-reconnect on serial loss; configurable timeout and interval |
-| `--json` output | Machine-readable progress events (CLI mode) for scripting |
+| Deliverable | Detail | Status |
+|---|---|---|
+| CLI mode | Verb commands: `factory-reset`, `upload`, `verify`, `info`, `read`, `go`, `list` — console progress bar | Done — `BootloaderTool/Cli/` (hand-rolled parser + command registry, no external dep); injectable serial seam for tests |
+| Serial backend | `SerialPortAdapter` using `System.IO.Ports` — 8E1, configurable baud | Done — Phase 2; wired via `CliContext.OpenPort` (configurable `--baud`/`--timeout`) |
+| Reconnect loop | Auto-reconnect on serial loss; configurable timeout and interval | Done — `FactoryResetSession`; CLI maps `--reconnect-timeout` to the poll budget |
+| `--json` output | Machine-readable progress events (CLI mode) for scripting | Done — `ConsoleProgress` emits JSON Lines (`progress`/`log`/`error`); `info`/`verify` emit JSON results |
+| Avalonia GUI | MVVM: serial port selector, firmware file picker, device info panel, progress bar with stage labels, scrollable log, error recovery panel | Done — `App` + `Views/MainWindow` + `ViewModels/MainWindowViewModel` (CommunityToolkit.Mvvm); Avalonia 12.0.4; protocol runs on a background thread with dispatcher marshalling; compiled bindings (`x:DataType`) validated at build |
 
-**Exit criteria:** GUI: click "Factory Reset" → watch all stages → cable yank mid-write → reconnect → resume → completion. CLI: `BootloaderTool factory-reset -p COM3 -f factory.bin` completes on real hardware.
+**Exit criteria (CLI, host):** verbs parse, dispatch, and return correct exit codes (0 ok / 1 runtime / 2 usage); command happy-paths verified via `MockSerial` (`CliParserTests`, `CliRunnerTests`); `dotnet test` green (88 tests). ✓
+**Exit criteria (GUI, host):** solution builds warning-clean; all XAML bindings type-check via compiled bindings; entry point routes args→CLI, none→GUI. ✓
+**Exit criteria (GUI, interactive — pending desktop/board):** click "Factory Reset" → watch all stages → cable yank mid-write → reconnect → resume → completion.
+**Exit criteria (hardware, pending board):** `BootloaderTool factory-reset -p COM3 -f factory.bin` completes on real hardware.
 
 ### Phase 6 — End-to-end validation
 **Goal:** Demonstrate the full workflow using two versions of the blink app.

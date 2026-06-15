@@ -1,0 +1,15 @@
+<!--
+    App.axaml — Avalonia application definition. Loads the Fluent theme and acts
+    as the styling root. The main window is created in App.axaml.cs.
+    Part of the BootloaderTool host application.
+-->
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="BootloaderTool.App"
+             RequestedThemeVariant="Default">
+
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+</Application>
