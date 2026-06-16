@@ -29,7 +29,7 @@ public enum FactoryResetState
     /// <summary>Not started.</summary>
     Idle,
 
-    /// <summary>Syncing with the bootloader (initial connect or reconnect).</summary>
+    /// <summary>Syncing with the bootloader on initial connect.</summary>
     Connecting,
 
     /// <summary>Erasing the target flash sectors.</summary>

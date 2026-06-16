@@ -557,6 +557,15 @@ The host therefore verifies by **read-back**: after writing, it reads the flashe
 
 The ST bootloader auto-detects the baud rate from the **first** `0x7F` it receives after entry and replies ACK; once initialised it answers **NACK** to any further bare `0x7F`. A one-shot probe that only accepts ACK (the original `info` / `list`) therefore fails on the *second* command sent against the same bootloader entry. The host's `An3155Client.SyncWithRetries()` treats **both ACK and NACK as "bootloader present"** and only retries on timeout, so probes survive an already-initialised device. The `factory-reset` session still expects a clean first-sync ACK, so run it against a **fresh** entry (reset → blue button) rather than after an `info` on the same entry.
 
+### 10.6 No mid-write recovery: fail fast, operator re-runs
+
+A connection loss **during a write** cannot be auto-recovered on this hardware, for two reasons proven on the bench 2026-06-16 (cable yank mid-write):
+
+1. **The host serial handle is dead.** Pulling the cable invalidates the open COM handle; the OS hands out a fresh one on re-insert, so any recovery must close and re-open the port — the original session reused the dead handle.
+2. **The bootloader is stuck mid-frame.** The yank happened mid Write-Memory, with the bootloader waiting for the rest of the 256-byte data frame. AN3155 has no mid-command abort or re-sync — a fresh `0x7F` is consumed as more write data, not a new handshake. The only true recovery is a **fresh bootloader entry** (reset / blue button / BOOT0), which the host cannot trigger over the 3-wire UART.
+
+The earlier auto-reconnect poll (poll `0x7F` for ~60 s, restart from erase) could therefore never succeed for a mid-write loss, and was removed. The session now **fails fast** with operator guidance: *"Connection lost during transfer … re-enter the bootloader (RESET, then the blue button) and run the command again."* The GUI **Retry** button and a fresh CLI invocation both re-run from a clean entry — that is the supported recovery path. (A future option, not wired here, is a control line — RTS→NRST — so the host could pulse a reset and re-enter the bootloader programmatically.)
+
 ### 10.4 Host-side CRC
 
 The AN3155 Get Checksum command (0xA1) uses the STM32 hardware CRC peripheral. The polynomial is `0x04C11DB7` (CRC-32/MPEG-2), initial value `0xFFFFFFFF`, input and output not reflected. The host protocol library must compute the same CRC on the factory image binary before sending, to compare with the device's result.
@@ -708,7 +717,7 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 |---|---|---|
 | CLI mode | Verb commands: `factory-reset`, `upload`, `verify`, `info`, `read`, `go`, `list` — console progress bar | Done — `BootloaderTool/Cli/` (hand-rolled parser + command registry, no external dep); injectable serial seam for tests |
 | Serial backend | `SerialPortAdapter` using `System.IO.Ports` — 8E1, configurable baud | Done — Phase 2; wired via `CliContext.OpenPort` (configurable `--baud`/`--timeout`) |
-| Reconnect loop | Auto-reconnect on serial loss; configurable timeout and interval | Done — `FactoryResetSession`; CLI maps `--reconnect-timeout` to the poll budget |
+| Connection-loss handling | Fail fast on mid-transfer loss with operator-guided recovery (Retry from a fresh entry) | Done — auto-reconnect poll removed after bench proof it cannot recover a mid-write loss on F4 (see §10.6) |
 | `--json` output | Machine-readable progress events (CLI mode) for scripting | Done — `ConsoleProgress` emits JSON Lines (`progress`/`log`/`error`); `info`/`verify` emit JSON results |
 | Avalonia GUI | MVVM: serial port selector, firmware file picker, device info panel, progress bar with stage labels, scrollable log, error recovery panel | Done — `App` + `Views/MainWindow` + `ViewModels/MainWindowViewModel` (CommunityToolkit.Mvvm); Avalonia 12.0.4; protocol runs on a background thread with dispatcher marshalling; compiled bindings (`x:DataType`) validated at build |
 
@@ -732,7 +741,7 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 
 Full end-to-end test plan: `docs/end_to_end_test.md`.
 
-**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts. *CLI and GUI happy-path cycles validated on hardware 2026-06-16. Remaining: cable-yank reconnect-resume (see §10.6).*
+**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts. *CLI and GUI happy-path cycles validated on hardware 2026-06-16. Cable-yank mid-write was tested and shown unrecoverable on F4 (see §10.6); the tool now fails fast with operator-guided Retry — re-validation of the fail-fast message on hardware pending.*
 
 **Hardware-validated GUI device-info (Connect, fresh entry):** `Chip 0x0413 · protocol v3.1 · 11 commands` — matches the CLI `info`.
 

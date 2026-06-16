@@ -66,7 +66,6 @@ public class CliParserTests
             "--baud", "57600",
             "--timeout", "3000",
             "--retries", "5",
-            "--reconnect-timeout", "30",
             "--no-go",
             "--json",
         });
@@ -80,7 +79,6 @@ public class CliParserTests
         Assert.Equal(57600, o.Baud);
         Assert.Equal(3000, o.TimeoutMs);
         Assert.Equal(5, o.Retries);
-        Assert.Equal(30, o.ReconnectTimeoutSec);
         Assert.True(o.NoGo);
         Assert.True(o.Json);
     }

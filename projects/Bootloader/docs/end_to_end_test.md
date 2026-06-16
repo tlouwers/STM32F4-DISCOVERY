@@ -48,4 +48,4 @@ the image. See plan §10.4.
 3. Blue-button entry with no host attached → bootloader answers `info` — **validated 2026-06-16**
 4. Power-cycle during upload → verify recovery to bootloader mode — pending
 5. Upload corrupt image → verify rejection (read-back CRC mismatch) → pending
-6. Disconnect USB mid-transfer → reconnect → verify resume → pending (host reconnect loop covered by unit tests)
+6. Cable yank mid-write → **shown unrecoverable on F4 2026-06-16** (bootloader stuck mid-frame; see plan §10.6). Tool now fails fast with operator guidance; recovery = re-enter bootloader (RESET + blue button) and Retry / re-run. Re-validation of the fail-fast message on hardware pending.

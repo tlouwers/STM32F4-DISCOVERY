@@ -50,13 +50,4 @@ public sealed class FactoryResetOptions
 
     /// <summary>Delay between initial sync attempts. Default 1 s.</summary>
     public int SyncDelayMs { get; set; } = 1000;
-
-    /// <summary>
-    /// Maximum 0x7F poll attempts when reconnecting after a connection loss.
-    /// Default 60 (≈ 60 s at the default delay).
-    /// </summary>
-    public int MaxReconnectAttempts { get; set; } = 60;
-
-    /// <summary>Delay between reconnect poll attempts. Default 1 s.</summary>
-    public int ReconnectDelayMs { get; set; } = 1000;
 }

@@ -241,7 +241,9 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         NackException nack          => $"Device rejected command 0x{nack.Command:X2} (NACK).",
         BootloaderTimeoutException  => $"Timed out waiting for the device: {ex.Message}",
-        ConnectionLostException     => $"Serial connection lost and could not reconnect: {ex.Message}",
+        ConnectionLostException     => $"Connection lost during transfer ({ex.Message}). The bootloader " +
+                                       "cannot resume a partial write — re-enter the bootloader (RESET, then " +
+                                       "the blue button) and click Retry.",
         ChecksumMismatchException c => $"Verification failed after retries: expected 0x{c.Expected:X8}, device 0x{c.Actual:X8}.",
         _                           => ex.Message,
     };

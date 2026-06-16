@@ -9,8 +9,9 @@
 //
 //  High-level factory reset orchestrator. Sequences the full AN3155 operation
 //  (sync → get → get-id → erase → write → verify → go) as a state machine,
-//  raising progress/log events and recovering from a mid-transfer connection
-//  loss by reconnecting and restarting from the erase step.
+//  raising progress/log events. A mid-transfer connection loss fails fast: the
+//  ST bootloader cannot resume a partial write, so recovery is a fresh entry
+//  plus a re-run, not an automatic reconnect (plan §10.6).
 //
 //  https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader
 //
@@ -124,11 +125,12 @@ public sealed class FactoryResetSession
                 }
                 catch (ConnectionLostException ex)
                 {
+                    // The ST bootloader cannot resume a partial write (no
+                    // mid-command re-sync on F4), so fail fast with operator
+                    // guidance instead of polling a port that cannot recover
+                    // mid-frame. Recovery is a fresh entry + re-run (plan §10.6).
                     Log?.Invoke("warn", $"Connection lost during transfer: {ex.Message}");
-                    if (!await ReconnectAsync(cancellationToken))
-                        throw; // reconnect exhausted — surface the original loss
-                    // Reconnected: loop restarts from erase. A reconnect does not
-                    // count against the CRC-mismatch write-attempt budget.
+                    throw;
                 }
             }
 
@@ -264,26 +266,6 @@ public sealed class FactoryResetSession
             _client.Go(image.StartAddress);
             Log?.Invoke("info", $"Jumped to 0x{image.StartAddress:X8}.");
         }
-    }
-
-    /// <summary>Polls for the bootloader after a connection loss.</summary>
-    /// <returns>True if the bootloader responded within the attempt budget.</returns>
-    private async Task<bool> ReconnectAsync(CancellationToken ct)
-    {
-        TransitionTo(FactoryResetState.Connecting);
-        Log?.Invoke("info", "Attempting to reconnect...");
-
-        for (int i = 0; i < _options.MaxReconnectAttempts; i++)
-        {
-            ct.ThrowIfCancellationRequested();
-            await _delayAsync(_options.ReconnectDelayMs, ct);
-            if (_client.Sync())
-            {
-                Log?.Invoke("info", "Reconnected.");
-                return true;
-            }
-        }
-        return false;
     }
 
     // -----------------------------------------------------------------------

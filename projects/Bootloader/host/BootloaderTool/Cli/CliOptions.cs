@@ -49,9 +49,6 @@ public sealed class CliOptions
     /// <summary>Per-command serial read/write timeout in milliseconds.</summary>
     public int TimeoutMs { get; set; } = 2000;
 
-    /// <summary>Reconnect window in seconds after a mid-transfer connection loss.</summary>
-    public int ReconnectTimeoutSec { get; set; } = 60;
-
     /// <summary>Suppress the final Go (0x21); leave the device in bootloader mode.</summary>
     public bool NoGo { get; set; }
 

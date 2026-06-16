@@ -8,7 +8,7 @@
 //                                                               Terry Louwers
 //
 //  "factory-reset" verb — full erase -> write -> verify -> go cycle driven by
-//  FactoryResetSession, with chip-ID guard and mid-transfer reconnect.
+//  FactoryResetSession, with chip-ID guard.
 //
 //  https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader
 //
@@ -28,7 +28,7 @@ public sealed class FactoryResetCommand : ICliCommand
     public string Name    => "factory-reset";
     public string Summary => "Erase, write, verify a firmware image, then jump to it.";
     public string Usage   => "factory-reset -p <port> -f <image.bin> [--addr <hex>] [--no-go] " +
-                             "[--baud <n>] [--timeout <ms>] [--reconnect-timeout <s>] [--json]";
+                             "[--baud <n>] [--timeout <ms>] [--json]";
 
     public Task<int> ExecuteAsync(CliOptions options, CliContext context)
         => SessionCommand.RunAsync(options, context, runGo: !options.NoGo, guardChipId: true);

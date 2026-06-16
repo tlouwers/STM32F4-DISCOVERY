@@ -59,9 +59,8 @@ internal static class SessionCommand
         {
             var resetOptions = new FactoryResetOptions
             {
-                RunGo                = runGo,
-                ExpectedChipId       = guardChipId ? Stm32F4ChipId : null,
-                MaxReconnectAttempts = options.ReconnectTimeoutSec,
+                RunGo          = runGo,
+                ExpectedChipId = guardChipId ? Stm32F4ChipId : null,
             };
 
             var session  = new FactoryResetSession(serial, resetOptions);
@@ -90,7 +89,9 @@ internal static class SessionCommand
     {
         NackException nack          => $"device rejected command 0x{nack.Command:X2} (NACK).",
         BootloaderTimeoutException  => $"timed out waiting for the device: {ex.Message}",
-        ConnectionLostException     => $"serial connection lost and could not reconnect: {ex.Message}",
+        ConnectionLostException     => "connection lost during transfer (" + ex.Message +
+                                       "). The bootloader cannot resume a partial write — re-enter the " +
+                                       "bootloader (RESET, then the blue button) and run the command again.",
         ChecksumMismatchException c => $"verification failed after retries: expected 0x{c.Expected:X8}, device 0x{c.Actual:X8}.",
         InvalidOperationException   => ex.Message,
         _                           => ex.Message,

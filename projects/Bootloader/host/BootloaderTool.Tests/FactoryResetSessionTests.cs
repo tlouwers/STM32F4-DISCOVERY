@@ -9,8 +9,8 @@
 //
 //  xUnit end-to-end tests for FactoryResetSession over MockSerial: happy path,
 //  state-machine progression, chip-ID guard, NACK abort, sync failure, CRC
-//  mismatch retry exhaustion, and mid-write disconnect with reconnect+restart.
-//  A no-op delay seam keeps the reconnect loop instantaneous (no real waits).
+//  mismatch retry exhaustion, and mid-write disconnect (fail fast, no reconnect).
+//  A no-op delay seam keeps the initial sync poll instantaneous (no real waits).
 //
 //  https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader
 //
@@ -356,78 +356,38 @@ public class FactoryResetSessionTests : IDisposable
         Assert.Equal(FactoryResetState.Done, session.State);
     }
 
-    // ── Mid-write disconnect + reconnect ──────────────────────────────────────
+    // ── Mid-write disconnect: fail fast, no auto-reconnect ────────────────────
 
     [Fact]
-    public async Task RunAsync_DisconnectDuringWrite_ReconnectsAndCompletes()
+    public async Task RunAsync_DisconnectDuringWrite_FailsFastWithConnectionLost()
     {
-        // Initial script: connect + identify + erase only. Writing is then
-        // interrupted by a simulated cable pull at the Writing transition.
+        // The ST bootloader cannot resume a partial write, so a mid-write loss
+        // must fail immediately (no reconnect poll) and leave the session Failed.
         EnqueueSyncAck();
         EnqueueIdentify();
         EnqueueErase();
 
         var states = new List<FactoryResetState>();
         bool disconnected = false;
-        bool reconnected  = false;
 
         var session = NewSession();
         session.StateChanged += s =>
         {
             states.Add(s);
-
-            if (s == FactoryResetState.Writing && !disconnected)
-            {
-                // Pull the cable just as writing begins.
-                disconnected = true;
-                _serial.SimulateDisconnect();
-            }
-            else if (s == FactoryResetState.Connecting && disconnected && !reconnected)
-            {
-                // Cable plugged back in during the reconnect poll: restore the
-                // link and script the full restart (sync → erase → write →
-                // verify → go).
-                reconnected = true;
-                _serial.ClearDisconnect();
-                EnqueueSyncAck();
-                EnqueueErase();
-                EnqueueWrite(2);
-                EnqueueVerify(_image.Crc32);
-                EnqueueGo();
-            }
-        };
-
-        await session.RunAsync(_image);
-
-        Assert.Equal(FactoryResetState.Done, session.State);
-
-        // The state trace must show the restart: a second Connecting after the
-        // first Writing, followed by Erasing and Writing again.
-        int firstWriting = states.IndexOf(FactoryResetState.Writing);
-        int reconnect    = states.IndexOf(FactoryResetState.Connecting, firstWriting);
-        Assert.True(reconnect > firstWriting, "expected a reconnect after the interrupted write");
-        Assert.Contains(FactoryResetState.Erasing, states.Skip(reconnect));
-    }
-
-    [Fact]
-    public async Task RunAsync_DisconnectAndReconnectExhausted_FailsWithConnectionLost()
-    {
-        EnqueueSyncAck();
-        EnqueueIdentify();
-        EnqueueErase();
-
-        bool disconnected = false;
-        var session = NewSession(new FactoryResetOptions { MaxReconnectAttempts = 3 });
-        session.StateChanged += s =>
-        {
             if (s == FactoryResetState.Writing && !disconnected)
             {
                 disconnected = true;
-                _serial.SimulateDisconnect(); // never cleared -> reconnect fails
+                _serial.SimulateDisconnect(); // cable pull, never cleared
             }
         };
 
         await Assert.ThrowsAsync<ConnectionLostException>(() => session.RunAsync(_image));
         Assert.Equal(FactoryResetState.Failed, session.State);
+
+        // No second Connecting after the first Writing — the session does not
+        // attempt to reconnect.
+        int firstWriting = states.IndexOf(FactoryResetState.Writing);
+        int reconnect    = states.IndexOf(FactoryResetState.Connecting, firstWriting);
+        Assert.True(reconnect < 0, "expected no reconnect attempt after the interrupted write");
     }
 }

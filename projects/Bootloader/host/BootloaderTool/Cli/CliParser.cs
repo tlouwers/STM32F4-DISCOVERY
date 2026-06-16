@@ -122,12 +122,6 @@ public static class CliParser
                     o.TimeoutMs = timeoutVal;
                     break;
 
-                case "--reconnect-timeout":
-                    if (!TakeValue(args, ref i, out string recon)) return Fail(result, $"missing value for {a}");
-                    if (!TryParseInt(recon, out int reconVal) || reconVal < 0) return Fail(result, $"invalid reconnect-timeout '{recon}'");
-                    o.ReconnectTimeoutSec = reconVal;
-                    break;
-
                 case "--no-go":
                     o.NoGo = true;
                     break;
