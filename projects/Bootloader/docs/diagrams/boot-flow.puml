@@ -1,0 +1,37 @@
+@startuml Bootloader_BootFlow
+title Application boot flow — factory-reset entry vs. normal boot
+
+start
+:Power-on / Reset;
+:main() — construct Stm32BootloaderHal + BootloaderEntry;
+:BootloaderEntry.CheckAndEnterBootloader()
+(runs before HAL_Init);
+
+if (RTC BKP0R == kFactoryResetMagic?) then (yes)
+  :WriteMagic(0)
+clear so the next reset boots the app;
+  :JumpToSystemMemory()
+SYSCFG remap → jump to 0x1FFF0000;
+  :ST system-memory ROM bootloader
+(UART AN3155 — does not return);
+  stop
+else (no)
+  :HAL_Init();
+  :Application.Init()
+Board clock · Led · Button (PA0);
+  repeat
+    :Application.Process();
+    if (blue button PA0 high
+OR UART 'R' (0x52) received?) then (yes)
+      :BootloaderEntry.TriggerFactoryReset()
+WriteMagic(magic) → SystemReset();
+      :System reset
+re-enters at Reset (top of this chart);
+      stop
+    else (no)
+      :Led.Toggle() + HAL_Delay(500);
+    endif
+  repeat while (main loop) is (forever)
+endif
+
+@enduml

@@ -1,0 +1,32 @@
+@startuml FactoryReset_CableYank
+title Factory reset — mid-write connection loss (fail fast, operator-guided recovery)
+
+actor Operator
+participant "BootloaderTool\n(host)" as Host
+participant "ST ROM bootloader" as BL
+
+Host -> BL : 0x7F -> ACK -> Get -> Get ID -> Erase
+loop writing chunks
+  Host -> BL : Write Memory (0x31)
+  BL --> Host : ACK
+end
+
+== cable yanked mid-write ==
+
+Host -x BL : Write Memory (0x31)  [data frame cut]
+activate BL
+BL -> BL : stuck waiting for the rest\nof the 256-byte frame\n(AN3155 has no mid-command re-sync)
+deactivate BL
+Host -> Host : serial Read = -1\n-> ConnectionLostException
+note over Host : COM handle is now dead;\nbootloader cannot be re-synced
+
+Host -> Host : fail fast — no reconnect poll
+Host --> Operator : "Connection lost during transfer.\nRe-enter the bootloader (RESET, then the\nblue button) and click Retry."
+
+== operator recovery ==
+
+Operator -> BL : RESET + blue button (fresh entry)
+Operator -> Host : click Retry / re-run
+Host -> BL : 0x7F (sync) -> restart from erase\n(see happy-path diagram)
+
+@enduml
