@@ -741,7 +741,7 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 
 Full end-to-end test plan: `docs/end_to_end_test.md`.
 
-**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts. *CLI and GUI happy-path cycles validated on hardware 2026-06-16. Cable-yank mid-write was tested and shown unrecoverable on F4 (see §10.6); the tool now fails fast with operator-guided Retry — re-validation of the fail-fast message on hardware pending.*
+**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts. *CLI and GUI happy-path cycles validated on hardware 2026-06-16. Cable-yank mid-write was tested and shown unrecoverable on F4 (see §10.6); the tool now fails fast with operator-guided Retry — fail-fast banner validated on hardware 2026-06-16 (immediate "Connection lost during transfer … re-enter the bootloader … click Retry", no poll spin). **Phase 6 complete.***
 
 **Hardware-validated GUI device-info (Connect, fresh entry):** `Chip 0x0413 · protocol v3.1 · 11 commands` — matches the CLI `info`.
 
