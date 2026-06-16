@@ -773,6 +773,18 @@ PlantUML sources + rendered SVGs live in `docs/diagrams/` (see its `README.md`).
 
 **Phase 7 complete** — four diagrams (architecture, boot-flow, two factory-reset sequences), CLI reference, and README quick-start; all reflect the 2026-06-16 hardware-validated behaviour.
 
+### Phase 8 — Comprehensive review & hardening
+**Goal:** One dedicated review pass over *all* code produced in Phases 1–7 (not a per-diff review), split by language because the embedded pipeline is STM32-C++-specific.
+
+| Track | Scope | Tooling | LEDGER |
+|---|---|---|---|
+| Firmware (C++) | `target/shared/bootloader/*`, blink-app `Application`/`Button`/`Led`/`Board`/`main` | `/embedded-review` (logic + HAL/datasheet + safety) then `/embedded-lint` (style) | L47, L48 |
+| Host (.NET/C#) | full `host/` tree — Protocol, CLI, GUI, tests | `/code-review` (the embedded pipeline does **not** cover .NET) | L49 |
+
+**Workflow:** seed one LEDGER item per track (done — L47–L49), run `/embedded-pipeline resume` for the firmware track and `/code-review` for the host track. Findings become new LEDGER items; fixes apply via `/embedded-refactor` with the usual discuss-first / surgical-commit rhythm. Reviews are read-only (produce `REVIEW.md` / `LINT-REVIEW.md`); the known F4 behaviours (read-back verify, one-shot sync, fail-fast — §10.4–§10.6) are intentional and must not be re-flagged.
+
+**Exit criteria:** every high/medium finding triaged (fixed or explicitly deferred with a reopen trigger); host tests stay 94/94, firmware unit tests + ARM builds clean.
+
 ## 15. Verification Matrix
 
 | Phase | Host test | Hardware test |
