@@ -766,7 +766,7 @@ Both `factory-reset` and the standalone `verify` verb share the read-back primit
 |---|---|---|
 | Boot flow diagram | Reset → BKP0R check → JumpToSystemMemory vs. normal boot; app-loop button/UART trigger | Done — `docs/diagrams/boot-flow.puml` |
 | Sequence diagrams | Happy path (read-back verify); mid-write cable-yank fail-fast + operator recovery | Done — `docs/diagrams/factory-reset-{happy,cable-yank}.puml` |
-| Architecture diagram | host stack → UART → ST bootloader ROM → flash | Pending |
+| Architecture diagram | host stack → UART → ST bootloader ROM → flash | Done — `docs/diagrams/architecture.puml` |
 | Guides | CLI usage, GUI walkthrough, README quick-start, hardware wiring notes | Partial — wiring + GUI walkthrough in `end_to_end_test.md`; CLI/README pending |
 
 PlantUML sources + rendered SVGs live in `docs/diagrams/` (see its `README.md`). Render with Temurin 21 (PATH `java` is 8, too old for the jar).

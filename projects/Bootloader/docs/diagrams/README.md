@@ -4,6 +4,18 @@ PlantUML sources (`*.puml`) are the versioned spec; the `*.svg` files are
 generated artifacts. All three reflect behaviour validated on hardware
 2026-06-16 (see `../plan.md` §10 and `../end_to_end_test.md`).
 
+## Architecture — host stack → UART → ST ROM bootloader → flash
+
+The .NET host (Avalonia GUI or CLI) drives `FactoryResetSession` /
+`An3155Client` over an `ISerial` seam; `SerialPortAdapter` (8E1) reaches the
+STM32 over UART (USART3, PB10/PB11). On the device, the ST ROM bootloader
+owns flash erase/write/read and the `Go` jump, while the app firmware's
+`BootloaderEntry` hands control back and forth via the RTC BKP0R magic.
+
+![Architecture](Bootloader_Architecture.svg)
+
+Source: [`architecture.puml`](architecture.puml)
+
 ## Boot flow — factory-reset entry vs. normal boot
 
 Reset → `BootloaderEntry::CheckAndEnterBootloader()` reads the RTC BKP0R magic

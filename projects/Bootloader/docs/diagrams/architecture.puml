@@ -1,0 +1,56 @@
+@startuml Bootloader_Architecture
+title BootloaderTool architecture — host stack -> UART -> ST ROM bootloader -> flash
+
+left to right direction
+
+package "Host — BootloaderTool (.NET 8)" {
+
+  package "UI" {
+    [Avalonia GUI\nMainWindow + ViewModel] as GUI
+    [CLI\nCliRunner + verbs] as CLI
+  }
+
+  package "BootloaderTool.Protocol" {
+    [FactoryResetSession\nerase->write->verify->go\n(state machine)] as Session
+    [An3155Client\nSync / Get / GetId / Erase /\nWrite / ReadRegion / Go] as Client
+    [FirmwareImage + Crc32] as Image
+    interface ISerial
+    [SerialPortAdapter\nSystem.IO.Ports, 8E1] as Adapter
+  }
+}
+
+GUI --> Session : Factory Reset
+CLI --> Session : factory-reset / upload
+CLI --> Client : info / list / verify / read / go
+Session --> Client
+Session --> Image : load + CRC32
+Client ..> ISerial : uses
+ISerial <|.. Adapter
+
+node "STM32F407G-DISC1" {
+
+  package "ST ROM bootloader @ 0x1FFF0000\n(AN3155, protocol v3.1)" as ROM {
+    [UART command parser\n0x7F / Get / Erase / Write / Read / Go] as BLparser
+  }
+
+  package "App firmware @ 0x08000000" as APP {
+    [BootloaderEntry\nCheckAndEnterBootloader\nTriggerFactoryReset] as Entry
+    [Application\nProcess: button + UART 'R'] as App
+    [Button (PA0) / Led (PD12/PD13)] as IO
+  }
+
+  database "Flash 1 MB\nsectors 0-11" as Flash
+  [RTC BKP0R\nfactory-reset magic] as BKP
+}
+
+Adapter --> BLparser : UART 8E1, USART3\nPB10/PB11 (TTL-232RG)
+BLparser --> Flash : erase / write / read-back
+BLparser ..> APP : Go -> 0x08000000
+
+App --> IO : poll PA0 / blink
+App --> Entry : on trigger
+Entry --> BKP : write magic + reset
+Entry --> BKP : read / clear magic (boot)
+Entry ..> ROM : JumpToSystemMemory()\n(magic present)
+
+@enduml
