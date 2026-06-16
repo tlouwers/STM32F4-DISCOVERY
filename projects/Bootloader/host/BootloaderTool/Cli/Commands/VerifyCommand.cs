@@ -17,6 +17,7 @@
 //  Date:    06-2026
 // ----------------------------------------------------------------------------
 
+using BootloaderTool.Protocol.Crc;
 using BootloaderTool.Protocol.Protocol;
 using BootloaderTool.Protocol.Serial;
 
@@ -51,13 +52,20 @@ public sealed class VerifyCommand : ICliCommand
         using (serial)
         {
             var client = new An3155Client(serial, options.Retries);
-            if (!client.Sync())
+            if (!client.SyncWithRetries())
                 return Task.FromResult(CliResult.NoSync(context));
 
             try
             {
-                uint deviceCrc = client.GetChecksum(image.StartAddress, image.WordCount);
-                bool match     = deviceCrc == image.Crc32;
+                // The STM32F4 ROM bootloader has no Get-Checksum (0xA1) command;
+                // fall back to reading the region back and CRC-comparing it.
+                GetResult get = client.Get();
+                bool hasChecksum = get.SupportedCommands.Contains(An3155Constants.CmdGetChecksum);
+
+                uint deviceCrc = hasChecksum
+                    ? client.GetChecksum(image.StartAddress, image.WordCount)
+                    : new Crc32().Compute(client.ReadRegion(image.StartAddress, image.Size));
+                bool match = deviceCrc == image.Crc32;
 
                 if (options.Json)
                 {

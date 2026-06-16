@@ -536,12 +536,26 @@ USART3 alternative: PB10/PB11 or PC10/PC11.
 **Software trigger (preferred for factory reset UX):**
 The running application receives a factory reset command, writes a magic value to RTC Backup Register 0, then resets. On the next startup, the application checks the register before any peripheral init and jumps to system memory if the magic is present. No hardware changes required; works over the existing UART connection.
 
+Two triggers feed this path in the `blink_green` / `blink_orange` apps, both calling `BootloaderEntry::TriggerFactoryReset()`:
+- **UART command** — the `'R'` (0x52) byte handled by `Application::HandleCommand()`.
+- **Blue user button (B1 / PA0)** — polled in `Application::Process()` via the `Button` driver (`Src/drivers/Button.cpp`). PA0 is active-high (external pull-down on the Discovery board), configured as a plain `GPIO_MODE_INPUT`. Convenient for bench bring-up with no host attached. *Note:* this magic/software-jump path performs the SYSCFG system-flash remap itself, so **BOOT0 must stay low** — it does not use the BOOT0 hardware path below.
+
 **BOOT0 pin (fallback / hardware button):**
 BOOT0 is wired to user button B2 on the Discovery board (through JP3 — check board revision). Holding BOOT0 high during reset enters system memory bootloader unconditionally. Useful as a recovery path if application firmware is corrupt.
 
 ### 10.3 Erase timing
 
 Extended Erase of the full 1 MB (sectors 0–11) takes **several seconds** on STM32F4 (flash erase is slow). The ST bootloader sends ACK only after erase is complete. The host must use a long timeout for the erase command (30–60 s). Erasing only the sectors that the factory image occupies reduces this time.
+
+### 10.4 Verify: read-back, not device-side CRC
+
+The STM32F4 ROM bootloader (protocol **v3.1**, chip ID **0x0413**) does **not** implement the Get-Checksum command (**0xA1**) — its `Get` response advertises only `0x00 0x01 0x02 0x11 0x21 0x31 0x44 0x63 0x73 0x82 0x92`. Get-Checksum exists on some newer STM32 families but cannot be relied on here; sending it returns NACK.
+
+The host therefore verifies by **read-back**: after writing, it reads the flashed region back in 256-byte chunks via Read Memory (**0x11**, which the F4 bootloader does support) and compares the CRC32 with the image. The chunked read lives in `An3155Client.ReadRegion`, shared by `factory-reset` and the `verify` verb. Both capability-detect 0xA1 in the `Get` command list and only fall back to read-back when it is absent, so the device-side CRC path is still used on chips that support it. *Discovered on hardware 2026-06-16 — the host unit tests passed because `MockSerial` answered the 0xA1 frame; only real silicon NACKed it.*
+
+### 10.5 ROM bootloader sync is one-shot per entry
+
+The ST bootloader auto-detects the baud rate from the **first** `0x7F` it receives after entry and replies ACK; once initialised it answers **NACK** to any further bare `0x7F`. A one-shot probe that only accepts ACK (the original `info` / `list`) therefore fails on the *second* command sent against the same bootloader entry. The host's `An3155Client.SyncWithRetries()` treats **both ACK and NACK as "bootloader present"** and only retries on timeout, so probes survive an already-initialised device. The `factory-reset` session still expects a clean first-sync ACK, so run it against a **fresh** entry (reset → blue button) rather than after an `info` on the same entry.
 
 ### 10.4 Host-side CRC
 
@@ -706,15 +720,32 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 ### Phase 6 — End-to-end validation
 **Goal:** Demonstrate the full workflow using two versions of the blink app.
 
-| Deliverable | Detail |
-|---|---|
-| `blink_v1` | Green LED blink (PD12/LD4), version 1.0.0 |
-| `blink_v2` | Orange LED blink (PD13/LD3), version 2.0.0 |
-| E2E test | Flash v1 → factory-reset to v2 → verify LED changes → factory-reset to v1 → verify → power-cycle during erase → recovery |
+| Deliverable | Detail | Status |
+|---|---|---|
+| `blink_green` | Green LED blink (PD12/LD4) | Done |
+| `blink_orange` | Orange LED blink (PD13/LD3) | Done |
+| Blue-button trigger | `Button` driver (PA0) polled in `Application::Process()`; presses arm the factory-reset magic and enter the ST bootloader without a host attached | Done — `target/*/Src/drivers/Button.{hpp,cpp}` |
+| Read-back verify fix | F4 has no Get-Checksum (0xA1); `factory-reset` verifies by Read-Memory read-back (see §10.4) | Done — `FactoryResetSession.VerifyByReadBack()`; +2 unit tests |
+| Robust probe sync | `info` / `list` use `SyncWithRetries` (ACK *or* NACK = present; see §10.5) | Done — +4 unit tests |
+| E2E test (CLI) | Flash green → factory-reset to orange → LED changes → factory-reset to green → LED changes | **Hardware-validated 2026-06-16** (COM7, ST-Link V2) |
 
 Full end-to-end test plan: `docs/end_to_end_test.md`.
 
-**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts.
+**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts. *CLI cycle validated on hardware 2026-06-16; GUI walkthrough still pending.*
+
+**Hardware-validated transcript (CLI, green ← orange):**
+```
+[info] Bootloader connected.
+[info] Chip ID: 0x0413.
+[info] Device has no Get-Checksum (0xA1) command; verifying by read-back.
+[info] Erased 1 sector(s).
+[info] Wrote 7820 bytes.
+[info] Read-back CRC32 0x5B40739A, expected 0x5B40739A.
+[info] Jumped to 0x08000000.
+Done - device booted.
+```
+
+Both `factory-reset` and the standalone `verify` verb share the read-back primitive (`An3155Client.ReadRegion`) and capability-detect 0xA1, so both work on F4.
 
 ### Phase 7 — Documentation & presentation
 **Goal:** Diagrams and docs suitable for presentation and onboarding.

@@ -11,11 +11,18 @@ bool Application::Init()
 {
     Board::InitClock();
     Led::Init();
+    Button::Init();
     return true;
 }
 
 void Application::Process()
 {
+    // Blue user button (B1, PA0) arms a factory reset and jumps to the ST
+    // bootloader. Does not return when pressed.
+    if (Button::IsPressed())
+    {
+        mBootloaderEntry.TriggerFactoryReset();   // does not return
+    }
 }
 
 void Application::HandleCommand(uint8_t command)

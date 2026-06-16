@@ -165,12 +165,53 @@ public class CliRunnerTests
             uint crc = new Crc32().Compute(imageBytes);
             var serial = new MockSerial();
             serial.EnqueueResponse(Ack);                                   // sync
+            // Get: command list advertises 0xA1 => device-side GetChecksum path
+            serial.EnqueueResponse(Ack);
+            serial.EnqueueResponse(4);
+            serial.EnqueueResponse(0x31);
+            serial.EnqueueResponse(new byte[] { 0x00, 0x31, 0x44, 0xA1 });
+            serial.EnqueueResponse(Ack);
             serial.EnqueueResponse(Ack);                                   // GetChecksum: cmd ack
             serial.EnqueueResponse(Ack);                                   // address ack
             serial.EnqueueResponse(Ack);                                   // word-count ack
             serial.EnqueueResponse((byte)(crc >> 24), (byte)(crc >> 16),
                                    (byte)(crc >> 8),  (byte)crc);          // CRC (big-endian)
             serial.EnqueueResponse(Ack);                                   // trailing ack
+
+            int code = await CliRunner.RunAsync(
+                new[] { "verify", "-p", "COM1", "-f", path }, Context(serial));
+
+            Assert.Equal(0, code);
+            Assert.Contains("CRC32 OK", _out.ToString());
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Verify_NoChecksumCommand_UsesReadBack_ReturnsZero()
+    {
+        byte[] imageBytes = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04 };
+        string path = Path.Combine(Path.GetTempPath(), $"verify_{Guid.NewGuid():N}.bin");
+        File.WriteAllBytes(path, imageBytes);
+
+        try
+        {
+            var serial = new MockSerial();
+            serial.EnqueueResponse(Ack);                                   // sync
+            // Get: command list WITHOUT 0xA1 (STM32F4) => read-back path
+            serial.EnqueueResponse(Ack);
+            serial.EnqueueResponse(3);
+            serial.EnqueueResponse(0x31);
+            serial.EnqueueResponse(new byte[] { 0x00, 0x31, 0x44 });
+            serial.EnqueueResponse(Ack);
+            // ReadRegion -> one Read Memory chunk: cmd ack, address ack, count ack, data
+            serial.EnqueueResponse(Ack);
+            serial.EnqueueResponse(Ack);
+            serial.EnqueueResponse(Ack);
+            serial.EnqueueResponse(imageBytes);
 
             int code = await CliRunner.RunAsync(
                 new[] { "verify", "-p", "COM1", "-f", path }, Context(serial));
@@ -195,6 +236,6 @@ public class CliRunnerTests
         Assert.Equal(0, code);
         string output = _out.ToString();
         Assert.Contains("COM_TEST", output);
-        Assert.Contains("bootloader (ACK)", output);
+        Assert.Contains("bootloader", output);
     }
 }

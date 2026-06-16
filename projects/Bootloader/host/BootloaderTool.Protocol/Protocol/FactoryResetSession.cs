@@ -19,6 +19,7 @@
 //  Date:    06-2026
 // ----------------------------------------------------------------------------
 
+using BootloaderTool.Protocol.Crc;
 using BootloaderTool.Protocol.Serial;
 
 namespace BootloaderTool.Protocol.Protocol;
@@ -37,6 +38,10 @@ public sealed class FactoryResetSession
     private readonly Func<int, CancellationToken, Task> _delayAsync;
 
     private uint _lastDeviceCrc;
+
+    // Whether the device advertises the Get-Checksum command (0xA1). The STM32F4
+    // ROM bootloader does not, so verification falls back to read-back compare.
+    private bool _deviceHasChecksum;
 
     /// <summary>Current state of the session.</summary>
     public FactoryResetState State { get; private set; } = FactoryResetState.Idle;
@@ -169,6 +174,10 @@ public sealed class FactoryResetSession
         ushort chipId = _client.GetId();
         Log?.Invoke("info", $"Chip ID: 0x{chipId:X4}.");
 
+        _deviceHasChecksum = info.SupportedCommands.Contains(An3155Constants.CmdGetChecksum);
+        if (!_deviceHasChecksum)
+            Log?.Invoke("info", "Device has no Get-Checksum (0xA1) command; verifying by read-back.");
+
         if (_options.ExpectedChipId.HasValue && chipId != _options.ExpectedChipId.Value)
             throw new InvalidOperationException(
                 $"Chip ID mismatch: expected 0x{_options.ExpectedChipId.Value:X4}, got 0x{chipId:X4}.");
@@ -203,19 +212,46 @@ public sealed class FactoryResetSession
         Log?.Invoke("info", $"Wrote {total} bytes.");
     }
 
-    /// <summary>Reads the device CRC and compares it with the image CRC.</summary>
-    /// <returns>True if the CRCs match.</returns>
+    /// <summary>
+    /// Verifies the written image. Uses the device-side Get-Checksum command
+    /// when available; otherwise (e.g. STM32F4) reads the region back and
+    /// compares its CRC32.
+    /// </summary>
+    /// <returns>True if the device contents match the image.</returns>
     private bool Verify(FirmwareImage image)
     {
         TransitionTo(FactoryResetState.Verifying);
+
+        if (_deviceHasChecksum)
+        {
+            Progress?.Invoke("Verifying", 0, 1);
+            _lastDeviceCrc = _client.GetChecksum(image.StartAddress, image.WordCount);
+            bool ok = _lastDeviceCrc == image.Crc32;
+            Progress?.Invoke("Verifying", 1, 1);
+            Log?.Invoke(ok ? "info" : "warn",
+                $"Device CRC32 0x{_lastDeviceCrc:X8}, expected 0x{image.Crc32:X8}.");
+            return ok;
+        }
+
+        return VerifyByReadBack(image);
+    }
+
+    /// <summary>
+    /// Reads the flashed region back in 256-byte chunks (Read Memory, 0x11) and
+    /// compares its CRC32 with the image. Used on devices without Get-Checksum.
+    /// </summary>
+    /// <returns>True if the read-back CRC32 matches the image CRC32.</returns>
+    private bool VerifyByReadBack(FirmwareImage image)
+    {
         Progress?.Invoke("Verifying", 0, 1);
 
-        _lastDeviceCrc = _client.GetChecksum(image.StartAddress, image.WordCount);
+        byte[] readBack = _client.ReadRegion(image.StartAddress, image.Size);
+        _lastDeviceCrc = new Crc32().Compute(readBack);
         bool ok = _lastDeviceCrc == image.Crc32;
 
         Progress?.Invoke("Verifying", 1, 1);
         Log?.Invoke(ok ? "info" : "warn",
-            $"Device CRC32 0x{_lastDeviceCrc:X8}, expected 0x{image.Crc32:X8}.");
+            $"Read-back CRC32 0x{_lastDeviceCrc:X8}, expected 0x{image.Crc32:X8}.");
         return ok;
     }
 

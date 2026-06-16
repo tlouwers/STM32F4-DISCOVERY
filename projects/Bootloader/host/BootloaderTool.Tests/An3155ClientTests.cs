@@ -82,6 +82,54 @@ public class An3155ClientTests : IDisposable
         Assert.False(result);
     }
 
+    // ── SyncWithRetries ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void SyncWithRetries_AckReceived_ReturnsTrue()
+    {
+        _serial.EnqueueResponse(An3155Constants.Ack);
+
+        bool result = _client.SyncWithRetries(attempts: 3, delayMs: 0);
+
+        Assert.True(result);
+        Assert.Equal(An3155Constants.SyncByte, _serial.AllWrittenBytes[0]);
+    }
+
+    [Fact]
+    public void SyncWithRetries_NackReceived_ReturnsTrue()
+    {
+        // An already-initialised bootloader answers NACK to a bare 0x7F; that
+        // still proves it is present, so the probe must treat it as synced.
+        _serial.EnqueueResponse(An3155Constants.Nack);
+
+        bool result = _client.SyncWithRetries(attempts: 3, delayMs: 0);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void SyncWithRetries_TimeoutThenAck_RetriesAndReturnsTrue()
+    {
+        _serial.EnqueueResponse();                     // attempt 1: empty → timeout
+        _serial.EnqueueResponse(An3155Constants.Ack);  // attempt 2: ACK
+
+        bool result = _client.SyncWithRetries(attempts: 3, delayMs: 0);
+
+        Assert.True(result);
+        // Two sync bytes sent: one per attempt up to the ACK.
+        Assert.Equal(2, _serial.AllWrittenBytes.Count(b => b == An3155Constants.SyncByte));
+    }
+
+    [Fact]
+    public void SyncWithRetries_AllTimeouts_ReturnsFalseAfterExhaustingAttempts()
+    {
+        // No response queued — every Read times out.
+        bool result = _client.SyncWithRetries(attempts: 3, delayMs: 0);
+
+        Assert.False(result);
+        Assert.Equal(3, _serial.AllWrittenBytes.Count(b => b == An3155Constants.SyncByte));
+    }
+
     // ── Get ────────────────────────────────────────────────────────────────
 
     [Fact]

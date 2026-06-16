@@ -58,7 +58,10 @@ public sealed class ListCommand : ICliCommand
             if (!serial.Open(port, config))
                 return "unavailable";
 
-            return new An3155Client(serial).Sync() ? "bootloader (ACK)" : "no response";
+            // Single fast probe per port — keep scanning snappy. A bootloader
+            // that is already initialised answers NACK rather than ACK, which
+            // SyncWithRetries treats as present.
+            return new An3155Client(serial).SyncWithRetries(attempts: 1) ? "bootloader" : "no response";
         }
         catch (Exception)
         {

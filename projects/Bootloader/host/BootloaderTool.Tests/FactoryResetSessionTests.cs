@@ -58,14 +58,32 @@ public class FactoryResetSessionTests : IDisposable
 
     private void EnqueueIdentify()
     {
-        // Get: ACK, N, version, command bytes, ACK
+        // Get: ACK, N, version, command bytes, ACK. Includes 0xA1 (Get-Checksum)
+        // so the session verifies via the device-side CRC path.
+        _serial.EnqueueResponse(Ack);
+        _serial.EnqueueResponse(4);
+        _serial.EnqueueResponse(0x31);
+        _serial.EnqueueResponse(new byte[] { 0x00, 0x31, 0x44, 0xA1 });
+        _serial.EnqueueResponse(Ack);
+
+        // Get ID: ACK, N=1, PID hi, PID lo, ACK  => 0x0413
+        _serial.EnqueueResponse(Ack);
+        _serial.EnqueueResponse(0x01);
+        _serial.EnqueueResponse(0x04);
+        _serial.EnqueueResponse(0x13);
+        _serial.EnqueueResponse(Ack);
+    }
+
+    private void EnqueueIdentifyNoChecksum()
+    {
+        // Same as EnqueueIdentify but the command list omits 0xA1, mirroring the
+        // STM32F4 ROM bootloader, so the session must verify by read-back.
         _serial.EnqueueResponse(Ack);
         _serial.EnqueueResponse(3);
         _serial.EnqueueResponse(0x31);
         _serial.EnqueueResponse(new byte[] { 0x00, 0x31, 0x44 });
         _serial.EnqueueResponse(Ack);
 
-        // Get ID: ACK, N=1, PID hi, PID lo, ACK  => 0x0413
         _serial.EnqueueResponse(Ack);
         _serial.EnqueueResponse(0x01);
         _serial.EnqueueResponse(0x04);
@@ -96,6 +114,22 @@ public class FactoryResetSessionTests : IDisposable
         _serial.EnqueueResponse(Ack); // count ACK
         _serial.EnqueueResponse((byte)(crc >> 24), (byte)(crc >> 16), (byte)(crc >> 8), (byte)crc);
         _serial.EnqueueResponse(Ack); // trailing ACK
+    }
+
+    private void EnqueueVerifyReadBack(byte[] contents)
+    {
+        // Read Memory (0x11) per 256-byte chunk: command ACK, address ACK,
+        // count ACK, then the chunk data bytes (no trailing ACK).
+        int offset = 0;
+        while (offset < contents.Length)
+        {
+            int chunk = Math.Min(An3155Constants.MaxReadBytes, contents.Length - offset);
+            _serial.EnqueueResponse(Ack);
+            _serial.EnqueueResponse(Ack);
+            _serial.EnqueueResponse(Ack);
+            _serial.EnqueueResponse(contents.Skip(offset).Take(chunk).ToArray());
+            offset += chunk;
+        }
     }
 
     private void EnqueueGo()
@@ -187,6 +221,46 @@ public class FactoryResetSessionTests : IDisposable
         await session.RunAsync(_image);
 
         Assert.Equal(FactoryResetState.Done, session.State);
+    }
+
+    // ── Read-back verify (device without Get-Checksum, e.g. STM32F4) ──────────
+
+    [Fact]
+    public async Task RunAsync_NoChecksumCommand_VerifiesByReadBack_CompletesAtDone()
+    {
+        EnqueueSyncAck();
+        EnqueueIdentifyNoChecksum();
+        EnqueueErase();
+        EnqueueWrite(2);
+        EnqueueVerifyReadBack(_image.Data);  // exact bytes => read-back CRC matches
+        EnqueueGo();
+
+        var session = NewSession();
+        await session.RunAsync(_image);
+
+        Assert.Equal(FactoryResetState.Done, session.State);
+    }
+
+    [Fact]
+    public async Task RunAsync_ReadBackMismatch_RetriesAndFailsAfterMaxAttempts()
+    {
+        EnqueueSyncAck();
+        EnqueueIdentifyNoChecksum();
+
+        // Two rounds, each reading back a corrupted first byte => CRC mismatch.
+        for (int round = 0; round < 2; round++)
+        {
+            EnqueueErase();
+            EnqueueWrite(2);
+            byte[] corrupt = (byte[])_image.Data.Clone();
+            corrupt[0] ^= 0xFF;
+            EnqueueVerifyReadBack(corrupt);
+        }
+
+        var session = NewSession(new FactoryResetOptions { MaxWriteAttempts = 2 });
+
+        await Assert.ThrowsAsync<ChecksumMismatchException>(() => session.RunAsync(_image));
+        Assert.Equal(FactoryResetState.Failed, session.State);
     }
 
     // ── Identification guards ─────────────────────────────────────────────────

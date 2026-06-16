@@ -38,7 +38,7 @@ public sealed class InfoCommand : ICliCommand
         using (serial)
         {
             var client = new An3155Client(serial, options.Retries);
-            if (!client.Sync())
+            if (!client.SyncWithRetries())
                 return Task.FromResult(CliResult.NoSync(context));
 
             try

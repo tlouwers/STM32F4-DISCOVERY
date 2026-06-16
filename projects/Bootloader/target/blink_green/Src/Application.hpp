@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "drivers/Led.hpp"
+#include "drivers/Button.hpp"
 #include "bootloader/BootloaderEntry.hpp"
 
 class Application

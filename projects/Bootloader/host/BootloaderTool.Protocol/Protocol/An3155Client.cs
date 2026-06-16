@@ -71,6 +71,45 @@ public sealed class An3155Client
         return ReadAck() == An3155Constants.Ack;
     }
 
+    /// <summary>
+    /// Sends the 0x7F sync byte, retrying until the bootloader answers or the
+    /// attempts run out. The ST bootloader uses the first 0x7F after entry for
+    /// baud detection and replies ACK; a bootloader that has <b>already</b> been
+    /// initialised replies NACK to a bare 0x7F, which still proves it is present
+    /// and listening for commands. Both replies count as synced — only a
+    /// timeout (no byte) is retried, which also covers a device that has not yet
+    /// entered bootloader mode. Use this for one-shot probes (info/list) where a
+    /// single Sync() is fragile against the autobaud race or an already-armed
+    /// device; the factory-reset session keeps its own retry loop around Sync().
+    /// </summary>
+    /// <param name="attempts">Maximum number of sync attempts (clamped to >= 1).</param>
+    /// <param name="delayMs">Delay between attempts, in milliseconds.</param>
+    /// <returns>True if the bootloader responded with ACK or NACK.</returns>
+    public bool SyncWithRetries(int attempts = 5, int delayMs = 300)
+    {
+        if (attempts < 1)
+            attempts = 1;
+
+        ReadOnlySpan<byte> syncByte = stackalloc byte[] { An3155Constants.SyncByte };
+
+        for (int attempt = 0; attempt < attempts; attempt++)
+        {
+            _serial.FlushInput();
+
+            if (_serial.Write(syncByte) >= 0)
+            {
+                byte response = ReadAck();
+                if (response == An3155Constants.Ack || response == An3155Constants.Nack)
+                    return true;
+            }
+
+            if (attempt + 1 < attempts)
+                Thread.Sleep(delayMs);
+        }
+
+        return false;
+    }
+
     // -----------------------------------------------------------------------
     // Get (0x00)
     // -----------------------------------------------------------------------
@@ -184,6 +223,31 @@ public sealed class An3155Client
         byte[] data = new byte[length];
         ReadExact(data);
         return data;
+    }
+
+    /// <summary>
+    /// Reads a contiguous region back in up to 256-byte chunks (Read Memory,
+    /// 0x11). Use to verify a write on devices without the Get-Checksum command
+    /// (0xA1) — e.g. STM32F4 — by CRC-comparing the returned bytes to the image.
+    /// </summary>
+    /// <param name="address">Start address.</param>
+    /// <param name="length">Total number of bytes to read (>= 1).</param>
+    /// <returns>The bytes read; the array length equals <paramref name="length"/>.</returns>
+    public byte[] ReadRegion(uint address, int length)
+    {
+        if (length < 1)
+            throw new ArgumentOutOfRangeException(nameof(length), "Must be >= 1");
+
+        byte[] result = new byte[length];
+        int offset = 0;
+        while (offset < length)
+        {
+            int chunk = Math.Min(An3155Constants.MaxReadBytes, length - offset);
+            byte[] part = ReadMemory(address + (uint)offset, chunk);
+            Array.Copy(part, 0, result, offset, chunk);
+            offset += chunk;
+        }
+        return result;
     }
 
     // -----------------------------------------------------------------------
