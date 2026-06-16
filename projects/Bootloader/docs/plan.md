@@ -728,10 +728,13 @@ Each phase is independently buildable, testable, and demo-able. Phases 1–3 req
 | Read-back verify fix | F4 has no Get-Checksum (0xA1); `factory-reset` verifies by Read-Memory read-back (see §10.4) | Done — `FactoryResetSession.VerifyByReadBack()`; +2 unit tests |
 | Robust probe sync | `info` / `list` use `SyncWithRetries` (ACK *or* NACK = present; see §10.5) | Done — +4 unit tests |
 | E2E test (CLI) | Flash green → factory-reset to orange → LED changes → factory-reset to green → LED changes | **Hardware-validated 2026-06-16** (COM7, ST-Link V2) |
+| E2E test (GUI) | Avalonia: Browse image → blue-button entry → Factory Reset → watch stages → LED changes; Connect shows chip ID | **Hardware-validated 2026-06-16** (COM7) |
 
 Full end-to-end test plan: `docs/end_to_end_test.md`.
 
-**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts. *CLI cycle validated on hardware 2026-06-16; GUI walkthrough still pending.*
+**Exit criteria:** Both CLI mode and GUI complete the full cycle; documented with terminal transcripts. *CLI and GUI happy-path cycles validated on hardware 2026-06-16. Remaining: cable-yank reconnect-resume (see §10.6).*
+
+**Hardware-validated GUI device-info (Connect, fresh entry):** `Chip 0x0413 · protocol v3.1 · 11 commands` — matches the CLI `info`.
 
 **Hardware-validated transcript (CLI, green ← orange):**
 ```
