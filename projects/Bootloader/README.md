@@ -10,7 +10,7 @@ The deliverables are:
 
 * A **.NET 8 host application** (`host/`) implementing the AN3155 protocol and a
   full factory-reset orchestrator (connect → erase → write → verify → boot) with
-  retry and mid-transfer reconnect handling.
+  CRC-mismatch retry and fail-fast handling of mid-transfer connection loss.
 * A minimal **`BootloaderEntry` module** added to the application firmware
   (`target/shared/bootloader/`) that lets a running app request a jump into the
   ST bootloader (write a magic value to an RTC backup register, then reset).
@@ -18,6 +18,34 @@ The deliverables are:
   used to demonstrate and validate the full update cycle.
 
 See `docs/plan.md` for the full design, protocol notes, and phased plan.
+
+# Quick start
+
+End-to-end update cycle on real hardware (host-free entry via the blue button):
+
+1. **Build + flash** a starting app over ST-Link:
+   ```bash
+   cd target && cmake -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE=./arm-none-eabi-gcc.cmake && ninja -C build
+   openocd -f board/stm32f4discovery.cfg -c "program build/blink_green/blink_green.elf verify reset exit"
+   ```
+   The green LED (PD12) blinks.
+2. **Wire the UART** (TTL-232RG, 3.3 V): cable **TXD→PB11**, **RXD→PB10**, **GND→GND**
+   (USART3, 8E1). Leave VCC and BOOT0 alone. Full table: `docs/end_to_end_test.md`.
+3. **Enter the bootloader:** press & hold the **blue button (B1 / PA0)** — the LED
+   goes dark (the app armed the RTC magic and reset into the ST ROM bootloader).
+4. **Update from the host:**
+   ```bash
+   cd host
+   BootloaderTool list                                    # find the COM port
+   BootloaderTool factory-reset -p COM7 -f ../target/build/blink_orange/blink_orange.bin
+   ```
+   Erase → write → read-back verify → Go; the orange LED (PD13) now blinks.
+
+Or run the GUI (no arguments): `dotnet run --project BootloaderTool`.
+
+Further reading: **CLI reference** `docs/cli.md` · **diagrams** `docs/diagrams/` ·
+**wiring + GUI walkthrough** `docs/end_to_end_test.md` · **design/protocol notes**
+`docs/plan.md`.
 
 # Requirements
 
