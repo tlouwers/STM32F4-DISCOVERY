@@ -38,6 +38,10 @@ public sealed class FactoryResetSession
     private readonly FactoryResetOptions _options;
     private readonly Func<int, CancellationToken, Task> _delayAsync;
 
+    // True when the client's bootloader connection is already synced (the caller
+    // sent the one-shot 0x7F). RunAsync then skips its own sync step.
+    private readonly bool _alreadyConnected;
+
     private uint _lastDeviceCrc;
 
     // Whether the device advertises the Get-Checksum command (0xA1). The STM32F4
@@ -70,13 +74,40 @@ public sealed class FactoryResetSession
         ISerial serial,
         FactoryResetOptions? options = null,
         Func<int, CancellationToken, Task>? delayAsync = null)
+        : this(new An3155Client(serial ?? throw new ArgumentNullException(nameof(serial))),
+               options, delayAsync, alreadyConnected: false)
     {
-        if (serial is null)
-            throw new ArgumentNullException(nameof(serial));
+    }
 
-        _options    = options ?? new FactoryResetOptions();
-        _delayAsync = delayAsync ?? ((ms, ct) => Task.Delay(ms, ct));
-        _client     = new An3155Client(serial);
+    /// <summary>
+    /// Creates a factory reset session over a client whose bootloader connection
+    /// is <b>already</b> established — i.e. the caller has already sent the
+    /// one-shot 0x7F sync and identified the device (the GUI's auto-probe does
+    /// this). <see cref="RunAsync"/> then skips its own sync, because the STM32F4
+    /// ROM bootloader ACKs 0x7F only once per entry; a second sync would time out.
+    /// </summary>
+    /// <param name="client">An <see cref="An3155Client"/> already synced to a device in bootloader mode.</param>
+    /// <param name="options">Tunable parameters; defaults used when null.</param>
+    /// <param name="delayAsync">Delay seam (see the other constructor).</param>
+    public FactoryResetSession(
+        An3155Client client,
+        FactoryResetOptions? options = null,
+        Func<int, CancellationToken, Task>? delayAsync = null)
+        : this(client ?? throw new ArgumentNullException(nameof(client)),
+               options, delayAsync, alreadyConnected: true)
+    {
+    }
+
+    private FactoryResetSession(
+        An3155Client client,
+        FactoryResetOptions? options,
+        Func<int, CancellationToken, Task>? delayAsync,
+        bool alreadyConnected)
+    {
+        _options          = options ?? new FactoryResetOptions();
+        _delayAsync       = delayAsync ?? ((ms, ct) => Task.Delay(ms, ct));
+        _client           = client;
+        _alreadyConnected = alreadyConnected;
     }
 
     /// <summary>
@@ -95,8 +126,17 @@ public sealed class FactoryResetSession
         try
         {
             TransitionTo(FactoryResetState.Connecting);
-            if (!await TryConnectAsync(_options.SyncAttempts, _options.SyncDelayMs, cancellationToken))
+            if (_alreadyConnected)
+            {
+                // The auto-probe already sent the one-shot 0x7F and the device is
+                // sitting in command mode; re-syncing would time out. Go straight
+                // to identify (Get/Get-ID are repeatable within an entry).
+                Log?.Invoke("info", "Reusing the established bootloader connection.");
+            }
+            else if (!await TryConnectAsync(_options.SyncAttempts, _options.SyncDelayMs, cancellationToken))
+            {
                 throw new BootloaderTimeoutException("Bootloader did not respond to sync (0x7F).");
+            }
 
             Identify();
 

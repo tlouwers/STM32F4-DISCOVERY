@@ -11,6 +11,9 @@ The deliverables are:
 * A **.NET 8 host application** (`host/`) implementing the AN3155 protocol and a
   full factory-reset orchestrator (connect → erase → write → verify → boot) with
   CRC-mismatch retry and fail-fast handling of mid-transfer connection loss.
+  It ships both a **CLI** and a guided **Avalonia GUI** that auto-discovers the
+  USB-UART cable, auto-probes for a live bootloader, and only enables *Flash*
+  once a device is connected and a valid image is loaded.
 * A minimal **`BootloaderEntry` module** added to the application firmware
   (`target/shared/bootloader/`) that lets a running app request a jump into the
   ST bootloader (write a magic value to an RTC backup register, then reset).
@@ -41,7 +44,10 @@ End-to-end update cycle on real hardware (host-free entry via the blue button):
    ```
    Erase → write → read-back verify → Go; the orange LED (PD13) now blinks.
 
-Or run the GUI (no arguments): `dotnet run --project BootloaderTool`.
+Or drive the same cycle from the **GUI** (`dotnet run --project BootloaderTool`,
+no arguments): it auto-selects the USB-UART cable, shows live connection status,
+takes a `.bin` by drag-and-drop or *Browse* (with size + CRC32), and flashes with
+inline progress. See **Host GUI** below.
 
 Further reading: **CLI reference** `docs/cli.md` · **diagrams** `docs/diagrams/` ·
 **wiring + GUI walkthrough** `docs/end_to_end_test.md` · **design/protocol notes**
@@ -124,6 +130,28 @@ dotnet run --project BootloaderTool -- factory-reset -p COM3 -f factory.bin
 
 All VS Code build/debug tasks are defined in `.vscode/tasks.json` and
 `.vscode/launch.json`.
+
+### Host GUI
+
+Launching `BootloaderTool` with no arguments opens the Avalonia GUI — a guided,
+three-step flow (Device → Firmware → Flash):
+
+* **Auto-detect / auto-probe.** Serial ports are discovered and kept current in
+  the background; the USB-UART cable is auto-selected (a real bridge such as
+  *"USB Serial Port"* / FTDI / CP210x is ranked above a board's generic virtual
+  COM port). The selected port is continuously probed, so *Flash* lights up the
+  moment a live bootloader is present — no Refresh or Connect button.
+* **Single session.** The probe holds the synced connection open and the flash
+  reuses it, so the ST ROM's one-shot `0x7F` sync is sent exactly once per entry.
+  Once connected the port is locked for the session; a successful flash clears
+  the image so the next one is a deliberate re-selection.
+* **Firmware.** Drag-and-drop a `.bin` onto the window (or *Browse*); the card
+  shows the file, size, and CRC32. Up to 2 MB.
+* **Activity log.** A foldable in-app log records each step. Everything is also
+  mirrored to an append-only `bootloader.log` next to the executable (timestamped,
+  with the flashed file name + path and a rule between runs) for later inspection.
+
+The GUI shares all protocol/serial code with the CLI via `BootloaderTool.Protocol`.
 
 # GCC options C++
 

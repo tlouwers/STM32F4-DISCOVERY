@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+    <!-- WMI, used only on Windows (guarded by OperatingSystem.IsWindows()) to
+         resolve friendly USB-UART names. Restores cross-platform; no-ops elsewhere. -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

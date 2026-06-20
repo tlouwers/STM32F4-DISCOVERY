@@ -21,19 +21,32 @@ namespace BootloaderTool.ViewModels;
 /// <summary>One activity-log line shown in the GUI.</summary>
 public sealed class LogEntry
 {
+    /// <summary>When the entry was recorded (local time).</summary>
+    public DateTime Timestamp { get; }
+
     /// <summary>Severity level (e.g. "info", "warn", "error").</summary>
     public string Level { get; }
 
     /// <summary>Human-readable message text.</summary>
     public string Message { get; }
 
-    /// <summary>Creates a log entry.</summary>
+    /// <summary>Creates a log entry stamped with the current local time.</summary>
     public LogEntry(string level, string message)
+        : this(level, message, DateTime.Now)
     {
-        Level   = level;
-        Message = message;
     }
 
-    /// <summary>Formatted "[level] message" line for display binding.</summary>
-    public string Display => $"[{Level}] {Message}";
+    /// <summary>Creates a log entry with an explicit timestamp (used by tests).</summary>
+    public LogEntry(string level, string message, DateTime timestamp)
+    {
+        Timestamp = timestamp;
+        Level     = level;
+        Message   = message;
+    }
+
+    /// <summary>
+    /// Fixed-width "HH:mm:ss  [level]" prefix bound to its own column so wrapped
+    /// message text hangs aligned under the message, not back under the timestamp.
+    /// </summary>
+    public string Prefix => $"{Timestamp:HH:mm:ss}  [{Level}]";
 }

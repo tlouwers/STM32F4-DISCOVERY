@@ -1,102 +1,394 @@
 <!--
     MainWindow.axaml — primary GUI window for BootloaderTool.
-    Panels: Device (port + connect), Firmware (file + options), Factory Reset
-    action, Progress, Activity log, and an Error/recovery banner.
+
+    Layout (top to bottom): a custom title bar (icon + name + STM32·UART badge +
+    window buttons), a thin accent rule, then the scrollable body: heading,
+    step 1 (the device card — connection status, live detail, and a port chooser
+    shown only when there is more than one port to pick from), step 2 (firmware:
+    drag-and-drop drop zone + Browse), the Flash Firmware primary action, a
+    progress block shown only while flashing, the activity log, and a footer that
+    reveals the UART settings only once a device is connected.
+
+    Ports are discovered/refreshed automatically and the selected port is probed
+    in the background, so there is no Refresh or Connect button: Flash Firmware
+    enables itself only once a live bootloader is detected and an image is chosen.
     Compiled bindings (x:DataType) validate every binding at build time.
 -->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:BootloaderTool.ViewModels"
+        xmlns:serial="clr-namespace:BootloaderTool.Protocol.Serial;assembly=BootloaderTool.Protocol"
         x:Class="BootloaderTool.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Width="640" Height="600"
-        MinWidth="520" MinHeight="520"
+        Width="640" Height="815"
+        MinWidth="520" MinHeight="660"
+        Background="{StaticResource PageBackground}"
+        ExtendClientAreaToDecorationsHint="True"
+        WindowDecorations="None"
         Title="BootloaderTool — STM32 UART Bootloader">
 
-    <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="12">
+    <!-- OffScreenMargin keeps content clear of the OS frame when maximised. -->
+    <Grid Margin="{Binding $parent[Window].OffScreenMargin}"
+          RowDefinitions="Auto,Auto,*,Auto">
 
-        <!-- Device panel -->
-        <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="12">
-            <StackPanel Spacing="8">
-                <TextBlock Text="Device" FontWeight="Bold" />
-                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                    <ComboBox Grid.Column="0"
-                              HorizontalAlignment="Stretch"
-                              PlaceholderText="Select serial port"
-                              ItemsSource="{Binding Ports}"
-                              SelectedItem="{Binding SelectedPort, Mode=TwoWay}" />
-                    <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshPortsCommand}" />
-                    <Button Grid.Column="2" Content="Connect" Command="{Binding ConnectCommand}" />
-                </Grid>
-                <TextBlock Text="{Binding DeviceInfo}" Foreground="Gray" TextWrapping="Wrap" />
+        <!-- ========================= Title bar ========================= -->
+        <Grid Grid.Row="0" x:Name="TitleBar"
+              Height="40" Background="{StaticResource StripBackground}"
+              ColumnDefinitions="Auto,*,Auto">
+
+            <!-- App identity -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                        VerticalAlignment="Center" Margin="10,0,0,0">
+                <Border Width="22" Height="22" CornerRadius="6"
+                        Background="{StaticResource AccentGradientBrush}"
+                        VerticalAlignment="Center">
+                    <Rectangle Width="9" Height="9" RadiusX="2" RadiusY="2" Fill="White"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Text="Bootloader" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+                <Border CornerRadius="5" Background="#E9EBF3" Padding="7,2" VerticalAlignment="Center">
+                    <TextBlock Text="STM32 · UART" FontSize="11"
+                               Foreground="{StaticResource TextSecondary}" />
+                </Border>
             </StackPanel>
-        </Border>
 
-        <!-- Firmware panel -->
-        <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="12">
-            <StackPanel Spacing="8">
-                <TextBlock Text="Firmware" FontWeight="Bold" />
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <TextBox Grid.Column="0"
-                             IsReadOnly="True"
-                             PlaceholderText="No image selected"
-                             Text="{Binding FirmwarePath}" />
-                    <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseFirmwareCommand}" />
-                </Grid>
-                <TextBlock Text="{Binding FirmwareInfo}" Foreground="Gray" TextWrapping="Wrap" />
-                <CheckBox Content="Boot application after reset (Go)" IsChecked="{Binding RunGo, Mode=TwoWay}" />
+            <!-- Window buttons -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Classes="chrome" Click="OnMinimize" ToolTip.Tip="Minimise">
+                    <Path Stroke="{StaticResource TextPrimary}" StrokeThickness="1" Data="M 0,5 H 10" />
+                </Button>
+                <Button Classes="chrome" Click="OnMaximize" ToolTip.Tip="Maximise">
+                    <Path Stroke="{StaticResource TextPrimary}" StrokeThickness="1"
+                          Data="M 0,0 H 10 V 10 H 0 Z" />
+                </Button>
+                <Button Classes="chrome chromeClose" Click="OnClose" ToolTip.Tip="Close">
+                    <Path Stroke="{StaticResource TextPrimary}" StrokeThickness="1"
+                          Data="M 0,0 L 10,10 M 0,10 L 10,0" />
+                </Button>
             </StackPanel>
-        </Border>
+        </Grid>
 
-        <!-- Action -->
-        <Button Grid.Row="2"
-                Content="Factory Reset"
-                Command="{Binding FactoryResetCommand}"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center"
-                Padding="0,10"
-                FontWeight="SemiBold" />
+        <!-- Accent rule under the title bar -->
+        <Border Grid.Row="1" Height="2" Background="{StaticResource AccentLineBrush}" />
 
-        <!-- Progress -->
-        <StackPanel Grid.Row="3" Spacing="4">
-            <Grid ColumnDefinitions="Auto,*">
-                <TextBlock Grid.Column="0" Text="{Binding Stage}" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="1" Text="{Binding ProgressText}" HorizontalAlignment="Right" Foreground="Gray" />
-            </Grid>
-            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" />
+        <!-- ========================= Body =============================
+             The three step cards sit in the base layer; the Activity log is a
+             folded bar beneath card 3 that unfolds into a card-like overlay
+             (floating over cards 2 / 3) so the cards never resize or shift. -->
+        <Grid Grid.Row="2">
+
+            <!-- Step cards + the folded Activity bar. Scrolls only if the window
+                 is shrunk below the cards' height. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="16" Margin="20,18">
+
+                <!-- Heading -->
+                <StackPanel Spacing="2">
+                    <TextBlock Classes="h1" Text="Flash firmware" />
+                    <TextBlock Classes="subtle"
+                               Text="Connect your device, choose an image, and flash — in three guided steps." />
+                </StackPanel>
+
+                <!-- Step 1: device (connection status + optional chooser).
+                     Tinted faint green once a bootloader is connected. -->
+                <Border Classes="card" Classes.done="{Binding DeviceDetected}">
+                    <StackPanel Spacing="12">
+                        <!-- Header: badge + title + live status indicator -->
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                                <Border Classes="stepBadge"><TextBlock Text="1" /></Border>
+                                <TextBlock Classes="h2" Text="Device" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- Status indicator: spinner while connecting, else a colour dot -->
+                            <Panel Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center">
+                                <Panel IsVisible="{Binding IsProbing}">
+                                    <Ellipse Width="16" Height="16" Stroke="{StaticResource SpinnerTrack}" StrokeThickness="2" />
+                                    <Path Classes="spinnerArc"
+                                          Stroke="{StaticResource AccentBrush}" StrokeThickness="2"
+                                          StrokeLineCap="Round" Data="M 8,2 A 6,6 0 1 1 2,8" />
+                                </Panel>
+                                <Ellipse Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                         Fill="{StaticResource DotConnected}" IsVisible="{Binding IsConnectedState}" />
+                                <Ellipse Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                         Fill="{StaticResource DangerBrush}" IsVisible="{Binding IsDisconnectedState}" />
+                            </Panel>
+                        </Grid>
+
+                        <!-- Connection status title + detail. MinHeight reserves room
+                             for a two-line detail so the card does not resize as the
+                             status text changes (connecting ↔ connected ↔ dropped). -->
+                        <StackPanel Spacing="2" MinHeight="48">
+                            <TextBlock Text="{Binding StatusTitle}" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimary}" />
+                            <TextBlock Text="{Binding DeviceInfo}" FontSize="12"
+                                       Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- Port chooser: shown only with more than one port, and
+                             locked once connected — the connection is held for the
+                             session, so changing ports would drop it. -->
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  IsVisible="{Binding ShowPortChooser}"
+                                  PlaceholderText="Select a serial port"
+                                  IsEnabled="{Binding !DeviceDetected}"
+                                  ItemsSource="{Binding Ports}"
+                                  SelectedItem="{Binding SelectedPort, Mode=TwoWay}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="serial:SerialPortInfo">
+                                    <TextBlock Text="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- Step 2: firmware — empty drop zone → file + statistics once a
+                     valid image is loaded (shown regardless of connection state).
+                     The whole card is the drop target, so a .bin can be dropped in
+                     any state to replace the current selection; it is tinted faint
+                     green once an image is loaded. -->
+                <Border Classes="card" Classes.done="{Binding HasFirmware}"
+                        x:Name="DropZone" DragDrop.AllowDrop="True">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Classes="stepBadge"><TextBlock Text="2" /></Border>
+                            <TextBlock Classes="h2" Text="Firmware" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Swappable content held at a fixed height: the empty and
+                             loaded states are overlaid in one region so the card is
+                             exactly the same size whether or not an image is loaded. -->
+                        <Panel Height="156">
+                            <!-- Empty state: drop zone (fills) + rejection notice. -->
+                            <Grid RowDefinitions="*,Auto" IsVisible="{Binding !HasFirmware}">
+                                <Border Grid.Row="0" Background="#FAFBFD"
+                                        BorderBrush="{StaticResource DropZoneBorder}"
+                                        BorderThickness="1.5" CornerRadius="10"
+                                        Padding="14,10">
+                                    <StackPanel Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border Width="32" Height="32" CornerRadius="16"
+                                                Background="#EEF0FB" HorizontalAlignment="Center">
+                                            <Path Stroke="{StaticResource AccentBrush}" StrokeThickness="1.6"
+                                                  StrokeLineCap="Round" StrokeJoin="Round"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Data="M 9,7 L 9,1 M 5,5 L 9,1 L 13,5 M 1,11 L 1,14 L 17,14 L 17,11" />
+                                        </Border>
+                                        <TextBlock Text="Drop a firmware image here"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="{StaticResource TextPrimary}" />
+                                        <TextBlock Classes="muted" Text=".bin — up to 2 MB"
+                                                   FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                                   FontSize="11" HorizontalAlignment="Center" />
+                                        <Button Classes="secondary" Content="Browse files"
+                                                HorizontalAlignment="Center"
+                                                Command="{Binding BrowseFirmwareCommand}" />
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Grid.Row="1" Text="{Binding FirmwareError}" FontSize="12"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"
+                                           IsVisible="{Binding HasFirmwareError}" />
+                            </Grid>
+
+                            <!-- Loaded state: file + change (left) | statistics (right),
+                                 with the faint "still a drop target" reminder beneath. -->
+                            <StackPanel Spacing="12" VerticalAlignment="Center"
+                                        IsVisible="{Binding HasFirmware}">
+                                <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="16">
+                                    <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Classes="muted" Text="Selected image" FontSize="11" />
+                                        <TextBlock Text="{Binding FirmwareName}" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimary}" TextWrapping="Wrap" />
+                                        <Button Classes="secondary" Content="Choose another…"
+                                                HorizontalAlignment="Left"
+                                                Command="{Binding BrowseFirmwareCommand}" />
+                                    </StackPanel>
+
+                                    <Border Grid.Column="1" Width="1" Background="{StaticResource CardBorder}" />
+
+                                    <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Classes="muted" Text="Statistics" FontSize="11" />
+                                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
+                                              RowSpacing="6" ColumnSpacing="14">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="subtle" Text="Size" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding FirmwareSizeText}"
+                                                       FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                                       Foreground="{StaticResource TextPrimary}" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="subtle" Text="CRC32" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FirmwareCrcText}"
+                                                       FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                                       Foreground="{StaticResource TextPrimary}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Spacing="6" Opacity="0.45"
+                                            HorizontalAlignment="Center">
+                                    <Path Stroke="{StaticResource TextSecondary}" StrokeThickness="1.4"
+                                          StrokeLineCap="Round" StrokeJoin="Round" VerticalAlignment="Center"
+                                          Data="M 9,7 L 9,1 M 5,5 L 9,1 L 13,5 M 1,11 L 1,14 L 17,14 L 17,11" />
+                                    <TextBlock Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                               Text="Drop a new .bin here to replace" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Panel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Step 3: flash action — always shown so the final step is
+                     visible up front, but the button stays disabled (greyed) until
+                     a device is connected and a valid image is selected. -->
+                <Border Classes="card">
+                    <StackPanel Spacing="14">
+                        <!-- Header: badge + title, with live flash progress inline on
+                             the right (only while flashing) so the card stays compact. -->
+                        <Grid ColumnDefinitions="Auto,*">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                                <Border Classes="stepBadge"><TextBlock Text="3" /></Border>
+                                <TextBlock Classes="h2" Text="Flash" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <Grid Grid.Column="1" IsVisible="{Binding IsBusy}"
+                                  Margin="16,0,0,0" VerticalAlignment="Center"
+                                  ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                <TextBlock Grid.Column="0" Text="{Binding Stage}" FontWeight="SemiBold"
+                                           FontSize="12" Foreground="{StaticResource TextPrimary}"
+                                           VerticalAlignment="Center" />
+                                <ProgressBar Grid.Column="1" Minimum="0" Maximum="100"
+                                             Value="{Binding ProgressValue}" MinWidth="70"
+                                             Foreground="{StaticResource AccentBrush}"
+                                             VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{Binding ProgressText}" FontSize="12"
+                                           Foreground="{StaticResource TextSecondary}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Grid>
+
+                        <!-- Flash button: always present so the card keeps its size;
+                             greyed and labelled "In progress…" (disabled by the
+                             command's CanExecute) while a flash runs. -->
+                        <Button Classes="accent"
+                                Content="{Binding FlashButtonText}"
+                                Command="{Binding FlashFirmwareCommand}"
+                                HorizontalAlignment="Stretch"
+                                Padding="0,14" FontSize="15" />
+
+                        <!-- Always-present status line (readiness / what's missing /
+                             flashing) so the card keeps a constant height. -->
+                        <TextBlock Classes="muted" FontSize="12" HorizontalAlignment="Center"
+                                   Text="{Binding FlashHint}" />
+
+                        <!-- Error / recovery banner -->
+                        <Border IsVisible="{Binding HasError}"
+                                Background="{StaticResource DangerSoftBg}"
+                                BorderBrush="{StaticResource DangerSoftBorder}"
+                                BorderThickness="1" CornerRadius="10" Padding="14">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBlock Grid.Column="0" Text="{Binding ErrorMessage}"
+                                           Foreground="{StaticResource DangerBrush}"
+                                           TextWrapping="Wrap" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="secondary" Content="Retry"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding FlashFirmwareCommand}" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Folded Activity bar: a subtle clickable strip below card 3
+                     (same 16px gap as between the cards). Hidden until there is
+                     something to show; unfolds into the overlay below. -->
+                <Button Classes="activityBar"
+                        IsVisible="{Binding ShowActivityBar}"
+                        Command="{Binding ToggleActivityCommand}"
+                        HorizontalAlignment="Stretch"
+                        ToolTip.Tip="Show the activity log">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Grid.Column="0" Classes="h2" Text="Activity Log"
+                                   VerticalAlignment="Center" />
+                        <Path Grid.Column="2" Stroke="{StaticResource TextMuted}" StrokeThickness="1.6"
+                              StrokeLineCap="Round" StrokeJoin="Round" VerticalAlignment="Center"
+                              Data="M 1,8 L 6,3 L 11,8" />
+                    </Grid>
+                </Button>
+
+                </StackPanel>
+            </ScrollViewer>
+
+        </Grid>
+
+        <!-- ===== Footer: UART settings, revealed only once connected ===== -->
+        <StackPanel Grid.Row="3" IsVisible="{Binding DeviceDetected}">
+            <Border Height="2" Background="{StaticResource AccentLineBrush}" />
+            <Border Background="{StaticResource StripBackground}" Padding="16,8">
+                <TextBlock Text="UART · 115200 · 8E1"
+                           FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" />
+            </Border>
         </StackPanel>
 
-        <!-- Activity log -->
-        <Border Grid.Row="4" BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="6">
-            <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding Log}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:LogEntry">
-                            <TextBlock Text="{Binding Display}"
-                                       FontFamily="Cascadia Code,Consolas,Menlo,monospace"
-                                       FontSize="12"
-                                       TextWrapping="Wrap" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </Border>
+        <!-- ===== Activity overlay: dimming scrim + the unfolded log sheet =====
+             Both span every row so the whole app (title bar, cards, footer) dims
+             behind the sheet, making clear we are "in" the activity view. The
+             scrim closes the sheet when clicked; the sheet floats above it. -->
+        <Border Grid.Row="0" Grid.RowSpan="4"
+                IsVisible="{Binding ShowActivitySheet}"
+                Background="#66202434"
+                Tapped="OnScrimTapped" />
 
-        <!-- Error / recovery banner -->
-        <Border Grid.Row="5"
-                IsVisible="{Binding HasError}"
-                Background="#3A1212"
-                BorderBrush="#7A2A2A"
-                BorderThickness="1"
-                CornerRadius="4"
-                Padding="12">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <TextBlock Grid.Column="0"
-                           Text="{Binding ErrorMessage}"
-                           Foreground="#FFB4B4"
-                           TextWrapping="Wrap"
-                           VerticalAlignment="Center" />
-                <Button Grid.Column="1" Content="Retry" Command="{Binding FactoryResetCommand}" />
+        <Border Grid.Row="0" Grid.RowSpan="4"
+                IsVisible="{Binding ShowActivitySheet}"
+                VerticalAlignment="Bottom" Margin="14,56,14,14" Height="380"
+                Background="{StaticResource CardBackground}"
+                BorderBrush="{StaticResource CardBorder}" BorderThickness="1"
+                CornerRadius="12" Padding="16,12,16,14"
+                BoxShadow="0 8 28 0 #40000000">
+            <Grid RowDefinitions="Auto,*">
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Column="0" Classes="h2" Text="Activity Log"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Classes="activityToggle"
+                            Command="{Binding ToggleActivityCommand}"
+                            ToolTip.Tip="Hide the activity log">
+                        <Panel Width="12" Height="12">
+                            <Path Stroke="{StaticResource TextMuted}" StrokeThickness="1.6"
+                                  StrokeLineCap="Round" StrokeJoin="Round"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  Data="M 1,3 L 6,8 L 11,3" />
+                        </Panel>
+                    </Button>
+                </Grid>
+
+                <!-- Reserve the scrollbar gutter (AllowAutoHide=False) so a long
+                     log never shifts text under an appearing scrollbar. Each row
+                     is a fixed-width timestamp/level prefix beside a wrapping
+                     message, so continuation lines hang aligned under the message
+                     rather than running back beneath the timestamp. -->
+                <ScrollViewer Grid.Row="1" x:Name="LogScroller" Margin="0,8,0,0"
+                              VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+                    <ItemsControl ItemsSource="{Binding Log}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LogEntry">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <TextBlock Grid.Column="0" Text="{Binding Prefix}"
+                                               Width="118"
+                                               FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                               FontSize="12"
+                                               Foreground="{StaticResource TextSecondary}"
+                                               VerticalAlignment="Top" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Message}"
+                                               Margin="6,0,0,0"
+                                               FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                               FontSize="12"
+                                               Foreground="{StaticResource TextPrimary}"
+                                               TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Grid>
         </Border>
 
