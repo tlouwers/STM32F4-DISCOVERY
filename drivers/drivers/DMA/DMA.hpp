@@ -11,7 +11,7 @@
  *
  * \brief   DMA utility class, intended for peripherals only.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/DMA
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/DMA
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -220,6 +220,12 @@ public:
 
     explicit DMA(Stream stream);
     ~DMA();
+
+    // Explicit disabled constructors/operators
+    DMA(const DMA&)            = delete;
+    DMA& operator=(const DMA&) = delete;
+    DMA(DMA&&)                 = delete;
+    DMA& operator=(DMA&&)      = delete;
 
     bool Configure(Channel channel, Direction direction, BufferMode bufferMode,
                    DataWidth memWidth = DataWidth::Byte,

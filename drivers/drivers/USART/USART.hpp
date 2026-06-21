@@ -179,6 +179,12 @@ public:
     explicit USART(const UsartInstance& instance);
     virtual ~USART();
 
+    // Explicit disabled constructors/operators
+    USART(const USART&)            = delete;
+    USART& operator=(const USART&) = delete;
+    USART(USART&&)                 = delete;
+    USART& operator=(USART&&)      = delete;
+
     bool Init(const IConfig& config) override;
     bool IsInit() const override;
     bool Sleep() override;

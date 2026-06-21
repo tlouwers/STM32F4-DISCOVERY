@@ -279,6 +279,18 @@ TEST_F(DMA_Test, Configure_MemoryToMemory_ReturnsTrue)
     EXPECT_EQ(DMA::Direction::MemoryToMemory, subject.GetDirection());
 }
 
+// RM0090 forbids circular mode for memory-to-memory; the driver rejects that
+// combination up front, before HAL_DMA_Init, and stays unconfigured.
+TEST_F(DMA_Test, Configure_MemoryToMemoryCircular_ReturnsFalseAndNotConfigured)
+{
+    DMA subject(DMA::Stream::Dma2_Stream0);
+
+    EXPECT_FALSE(subject.Configure(DMA::Channel::Channel0,
+                                   DMA::Direction::MemoryToMemory,
+                                   DMA::BufferMode::Circular));
+    EXPECT_FALSE(subject.IsConfigured());
+}
+
 // Both mem- and periph-side width translators have a Byte/HalfWord/Word arm.
 TEST_F(DMA_Test, Configure_EveryDataWidth_ReturnsTrue)
 {

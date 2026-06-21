@@ -7,11 +7,10 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   DMA
  *
  * \brief   DMA utility class, intended for peripherals only.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/DMA
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/DMA
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -34,7 +33,7 @@ static std::function<void()> dma2Callbacks[8] {};
 
 
 /************************************************************************/
-/* Public methods                                                       */
+/* Public Methods                                                       */
 /************************************************************************/
 /**
  * \brief   Constructor.
@@ -111,8 +110,20 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
     mDirection           = direction;
     mHalfBufferInterrupt = halfBufferInterrupt;
 
-    if (__HAL_RCC_DMA1_IS_CLK_DISABLED()) { __HAL_RCC_DMA1_CLK_ENABLE(); }
-    if (__HAL_RCC_DMA2_IS_CLK_DISABLED()) { __HAL_RCC_DMA2_CLK_ENABLE(); }
+    // RM0090 §10.3.x: circular buffer mode is not available for memory-to-memory
+    // transfers. Reject the combination rather than letting it reach HAL_DMA_Init.
+    if ((Direction::MemoryToMemory == direction) && (BufferMode::Circular == bufferMode)) { return false; }
+
+    // Enable only the controller this stream lives on; the enum lists DMA1's eight
+    // streams first, then DMA2's, so the split point is Stream::Dma1_Stream7.
+    if (mStream <= Stream::Dma1_Stream7)
+    {
+        if (__HAL_RCC_DMA1_IS_CLK_DISABLED()) { __HAL_RCC_DMA1_CLK_ENABLE(); }
+    }
+    else
+    {
+        if (__HAL_RCC_DMA2_IS_CLK_DISABLED()) { __HAL_RCC_DMA2_CLK_ENABLE(); }
+    }
 
     mHandle.Init.Channel             = GetChannel(channel);
     mHandle.Init.Direction           = GetHalDirection(direction);
@@ -145,6 +156,10 @@ bool DMA::Configure(Channel channel, Direction direction, BufferMode bufferMode,
 
     if (HAL_DMA_Init(&mHandle) == HAL_OK)
     {
+        // Mask the stream IRQ before reassigning the shared std::function slot: on a
+        // reconfigure of an already-running stream the NVIC line is still enabled from the
+        // prior Configure, and a std::function assignment is not atomic w.r.t. the ISR.
+        DisableInterrupt(mStream);
         ConnectInternalCallback(mStream);
         EnableInterrupt(mStream, preemptPrio, subPrio);
         mConfigured = true;
@@ -214,7 +229,7 @@ void DMA::EnforceHalfBufferInterruptSetting()
 
 
 /************************************************************************/
-/* Private methods                                                      */
+/* Private Methods                                                      */
 /************************************************************************/
 /**
  * \brief   Get the DMA instance belonging to the given stream.
