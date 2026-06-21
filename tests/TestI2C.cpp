@@ -279,6 +279,24 @@ TEST_F(I2C_Test, ReadInterrupt_ValidAfterInit_ReturnsTrue)
     EXPECT_TRUE(mSubject.ReadInterrupt(kSlave, dest, sizeof(dest), nullptr));
 }
 
+TEST_F(I2C_Test, WriteInterrupt_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeI2C_SetTransferResult(HAL_ERROR);
+
+    const uint8_t src[4] = { 1, 2, 3, 4 };
+    EXPECT_FALSE(mSubject.WriteInterrupt(kSlave, src, sizeof(src), nullptr));
+}
+
+TEST_F(I2C_Test, ReadInterrupt_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeI2C_SetTransferResult(HAL_ERROR);
+
+    uint8_t dest[4] = {};
+    EXPECT_FALSE(mSubject.ReadInterrupt(kSlave, dest, sizeof(dest), nullptr));
+}
+
 
 /************************************************************************/
 /* DMA transfers                                                        */
@@ -300,6 +318,19 @@ TEST_F(I2C_Test, WriteDMA_TxDmaLinked_ReturnsTrue)
 
     const uint8_t src[4] = { 1, 2, 3, 4 };
     EXPECT_TRUE(mSubject.WriteDMA(kSlave, src, sizeof(src), nullptr));
+}
+
+TEST_F(I2C_Test, WriteDMA_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+
+    DMA tx(DMA::Stream::Dma1_Stream6);
+    ASSERT_TRUE(ConfigureDma(tx, DMA::Direction::MemoryToPeripheral));
+    ASSERT_TRUE(mSubject.LinkDma(tx));
+    FakeI2C_SetTransferResult(HAL_ERROR);
+
+    const uint8_t src[4] = { 1, 2, 3, 4 };
+    EXPECT_FALSE(mSubject.WriteDMA(kSlave, src, sizeof(src), nullptr));
 }
 
 TEST_F(I2C_Test, ReadDMA_NoRxDmaLinked_ReturnsFalse)

@@ -25,6 +25,7 @@
 /************************************************************************/
 #include "drivers/SPI/SPI.hpp"
 #include "utility/Assert/Assert.h"
+#include "utility/ScopedIrqMask/ScopedIrqMask.hpp"
 #include "stm32f4xx_hal_spi.h"
 
 
@@ -210,9 +211,14 @@ bool SPI::WriteDMA(const uint8_t* src, uint16_t length, const std::function<void
     if (!mInitialized)  { return false; }
     if (nullptr == mHandle.hdmatx) { return false; }
 
+    // Arm the handler only after the HAL accepts the transfer, bracketed by the
+    // per-instance NVIC mask (ScopedIrqMask): the std::function assignment is not
+    // atomic and, once the transfer is live, the SPI ISR may read the slot. A
+    // rejected start (HAL_BUSY/HAL_ERROR) leaves no stale handler armed.
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_SPI_Transmit_DMA(&mHandle, const_cast<uint8_t*>(src), length) != HAL_OK) { return false; }
     mSPICallbacks.callbackTxRx = handler;
-
-    return (HAL_SPI_Transmit_DMA(&mHandle, const_cast<uint8_t*>(src), length) == HAL_OK);
+    return true;
 }
 
 /**
@@ -240,10 +246,12 @@ bool SPI::WriteReadDMA(const uint8_t* src, uint8_t* dest, uint16_t length, const
     if (!mInitialized)   { return false; }
     if (nullptr == mHandle.hdmatx) { return false; }
     if (nullptr == mHandle.hdmarx) { return false; }
+    ASSERT(mDmaRx);     // hdmarx is only ever set alongside mDmaRx in LinkDma
 
-    mSPICallbacks.callbackTxRx = handler;
-
+    // See WriteDMA: arm the handler only on HAL_OK, under the NVIC mask.
+    ScopedIrqMask mask(GetIRQn(mInstance));
     if (HAL_SPI_TransmitReceive_DMA(&mHandle, const_cast<uint8_t*>(src), dest, length) != HAL_OK) { return false; }
+    mSPICallbacks.callbackTxRx = handler;
 
     // HAL re-enables DMA_IT_HT on the Rx slot regardless of the user's
     // HalfBufferInterrupt selection; reassert it.
@@ -270,10 +278,12 @@ bool SPI::ReadDMA(uint8_t* dest, uint16_t length, const std::function<void()>& h
     if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
     if (nullptr == mHandle.hdmarx) { return false; }
+    ASSERT(mDmaRx);     // hdmarx is only ever set alongside mDmaRx in LinkDma
 
-    mSPICallbacks.callbackTxRx = handler;
-
+    // See WriteDMA: arm the handler only on HAL_OK, under the NVIC mask.
+    ScopedIrqMask mask(GetIRQn(mInstance));
     if (HAL_SPI_Receive_DMA(&mHandle, dest, length) != HAL_OK) { return false; }
+    mSPICallbacks.callbackTxRx = handler;
 
     // HAL re-enables DMA_IT_HT regardless of the user's HalfBufferInterrupt
     // selection; reassert it.
@@ -299,9 +309,11 @@ bool SPI::WriteInterrupt(const uint8_t* src, uint16_t length, const std::functio
     if (0 == length)    { return false; }
     if (!mInitialized)  { return false; }
 
+    // See WriteDMA: arm the handler only on HAL_OK, under the NVIC mask.
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_SPI_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length) != HAL_OK) { return false; }
     mSPICallbacks.callbackTxRx = handler;
-
-    return (HAL_SPI_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length) == HAL_OK);
+    return true;
 }
 
 /**
@@ -327,9 +339,11 @@ bool SPI::WriteReadInterrupt(const uint8_t* src, uint8_t* dest, uint16_t length,
     if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
+    // See WriteDMA: arm the handler only on HAL_OK, under the NVIC mask.
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_SPI_TransmitReceive_IT(&mHandle, const_cast<uint8_t*>(src), dest, length) != HAL_OK) { return false; }
     mSPICallbacks.callbackTxRx = handler;
-
-    return (HAL_SPI_TransmitReceive_IT(&mHandle, const_cast<uint8_t*>(src), dest, length) == HAL_OK);
+    return true;
 }
 
 /**
@@ -350,9 +364,11 @@ bool SPI::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<void
     if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
+    // See WriteDMA: arm the handler only on HAL_OK, under the NVIC mask.
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_SPI_Receive_IT(&mHandle, dest, length) != HAL_OK) { return false; }
     mSPICallbacks.callbackTxRx = handler;
-
-    return (HAL_SPI_Receive_IT(&mHandle, dest, length) == HAL_OK);
+    return true;
 }
 
 /**
@@ -495,7 +511,7 @@ uint32_t SPI::GetPeripheralClockFreq() const
  * \param   mode    The mode to get the polarity for.
  * \returns The polarity if successful, else 0.
  */
-uint32_t SPI::GetPolarity(const Mode& mode)
+uint32_t SPI::GetPolarity(const Mode& mode) const
 {
     uint32_t polarity = SPI_POLARITY_LOW;
 
@@ -516,7 +532,7 @@ uint32_t SPI::GetPolarity(const Mode& mode)
  * \param   mode    The mode to get the phase for.
  * \returns The phase if successful, else 0.
  */
-uint32_t SPI::GetPhase(const Mode& mode)
+uint32_t SPI::GetPhase(const Mode& mode) const
 {
     uint32_t phase = SPI_PHASE_1EDGE;
 
@@ -541,7 +557,7 @@ uint32_t SPI::GetPhase(const Mode& mode)
  *          Falls through to SPI_BAUDRATEPRESCALER_2 (the fastest valid
  *          value) when the request exceeds PCLK/2.
  */
-uint32_t SPI::CalculatePrescaler(uint32_t busSpeed)
+uint32_t SPI::CalculatePrescaler(uint32_t busSpeed) const
 {
     uint32_t prescaler = GetPeripheralClockFreq() / busSpeed;
          if (prescaler >= 256) { prescaler = SPI_BAUDRATEPRESCALER_256; }

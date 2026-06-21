@@ -22,6 +22,7 @@
 /************************************************************************/
 #include "drivers/USART/USART.hpp"
 #include "utility/Assert/Assert.h"
+#include "utility/ScopedIrqMask/ScopedIrqMask.hpp"
 #include "stm32f4xx_hal_usart.h"
 
 
@@ -218,21 +219,13 @@ bool USART::WriteDma(const uint8_t* src, uint16_t length, const std::function<vo
 
     // Note: HAL_UART_Transmit_DMA will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
-    // Mask this instance's IRQ across start-and-assign: the handler slot is a std::function
-    // shared with the USART ISR, and assigning it (non-atomic, may touch the heap) while the
-    // ISR could fire is a data race. Masking keeps the assignment atomic w.r.t. the ISR while
-    // still only arming the handler on a successful start (no stale handler on rejection).
-    const IRQn_Type irqn = GetIRQn(mInstance);
-    HAL_NVIC_DisableIRQ(irqn);
-
-    if (HAL_UART_Transmit_DMA(&mHandle, const_cast<uint8_t*>(src), length) != HAL_OK)
-    {
-        HAL_NVIC_EnableIRQ(irqn);
-        return false;
-    }
-
+    // Mask this instance's IRQ across start-and-assign (ScopedIrqMask): the handler slot is a
+    // std::function shared with the USART ISR, and assigning it (non-atomic, may touch the heap)
+    // while the ISR could fire is a data race. Masking keeps the assignment atomic w.r.t. the
+    // ISR while still only arming the handler on a successful start (no stale handler on reject).
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_UART_Transmit_DMA(&mHandle, const_cast<uint8_t*>(src), length) != HAL_OK) { return false; }
     mUsartCallbacks.callbackTx = handler;
-    HAL_NVIC_EnableIRQ(irqn);
     return true;
 }
 
@@ -258,19 +251,14 @@ bool USART::ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uin
 
     // Note: HAL_UART_Receive_DMA will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
 
-    // Mask this instance's IRQ across the whole start-arm-enable sequence: the handler slot
-    // is a std::function shared with the USART ISR, and the IDLE ISR dispatches the Rx
-    // callback then aborts the receive. Masking keeps the assignment atomic w.r.t. the ISR
-    // and prevents an early IDLE from firing before the handler exists, while still only
-    // arming the handler on a successful start (no stale handler on rejection).
-    const IRQn_Type irqn = GetIRQn(mInstance);
-    HAL_NVIC_DisableIRQ(irqn);
-
-    if (HAL_UART_Receive_DMA(&mHandle, dest, length) != HAL_OK)
-    {
-        HAL_NVIC_EnableIRQ(irqn);
-        return false;
-    }
+    // Mask this instance's IRQ across the whole start-arm-enable sequence (ScopedIrqMask): the
+    // handler slot is a std::function shared with the USART ISR, and the IDLE ISR dispatches the
+    // Rx callback then aborts the receive. Masking keeps the assignment atomic w.r.t. the ISR
+    // and prevents an early IDLE from firing before the handler exists, while still only arming
+    // the handler on a successful start (no stale handler on rejection). The guard re-enables
+    // the line on scope exit, after the IDLE-IT and half-buffer reassert below.
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_UART_Receive_DMA(&mHandle, dest, length) != HAL_OK) { return false; }
 
     mUsartCallbacks.callbackRx = handler;
 
@@ -285,8 +273,6 @@ bool USART::ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uin
     // HAL_UART_Receive_DMA installs a half-complete callback and re-enables
     // DMA_IT_HT regardless of the user's HalfBufferInterrupt selection; reassert it.
     mDmaRx->EnforceHalfBufferInterruptSetting();
-
-    HAL_NVIC_EnableIRQ(irqn);
     return true;
 }
 
@@ -310,17 +296,9 @@ bool USART::WriteInterrupt(const uint8_t* src, uint16_t length, const std::funct
     // Mask this instance's IRQ across start-and-assign (see WriteDma): the handler slot is a
     // std::function shared with the USART ISR; with HAL_UART_Transmit_IT the TXE interrupt is
     // armed immediately, so assign the handler atomically w.r.t. the ISR, only on success.
-    const IRQn_Type irqn = GetIRQn(mInstance);
-    HAL_NVIC_DisableIRQ(irqn);
-
-    if (HAL_UART_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length) != HAL_OK)
-    {
-        HAL_NVIC_EnableIRQ(irqn);
-        return false;
-    }
-
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_UART_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length) != HAL_OK) { return false; }
     mUsartCallbacks.callbackTx = handler;
-    HAL_NVIC_EnableIRQ(irqn);
     return true;
 }
 
@@ -344,14 +322,8 @@ bool USART::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<vo
 
     // Mask this instance's IRQ across the start-arm-enable sequence (see ReadDma): the handler
     // slot is shared with the USART ISR and the IDLE/RXNE interrupts can fire immediately.
-    const IRQn_Type irqn = GetIRQn(mInstance);
-    HAL_NVIC_DisableIRQ(irqn);
-
-    if (HAL_UART_Receive_IT(&mHandle, dest, length) != HAL_OK)
-    {
-        HAL_NVIC_EnableIRQ(irqn);
-        return false;
-    }
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_UART_Receive_IT(&mHandle, dest, length) != HAL_OK) { return false; }
 
     mUsartCallbacks.callbackRx = handler;
 
@@ -360,7 +332,6 @@ bool USART::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<vo
         __HAL_UART_ENABLE_IT(&mHandle, UART_IT_IDLE);
     }
 
-    HAL_NVIC_EnableIRQ(irqn);
     return true;
 }
 

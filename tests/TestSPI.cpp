@@ -289,6 +289,34 @@ TEST_F(SPI_Test, WriteReadInterrupt_ValidAfterInit_ReturnsTrue)
     EXPECT_TRUE(mSubject.WriteReadInterrupt(src, dest, sizeof(src), nullptr));
 }
 
+TEST_F(SPI_Test, WriteInterrupt_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeSPI_SetTransferResult(HAL_ERROR);
+
+    const uint8_t src[4] = { 1, 2, 3, 4 };
+    EXPECT_FALSE(mSubject.WriteInterrupt(src, sizeof(src), nullptr));
+}
+
+TEST_F(SPI_Test, ReadInterrupt_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeSPI_SetTransferResult(HAL_ERROR);
+
+    uint8_t dest[4] = {};
+    EXPECT_FALSE(mSubject.ReadInterrupt(dest, sizeof(dest), nullptr));
+}
+
+TEST_F(SPI_Test, WriteReadInterrupt_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeSPI_SetTransferResult(HAL_ERROR);
+
+    const uint8_t src[4]  = { 1, 2, 3, 4 };
+    uint8_t       dest[4] = {};
+    EXPECT_FALSE(mSubject.WriteReadInterrupt(src, dest, sizeof(src), nullptr));
+}
+
 
 /************************************************************************/
 /* DMA transfers                                                        */
@@ -322,6 +350,19 @@ TEST_F(SPI_Test, WriteDMA_TxDmaLinked_ReturnsTrue)
     EXPECT_TRUE(mSubject.WriteDMA(src, sizeof(src), nullptr));
 }
 
+TEST_F(SPI_Test, WriteDMA_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+
+    DMA tx(DMA::Stream::Dma2_Stream3);
+    ASSERT_TRUE(ConfigureDma(tx, DMA::Direction::MemoryToPeripheral));
+    ASSERT_TRUE(mSubject.LinkDma(tx));
+    FakeSPI_SetTransferResult(HAL_ERROR);
+
+    const uint8_t src[4] = { 1, 2, 3, 4 };
+    EXPECT_FALSE(mSubject.WriteDMA(src, sizeof(src), nullptr));
+}
+
 TEST_F(SPI_Test, ReadDMA_NoRxDmaLinked_ReturnsFalse)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
@@ -339,6 +380,19 @@ TEST_F(SPI_Test, ReadDMA_RxDmaLinked_ReturnsTrue)
 
     uint8_t dest[4] = {};
     EXPECT_TRUE(mSubject.ReadDMA(dest, sizeof(dest), nullptr));
+}
+
+TEST_F(SPI_Test, ReadDMA_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+
+    DMA rx(DMA::Stream::Dma2_Stream0);
+    ASSERT_TRUE(ConfigureDma(rx, DMA::Direction::PeripheralToMemory));
+    ASSERT_TRUE(mSubject.LinkDma(rx));
+    FakeSPI_SetTransferResult(HAL_ERROR);
+
+    uint8_t dest[4] = {};
+    EXPECT_FALSE(mSubject.ReadDMA(dest, sizeof(dest), nullptr));
 }
 
 TEST_F(SPI_Test, WriteReadDMA_OnlyTxLinked_ReturnsFalse)
@@ -368,6 +422,23 @@ TEST_F(SPI_Test, WriteReadDMA_BothLinked_ReturnsTrue)
     const uint8_t src[4]  = { 1, 2, 3, 4 };
     uint8_t       dest[4] = {};
     EXPECT_TRUE(mSubject.WriteReadDMA(src, dest, sizeof(src), nullptr));
+}
+
+TEST_F(SPI_Test, WriteReadDMA_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+
+    DMA tx(DMA::Stream::Dma2_Stream3);
+    DMA rx(DMA::Stream::Dma2_Stream0);
+    ASSERT_TRUE(ConfigureDma(tx, DMA::Direction::MemoryToPeripheral));
+    ASSERT_TRUE(ConfigureDma(rx, DMA::Direction::PeripheralToMemory));
+    ASSERT_TRUE(mSubject.LinkDma(tx));
+    ASSERT_TRUE(mSubject.LinkDma(rx));
+    FakeSPI_SetTransferResult(HAL_ERROR);
+
+    const uint8_t src[4]  = { 1, 2, 3, 4 };
+    uint8_t       dest[4] = {};
+    EXPECT_FALSE(mSubject.WriteReadDMA(src, dest, sizeof(src), nullptr));
 }
 
 
