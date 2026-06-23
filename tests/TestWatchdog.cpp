@@ -162,5 +162,13 @@ TEST_F(Watchdog_Test, Refresh_AfterInit_CallsHalRefresh)
     EXPECT_EQ(1, FakeIWDG_RefreshCallCount());
 }
 
+// Refresh before Init must not touch the HAL: the handle is still null.
+TEST_F(Watchdog_Test, Refresh_BeforeInit_DoesNotCallHalRefresh)
+{
+    mSubject.Refresh();
+
+    EXPECT_EQ(0, FakeIWDG_RefreshCallCount());
+}
+
 
 } // namespace

@@ -15,7 +15,7 @@
  *          Pin class: the composition root builds the real Pin, while
  *          tests inject a Mock_Pin through this interface.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/interfaces
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/interfaces
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -65,13 +65,50 @@ class IPin
 public:
     virtual ~IPin() = default;
 
+    /**
+     * \brief   Configure (and optionally enable) an interrupt for the pin.
+     * \param   trigger                 The edge condition on which to trigger.
+     * \param   callback                The handler invoked when the interrupt fires.
+     * \param   enabledAfterConfigure   If true, the interrupt is enabled once configured.
+     * \returns True if the interrupt could be configured, else false.
+     * \note    Handlers run in INTERRUPT context: keep them short, touch only
+     *          ISR-safe shared state, and do no blocking work.
+     */
     virtual bool Interrupt(Trigger trigger, const std::function<void()>& callback, bool enabledAfterConfigure) = 0;
+
+    /**
+     * \brief   Enable a previously configured interrupt for the pin.
+     * \returns True if the interrupt could be enabled, else false.
+     */
     virtual bool InterruptEnable() = 0;
+
+    /**
+     * \brief   Disable a previously configured interrupt for the pin.
+     * \returns True if the interrupt could be disabled, else false.
+     */
     virtual bool InterruptDisable() = 0;
+
+    /**
+     * \brief   Remove a previously configured interrupt for the pin.
+     * \returns True if the interrupt could be removed, else false.
+     */
     virtual bool InterruptRemove() = 0;
 
+    /**
+     * \brief   Toggle the output level of the pin (high to low, or low to high).
+     */
     virtual void Toggle() const = 0;
+
+    /**
+     * \brief   Set the output level on the pin.
+     * \param   level   The output level to set.
+     */
     virtual void Set(Level level) = 0;
+
+    /**
+     * \brief   Get the actual level of the pin.
+     * \returns The actual level of the pin.
+     */
     virtual Level Get() const = 0;
 };
 

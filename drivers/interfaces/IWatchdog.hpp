@@ -32,6 +32,11 @@ class IWatchdog
 {
 public:
     virtual ~IWatchdog() = default;
+
+    /**
+     * \brief   Refresh the watchdog counter to prevent a system reset.
+     * \note    Must be called within the configured timeout period.
+     */
     virtual void Refresh() const = 0;
 };
 

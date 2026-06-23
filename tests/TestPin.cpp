@@ -131,11 +131,13 @@ TEST_F(Pin_Test, ConfigureOutput_OpenDrainPullDown_InitsPullDown)
     EXPECT_EQ(GPIO_PULLDOWN, FakeGPIO_LastInitPull());
 }
 
-TEST_F(Pin_Test, ConfigureOutput_OpenDrainPullUpDown_InitsPullUpDown)
+// PUPDR = 0b11 is reserved on STM32F4; the driver rejects pull-up+pull-down and
+// falls back to no pull (the ASSERT is a no-op in the native build).
+TEST_F(Pin_Test, ConfigureOutput_OpenDrainPullUpDown_FallsBackToNoPull)
 {
     Pin pin(IdPort(GPIO_PIN_0));
     pin.Configure(Level::HIGH, Drive::OPEN_DRAIN_PULL_UP_DOWN);
-    EXPECT_EQ((GPIO_PULLUP | GPIO_PULLDOWN), FakeGPIO_LastInitPull());
+    EXPECT_EQ(GPIO_NOPULL, FakeGPIO_LastInitPull());
 }
 
 TEST_F(Pin_Test, ConstructAsOutput_ConfiguresImmediately)
@@ -172,11 +174,12 @@ TEST_F(Pin_Test, ConfigureInput_PullDown_InitsPullDown)
     EXPECT_EQ(GPIO_PULLDOWN, FakeGPIO_LastInitPull());
 }
 
-TEST_F(Pin_Test, ConfigureInput_PullUpDown_InitsPullUpDown)
+// PUPDR = 0b11 is reserved on STM32F4; UP_DOWN falls back to no pull.
+TEST_F(Pin_Test, ConfigureInput_PullUpDown_FallsBackToNoPull)
 {
     Pin pin(IdPort(GPIO_PIN_0));
     pin.Configure(PullUpDown::UP_DOWN);
-    EXPECT_EQ((GPIO_PULLUP | GPIO_PULLDOWN), FakeGPIO_LastInitPull());
+    EXPECT_EQ(GPIO_NOPULL, FakeGPIO_LastInitPull());
 }
 
 TEST_F(Pin_Test, ConfigureInput_Analog_InitsAnalogNoPull)
@@ -221,11 +224,12 @@ TEST_F(Pin_Test, ConfigureAlternate_PullDown_InitsPullDown)
     EXPECT_EQ(GPIO_PULLDOWN, FakeGPIO_LastInitPull());
 }
 
-TEST_F(Pin_Test, ConfigureAlternate_PullUpDown_InitsPullUpDown)
+// PUPDR = 0b11 is reserved on STM32F4; UP_DOWN falls back to no pull.
+TEST_F(Pin_Test, ConfigureAlternate_PullUpDown_FallsBackToNoPull)
 {
     Pin pin(IdPort(GPIO_PIN_0));
     pin.Configure(Alternate::AF0, PullUpDown::UP_DOWN);
-    EXPECT_EQ((GPIO_PULLUP | GPIO_PULLDOWN), FakeGPIO_LastInitPull());
+    EXPECT_EQ(GPIO_NOPULL, FakeGPIO_LastInitPull());
 }
 
 TEST_F(Pin_Test, ConstructAsAlternate_ConfiguresImmediately)
@@ -271,6 +275,14 @@ TEST_F(Pin_Test, Get_InputPin_ReturnsLowWhenReadReset)
     Pin pin(IdPort(GPIO_PIN_0), PullUpDown::UP);
     FakeGPIO_SetReadPinState(GPIO_PIN_RESET);
     EXPECT_EQ(Level::LOW, pin.Get());
+}
+
+// AF pins read IDR like any other; Get() must not hit the UNDEFINED spin path.
+TEST_F(Pin_Test, Get_AlternatePin_ReturnsHighWhenReadSet)
+{
+    Pin pin(IdPort(GPIO_PIN_0), Alternate::AF5);
+    FakeGPIO_SetReadPinState(GPIO_PIN_SET);
+    EXPECT_EQ(Level::HIGH, pin.Get());
 }
 
 
@@ -500,11 +512,13 @@ TEST_F(Pin_Test, Interrupt_PreservesPullDown_ReAppliesPullDown)
     EXPECT_TRUE(pin.InterruptRemove());
 }
 
-TEST_F(Pin_Test, Interrupt_PreservesPullUpDown_ReAppliesPullUpDown)
+// The pull set by Configure was already coerced to no-pull (UP_DOWN is reserved),
+// so Interrupt() carries that forward as no-pull too.
+TEST_F(Pin_Test, Interrupt_PreservesPullUpDown_CarriesForwardNoPull)
 {
     Pin pin(IdPort(GPIO_PIN_0), PullUpDown::UP_DOWN);
     EXPECT_TRUE(pin.Interrupt(Trigger::RISING, []{}));
-    EXPECT_EQ((GPIO_PULLUP | GPIO_PULLDOWN), FakeGPIO_LastInitPull());
+    EXPECT_EQ(GPIO_NOPULL, FakeGPIO_LastInitPull());
     EXPECT_TRUE(pin.InterruptRemove());
 }
 
