@@ -39,8 +39,12 @@ public:
      * \param   out     Output parameter; set to the computed CRC on success,
      *                  left untouched on failure.
      * \returns True if the CRC was computed and written to \p out, false on
-     *          bad parameters (null buffer, zero length) or uninitialised
-     *          peripheral.
+     *          bad parameters (null buffer, zero length), an uninitialised
+     *          peripheral, or a re-entrant call (see note).
+     * \note    The underlying CRC unit is a single shared accumulator and is
+     *          NOT re-entrant: a concurrent call from another task or an ISR is
+     *          rejected (returns false) rather than allowed to corrupt the
+     *          in-flight computation. Call from a single context, or serialise.
      */
     virtual bool Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out) = 0;
 };

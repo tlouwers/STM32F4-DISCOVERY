@@ -7,11 +7,10 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Adc
  *
  * \brief   Adc peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Adc
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Adc
  *
  * \note    Using right alignment only to be consistent with all resolutions.
  *          GetValue uses: Adc(input) = value * (Vref / (Adc(resolution) + 1) ) - for 12-bit: Adc(input) = value * (3.3V / (0xFFF + 1) --> var = (value * (0xFFF + 1)) / 3.3V
@@ -26,15 +25,16 @@
 /************************************************************************/
 #include "drivers/Adc/Adc.hpp"
 #include "utility/Assert/Assert.h"
+#include "utility/ScopedIrqMask/ScopedIrqMask.hpp"
 #include "stm32f4xx_hal_adc.h"
 
 
 /************************************************************************/
 /* Static variables                                                     */
 /************************************************************************/
-static ADCCallbacks adc1_callbacks {};
-static ADCCallbacks adc2_callbacks {};
-static ADCCallbacks adc3_callbacks {};
+static AdcCallbacks adc1_callbacks {};
+static AdcCallbacks adc2_callbacks {};
+static AdcCallbacks adc3_callbacks {};
 
 
 /************************************************************************/
@@ -44,11 +44,11 @@ static ADCCallbacks adc3_callbacks {};
  * \brief   Call the callbackIRQ, if configured.
  * \param   adc_callbacks   Structure containing the callbackIRQ to call.
  */
-static void CallbackIRQ(const ADCCallbacks& adc_callbacks)
+static void CallbackIRQ(const AdcCallbacks& adc_callbacks)
 {
-    if (adc_callbacks.callbackIRQ)
+    if (adc_callbacks.mCallbackIRQ)
     {
-        adc_callbacks.callbackIRQ();
+        adc_callbacks.mCallbackIRQ();
     }
 }
 
@@ -56,11 +56,11 @@ static void CallbackIRQ(const ADCCallbacks& adc_callbacks)
  * \brief   Call the callbackEndOfConversion, if configured.
  * \param   adc_callbacks   Structure containing the callbackEndOfConversion to call.
  */
-static void CallbackEndOfConversion(const ADCCallbacks& adc_callbacks, uint16_t value)
+static void CallbackEndOfConversion(const AdcCallbacks& adc_callbacks, uint16_t value)
 {
-    if (adc_callbacks.callbackEndOfConversion)
+    if (adc_callbacks.mCallbackEndOfConversion)
     {
-        adc_callbacks.callbackEndOfConversion(value);
+        adc_callbacks.mCallbackEndOfConversion(value);
     }
 }
 
@@ -71,9 +71,9 @@ static void CallbackEndOfConversion(const ADCCallbacks& adc_callbacks, uint16_t 
 /**
  * \brief   Constructor, prepares the internal Adc administration.
  */
-Adc::Adc(const ADCInstance& instance) :
+Adc::Adc(const AdcInstance& instance) :
     mInstance(instance),
-    mADCCallbacks( (instance == ADCInstance::ADC_1) ? (adc1_callbacks) : ( (instance == ADCInstance::ADC_2) ? (adc2_callbacks) : (adc3_callbacks) ) ),
+    mAdcCallbacks( (instance == AdcInstance::ADC_1) ? (adc1_callbacks) : ( (instance == AdcInstance::ADC_2) ? (adc2_callbacks) : (adc3_callbacks) ) ),
     mInitialized(false)
 {
     SetInstance(instance);
@@ -97,10 +97,10 @@ Adc::~Adc()
  * \param   config  The configuration for the Adc instance to use.
  * \returns True if the configuration could be applied, else false.
  * \note    ADCCLK = PCLK2 / Config::mPrescaler. The F407 datasheet caps
- *          ADCCLK at 36 MHz; the caller must pick a prescaler so that
- *          PCLK2 / N stays within that for the active Board clock profile
- *          (DIV2 is fine for the HSE-direct 8 MHz default; the 168 MHz PLL
- *          path gives PCLK2 = 84 MHz so DIV4 or higher is required there).
+ *          ADCCLK at 36 MHz; Init() rejects (returns false) a prescaler that
+ *          would exceed that for the active Board clock profile (DIV2 is fine
+ *          for the HSE-direct 8 MHz default; the 168 MHz PLL path gives
+ *          PCLK2 = 84 MHz so DIV4 or higher is required there).
  */
 bool Adc::Init(const IConfig& config)
 {
@@ -110,6 +110,15 @@ bool Adc::Init(const IConfig& config)
     if (config.ConfigId() != Config::Id()) { return false; }
 
     const Config& cfg = static_cast<const Config&>(config);
+
+    // Enforce the ADCCLK ceiling for the active board clock profile: ADCCLK =
+    // PCLK2 / prescaler must stay <= 36 MHz (F407 DS8626 §6.3.15 / RM0090 §13.5).
+    // Overclocking the ADC silently degrades conversion accuracy, so reject a
+    // prescaler that the current PCLK2 cannot satisfy rather than trust the caller.
+    static const uint32_t ADCCLK_MAX_HZ = 36000000U;
+    const uint32_t adcClk = HAL_RCC_GetPCLK2Freq() / GetPrescalerDivider(cfg.mPrescaler);
+    EXPECT(adcClk <= ADCCLK_MAX_HZ);
+    if (adcClk > ADCCLK_MAX_HZ) { return false; }
 
     mHandle.Init.ClockPrescaler        = GetPrescaler(cfg.mPrescaler);
     mHandle.Init.Resolution            = GetResolution(cfg.mResolution);
@@ -137,7 +146,7 @@ bool Adc::Init(const IConfig& config)
 
         if (HAL_ADC_ConfigChannel(&mHandle, &adcChannelConfig) == HAL_OK)
         {
-            mADCCallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
+            mAdcCallbacks.mCallbackIRQ = [this]() { this->CallbackIRQ(); };
             mInitialized = true;
             return true;
         }
@@ -163,6 +172,9 @@ bool Adc::IsInit() const
  */
 bool Adc::Sleep()
 {
+    // Stop is best-effort: a not-running ADC returns an error here, which must
+    // not block the DeInit teardown. Surface a genuine stop failure only when
+    // DeInit also fails (below).
     HAL_ADC_Stop(&mHandle);
 
     if (HAL_ADC_DeInit(&mHandle) != HAL_OK) { return false; }
@@ -171,9 +183,9 @@ bool Adc::Sleep()
 
     DisconnectCallbacks();
 
-    if ((nullptr == adc1_callbacks.callbackIRQ) &&
-        (nullptr == adc2_callbacks.callbackIRQ) &&
-        (nullptr == adc3_callbacks.callbackIRQ))
+    if ((nullptr == adc1_callbacks.mCallbackIRQ) &&
+        (nullptr == adc2_callbacks.mCallbackIRQ) &&
+        (nullptr == adc3_callbacks.mCallbackIRQ))
     {
         HAL_NVIC_DisableIRQ(ADC_IRQn);
     }
@@ -215,9 +227,16 @@ bool Adc::GetValueInterrupt(const std::function<void(uint16_t)>& handler)
 {
     if (!mInitialized) { return false; }
 
-    mADCCallbacks.callbackEndOfConversion = handler;
+    // ADC1/2/3 share ADC_IRQn. Mask the shared line, start the conversion, and
+    // arm the callback slot only on HAL_OK: this closes the TOCTOU window (an ISR
+    // reading a half-assigned std::function) and avoids leaving a stale handler
+    // armed if HAL_ADC_Start_IT rejects the request.
+    ScopedIrqMask mask(ADC_IRQn);
 
-    return (HAL_ADC_Start_IT(&mHandle) == HAL_OK);
+    if (HAL_ADC_Start_IT(&mHandle) != HAL_OK) { return false; }
+
+    mAdcCallbacks.mCallbackEndOfConversion = handler;
+    return true;
 }
 
 
@@ -229,13 +248,13 @@ bool Adc::GetValueInterrupt(const std::function<void(uint16_t)>& handler)
  * \param   instance    The Adc instance to use.
  * \note    Asserts if the Adc instance is invalid.
  */
-void Adc::SetInstance(const ADCInstance& instance)
+void Adc::SetInstance(const AdcInstance& instance)
 {
     switch (instance)
     {
-        case ADCInstance::ADC_1: mHandle.Instance = ADC1; break;
-        case ADCInstance::ADC_2: mHandle.Instance = ADC2; break;
-        case ADCInstance::ADC_3: mHandle.Instance = ADC3; break;
+        case AdcInstance::ADC_1: mHandle.Instance = ADC1; break;
+        case AdcInstance::ADC_2: mHandle.Instance = ADC2; break;
+        case AdcInstance::ADC_3: mHandle.Instance = ADC3; break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
@@ -245,13 +264,13 @@ void Adc::SetInstance(const ADCInstance& instance)
  * \param   instance    The Adc instance to enable the clock for.
  * \note    Asserts if not a valid Adc instance provided.
  */
-void Adc::CheckAndEnableAPB2PeripheralClock(const ADCInstance& instance)
+void Adc::CheckAndEnableAPB2PeripheralClock(const AdcInstance& instance)
 {
     switch (instance)
     {
-        case ADCInstance::ADC_1: __HAL_RCC_ADC1_CLK_ENABLE(); break;
-        case ADCInstance::ADC_2: __HAL_RCC_ADC2_CLK_ENABLE(); break;
-        case ADCInstance::ADC_3: __HAL_RCC_ADC3_CLK_ENABLE(); break;
+        case AdcInstance::ADC_1: __HAL_RCC_ADC1_CLK_ENABLE(); break;
+        case AdcInstance::ADC_2: __HAL_RCC_ADC2_CLK_ENABLE(); break;
+        case AdcInstance::ADC_3: __HAL_RCC_ADC3_CLK_ENABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
@@ -261,13 +280,13 @@ void Adc::CheckAndEnableAPB2PeripheralClock(const ADCInstance& instance)
  * \param   instance    The Adc instance to disable the clock for.
  * \note    Asserts if not a valid Adc instance provided.
  */
-void Adc::CheckAndDisableAPB2PeripheralClock(const ADCInstance& instance)
+void Adc::CheckAndDisableAPB2PeripheralClock(const AdcInstance& instance)
 {
     switch (instance)
     {
-        case ADCInstance::ADC_1: __HAL_RCC_ADC1_CLK_DISABLE(); break;
-        case ADCInstance::ADC_2: __HAL_RCC_ADC2_CLK_DISABLE(); break;
-        case ADCInstance::ADC_3: __HAL_RCC_ADC3_CLK_DISABLE(); break;
+        case AdcInstance::ADC_1: __HAL_RCC_ADC1_CLK_DISABLE(); break;
+        case AdcInstance::ADC_2: __HAL_RCC_ADC2_CLK_DISABLE(); break;
+        case AdcInstance::ADC_3: __HAL_RCC_ADC3_CLK_DISABLE(); break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
 }
@@ -348,6 +367,28 @@ uint32_t Adc::GetPrescaler(const Prescaler& prescaler)
 }
 
 /**
+ * \brief   Get the integer division factor for the given prescaler.
+ * \param   prescaler   The desired prescaler.
+ * \returns The numeric divider (2, 4, 6 or 8) used to derive ADCCLK from PCLK2.
+ * \note    Used by Init() to verify ADCCLK stays within the F407 36 MHz limit.
+ */
+uint32_t Adc::GetPrescalerDivider(const Prescaler& prescaler)
+{
+    uint32_t divider = 2;
+
+    switch (prescaler)
+    {
+        case Prescaler::DIV2: { divider = 2; } break;
+        case Prescaler::DIV4: { divider = 4; } break;
+        case Prescaler::DIV6: { divider = 6; } break;
+        case Prescaler::DIV8: { divider = 8; } break;
+        default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
+    }
+
+    return divider;
+}
+
+/**
  * \brief   Get the translated sample-and-hold time value.
  * \param   samplingTime    The desired sampling time.
  * \returns Translated sampling time value.
@@ -402,8 +443,8 @@ void Adc::CallbackIRQ()
  */
 void Adc::DisconnectCallbacks()
 {
-    mADCCallbacks.callbackIRQ             = nullptr;
-    mADCCallbacks.callbackEndOfConversion = nullptr;
+    mAdcCallbacks.mCallbackIRQ             = nullptr;
+    mAdcCallbacks.mCallbackEndOfConversion = nullptr;
 }
 
 

@@ -11,7 +11,7 @@
  *
  * \brief   Adc peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Adc
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Adc
  *
  * \note    Only single conversion, only software trigger. Either with blocking
  *          (polling) method or using interrupt.
@@ -38,10 +38,10 @@
 /* Enums                                                                */
 /************************************************************************/
 /**
- * \enum    ADCInstance
+ * \enum    AdcInstance
  * \brief   Available Adc instances.
  */
-enum class ADCInstance : uint8_t
+enum class AdcInstance : uint8_t
 {
     ADC_1 = 1,
     ADC_2 = 2,
@@ -53,12 +53,12 @@ enum class ADCInstance : uint8_t
 /* Structures                                                           */
 /************************************************************************/
 /**
- * \struct  ADCCallbacks
+ * \struct  AdcCallbacks
  * \brief   Data structure to contain callbacks for an Adc instance.
  */
-struct ADCCallbacks {
-    std::function<void()> callbackIRQ  = nullptr;                       ///< Callback to call when IRQ occurs.
-    std::function<void(uint16_t)> callbackEndOfConversion = nullptr;    ///< Callback to call when End Of Conversion occurs.
+struct AdcCallbacks {
+    std::function<void()> mCallbackIRQ  = nullptr;                       ///< Callback to call when IRQ occurs.
+    std::function<void(uint16_t)> mCallbackEndOfConversion = nullptr;    ///< Callback to call when End Of Conversion occurs.
 };
 
 
@@ -72,7 +72,7 @@ public:
      * \enum    Channel
      * \brief   Available Adc channels.
      */
-    enum class Channel: uint8_t
+    enum class Channel : uint8_t
     {
         CHANNEL_0,
         CHANNEL_1,
@@ -175,12 +175,15 @@ public:
          */
         static const void* Id() { static const char sTag = 0; return &sTag; }
 
-        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        /**
+         * \brief   Runtime type identity, see IConfig::ConfigId().
+         * \returns Address stable and unique to this Config type.
+         */
         const void* ConfigId() const override { return Id(); }
     };
 
 
-    explicit Adc(const ADCInstance& instance);
+    explicit Adc(const AdcInstance& instance);
     virtual ~Adc();
 
     bool Init(const IConfig& config) override;
@@ -190,18 +193,25 @@ public:
     bool GetValue(uint16_t& value) override;
     bool GetValueInterrupt(const std::function<void(uint16_t)>& handler) override;
 
+    // Explicit disabled constructors/operators
+    Adc(const Adc&)            = delete;
+    Adc& operator=(const Adc&) = delete;
+    Adc(Adc&&)                 = delete;
+    Adc& operator=(Adc&&)      = delete;
+
 private:
-    ADCInstance       mInstance;
+    AdcInstance       mInstance;
     ADC_HandleTypeDef mHandle = {};
-    ADCCallbacks&     mADCCallbacks;
+    AdcCallbacks&     mAdcCallbacks;
     bool              mInitialized;
 
-    void SetInstance(const ADCInstance& instance);
-    void CheckAndEnableAPB2PeripheralClock(const ADCInstance& instance);
-    void CheckAndDisableAPB2PeripheralClock(const ADCInstance& instance);
+    void SetInstance(const AdcInstance& instance);
+    void CheckAndEnableAPB2PeripheralClock(const AdcInstance& instance);
+    void CheckAndDisableAPB2PeripheralClock(const AdcInstance& instance);
     uint32_t GetChannel(const Channel& channel);
     uint32_t GetResolution(const Resolution& resolution);
     uint32_t GetPrescaler(const Prescaler& prescaler);
+    uint32_t GetPrescalerDivider(const Prescaler& prescaler);
     uint32_t GetSamplingTime(const SamplingTime& samplingTime);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();
