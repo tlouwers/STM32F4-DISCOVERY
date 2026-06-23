@@ -181,6 +181,8 @@ void FakeTIM_Reset(void);
 void FakeTIM_SetInitResult(HAL_StatusTypeDef result);          ///< Drives Base_Init failure
 void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result);        ///< Drives Base_DeInit (Sleep) failure
 void FakeTIM_SetMasterConfigResult(HAL_StatusTypeDef result);  ///< Drives BasicTimer master-config (TRGO) failure
+void FakeTIM_SetStartResult(HAL_StatusTypeDef result);         ///< Drives Base_Start / Base_Start_IT failure
+void FakeTIM_SetStopResult(HAL_StatusTypeDef result);          ///< Drives Base_Stop / Base_Stop_IT failure
 int  FakeTIM_IRQHandlerCallCount(void);                        ///< HAL_TIM_IRQHandler invocation count
 
 void FakeTIM_SetPwmInitResult(HAL_StatusTypeDef result);          ///< Drives PWM Init failure

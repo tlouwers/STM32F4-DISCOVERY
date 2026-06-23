@@ -61,6 +61,8 @@ TIM_TypeDef s_tim14 = {};
 HAL_StatusTypeDef s_init_result          = HAL_OK;
 HAL_StatusTypeDef s_deinit_result        = HAL_OK;
 HAL_StatusTypeDef s_master_config_result = HAL_OK;
+HAL_StatusTypeDef s_start_result         = HAL_OK;
+HAL_StatusTypeDef s_stop_result          = HAL_OK;
 int               s_irq_handler_calls    = 0;
 
 HAL_StatusTypeDef s_pwm_init_result    = HAL_OK;
@@ -97,10 +99,10 @@ extern "C" TIM_TypeDef* const TIM14 = &s_tim14;
 extern "C" HAL_StatusTypeDef HAL_TIM_Base_Init(TIM_HandleTypeDef* /*htim*/)   { return s_init_result; }
 extern "C" HAL_StatusTypeDef HAL_TIM_Base_DeInit(TIM_HandleTypeDef* /*htim*/) { return s_deinit_result; }
 
-extern "C" HAL_StatusTypeDef HAL_TIM_Base_Start(TIM_HandleTypeDef* /*htim*/)    { return HAL_OK; }
-extern "C" HAL_StatusTypeDef HAL_TIM_Base_Stop(TIM_HandleTypeDef* /*htim*/)     { return HAL_OK; }
-extern "C" HAL_StatusTypeDef HAL_TIM_Base_Start_IT(TIM_HandleTypeDef* /*htim*/) { return HAL_OK; }
-extern "C" HAL_StatusTypeDef HAL_TIM_Base_Stop_IT(TIM_HandleTypeDef* /*htim*/)  { return HAL_OK; }
+extern "C" HAL_StatusTypeDef HAL_TIM_Base_Start(TIM_HandleTypeDef* /*htim*/)    { return s_start_result; }
+extern "C" HAL_StatusTypeDef HAL_TIM_Base_Stop(TIM_HandleTypeDef* /*htim*/)     { return s_stop_result; }
+extern "C" HAL_StatusTypeDef HAL_TIM_Base_Start_IT(TIM_HandleTypeDef* /*htim*/) { return s_start_result; }
+extern "C" HAL_StatusTypeDef HAL_TIM_Base_Stop_IT(TIM_HandleTypeDef* /*htim*/)  { return s_stop_result; }
 
 extern "C" HAL_StatusTypeDef HAL_TIMEx_MasterConfigSynchronization(TIM_HandleTypeDef* /*htim*/, TIM_MasterConfigTypeDef* /*sMasterConfig*/)
 {
@@ -137,6 +139,8 @@ extern "C" void FakeTIM_Reset(void)
     s_init_result          = HAL_OK;
     s_deinit_result        = HAL_OK;
     s_master_config_result = HAL_OK;
+    s_start_result         = HAL_OK;
+    s_stop_result          = HAL_OK;
     s_irq_handler_calls    = 0;
 
     s_pwm_init_result   = HAL_OK;
@@ -149,6 +153,8 @@ extern "C" void FakeTIM_Reset(void)
 extern "C" void FakeTIM_SetInitResult(HAL_StatusTypeDef result)          { s_init_result = result; }
 extern "C" void FakeTIM_SetDeInitResult(HAL_StatusTypeDef result)        { s_deinit_result = result; }
 extern "C" void FakeTIM_SetMasterConfigResult(HAL_StatusTypeDef result)  { s_master_config_result = result; }
+extern "C" void FakeTIM_SetStartResult(HAL_StatusTypeDef result)         { s_start_result = result; }
+extern "C" void FakeTIM_SetStopResult(HAL_StatusTypeDef result)          { s_stop_result = result; }
 extern "C" int  FakeTIM_IRQHandlerCallCount(void)                        { return s_irq_handler_calls; }
 
 extern "C" void FakeTIM_SetPwmInitResult(HAL_StatusTypeDef result)          { s_pwm_init_result = result; }

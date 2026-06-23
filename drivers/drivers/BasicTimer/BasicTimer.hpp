@@ -18,8 +18,8 @@
  * \date    03-2021
  */
 
-#ifndef BASIC_TIMER_HPP_
-#define BASIC_TIMER_HPP_
+#ifndef BASICTIMER_HPP_
+#define BASICTIMER_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -62,7 +62,12 @@ public:
         /**
          * \brief   Constructor of the BasicTimer configuration struct.
          * \param   interruptPriority   Priority of the interrupt.
-         * \param   frequency           Frequency of the timer in Hz. Range [20..65535] Hz.
+         * \param   frequency           Frequency of the timer in Hz. Must be > 0.
+         *                              The usable range is ~16..65535 Hz: TIM6/TIM7
+         *                              are 16-bit with a 1 MHz CK_CNT, so any value
+         *                              below 1 MHz/65536 (~15.26 Hz) saturates to the
+         *                              lowest representable frequency (ARR = 0xFFFF).
+         *                              See CalculatePeriod().
          */
         Config(uint8_t interruptPriority,
                uint16_t frequency) :
@@ -114,6 +119,12 @@ public:
     bool IsStarted() const override;
     bool Stop() override;
 
+    // Explicit disabled constructors/operators
+    BasicTimer(const BasicTimer&)            = delete;
+    BasicTimer& operator=(const BasicTimer&) = delete;
+    BasicTimer(BasicTimer&&)                 = delete;
+    BasicTimer& operator=(BasicTimer&&)      = delete;
+
 private:
     BasicTimerInstance  mInstance;
     TIM_HandleTypeDef   mHandle = {};
@@ -132,4 +143,4 @@ private:
 };
 
 
-#endif  // BASIC_TIMER_HPP_
+#endif  // BASICTIMER_HPP_

@@ -16,8 +16,8 @@
  * \date    06-2021
  */
 
-#ifndef IBASIC_TIMER_HPP_
-#define IBASIC_TIMER_HPP_
+#ifndef IBASICTIMER_HPP_
+#define IBASICTIMER_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -29,6 +29,9 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
+/**
+ * \brief   Interface for a basic hardware timer driver (counter enable/disable).
+ */
 class IBasicTimer
 {
 public:
@@ -49,9 +52,19 @@ public:
      * \returns True if started, else false.
      */
     virtual bool Start() = 0;
+
+    /**
+     * \brief   Indicate whether the timer counter is running.
+     * \returns True if started, else false.
+     */
     virtual bool IsStarted() const = 0;
+
+    /**
+     * \brief   Disable the timer counter.
+     * \returns True if stopped, else false.
+     */
     virtual bool Stop() = 0;
 };
 
 
-#endif  // IBASIC_TIMER_HPP_
+#endif  // IBASICTIMER_HPP_

@@ -83,6 +83,7 @@ void HAL_NVIC_ClearPendingIRQ(IRQn_Type IRQn) { (void)IRQn; }
 // Fixed values are enough for the drivers' bus-speed validation / prescaler math.
 uint32_t HAL_RCC_GetPCLK1Freq(void) { return 42000000U; }
 uint32_t HAL_RCC_GetPCLK2Freq(void) { return 84000000U; }
+uint32_t HAL_RCC_GetHCLKFreq(void)  { return 168000000U; }
 
 
 // Zero so every DWT cycle-counter busy-wait is a no-op (see stm32f4xx_hal.h).

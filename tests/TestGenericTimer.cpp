@@ -85,7 +85,8 @@ protected:
         : mSubject(GenericTimerInstance::TIMER_2)
     {
         FakeTIM_Reset();
-        RCC->CFGR = 0U;   // default APB prescaler /1 (no timer-clock doubling)
+        RCC->CFGR    = 0U;   // default APB prescaler /1 (no timer-clock doubling)
+        RCC->DCKCFGR = 0U;   // TIMPRE = 0 (reset default)
     }
 
     GenericTimer mSubject;
@@ -177,6 +178,32 @@ TEST_F(GenericTimer_Test, Init_LowFrequencyOn16BitTimer_ClampsPeriodReturnsTrue)
     EXPECT_TRUE(timer.Init(GenericTimer::Config(0, 0.1f)));
 }
 
+// A frequency above the 10 kHz CK_CNT ceiling is rejected (cannot be represented).
+TEST_F(GenericTimer_Test, Init_FrequencyAboveCeiling_ReturnsFalseAndNotInit)
+{
+    EXPECT_FALSE(mSubject.Init(GenericTimer::Config(0, 20000.0f)));
+    EXPECT_FALSE(mSubject.IsInit());
+}
+
+// TIMPRE = 1 with APB prescaler 1 selects HCLK as the timer input clock.
+TEST_F(GenericTimer_Test, Init_TimpreSetPrescaler1_UsesHclkReturnsTrue)
+{
+    RCC->DCKCFGR = RCC_DCKCFGR_TIMPRE;   // TIMPRE = 1, APB prescaler /1 -> HCLK branch
+
+    GenericTimer timer(GenericTimerInstance::TIMER_2);
+    EXPECT_TRUE(timer.Init(ValidConfig()));
+}
+
+// TIMPRE = 1 with a large APB prescaler (>/4) selects the 4 x PCLK branch.
+TEST_F(GenericTimer_Test, Init_TimpreSetLargePrescaler_Uses4xPclkReturnsTrue)
+{
+    RCC->DCKCFGR = RCC_DCKCFGR_TIMPRE;   // TIMPRE = 1
+    RCC->CFGR    = RCC_CFGR_PPRE1;       // APB1 prescaler /16 (> /4) -> 4 x PCLK branch
+
+    GenericTimer timer(GenericTimerInstance::TIMER_2);
+    EXPECT_TRUE(timer.Init(ValidConfig()));
+}
+
 
 /************************************************************************/
 /* Sleep                                                                */
@@ -238,9 +265,28 @@ TEST_F(GenericTimer_Test, Start_CalledTwice_StaysStarted)
     EXPECT_TRUE(mSubject.IsStarted());
 }
 
+TEST_F(GenericTimer_Test, Start_HalStartFails_ReturnsFalseAndNotStarted)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeTIM_SetStartResult(HAL_ERROR);
+
+    EXPECT_FALSE(mSubject.Start([]() {}));
+    EXPECT_FALSE(mSubject.IsStarted());
+}
+
 TEST_F(GenericTimer_Test, Stop_NotInit_ReturnsFalse)
 {
     EXPECT_FALSE(mSubject.Stop());
+}
+
+TEST_F(GenericTimer_Test, Stop_HalStopFails_ReturnsFalseAndStaysStarted)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    ASSERT_TRUE(mSubject.Start([]() {}));
+    FakeTIM_SetStopResult(HAL_ERROR);
+
+    EXPECT_FALSE(mSubject.Stop());
+    EXPECT_TRUE(mSubject.IsStarted());
 }
 
 TEST_F(GenericTimer_Test, Stop_AfterStart_ReturnsTrueAndNotStarted)

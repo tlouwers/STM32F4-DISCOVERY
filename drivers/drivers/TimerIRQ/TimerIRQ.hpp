@@ -32,8 +32,8 @@
  * \date    05-2026
  */
 
-#ifndef TIMER_IRQ_HPP_
-#define TIMER_IRQ_HPP_
+#ifndef TIMERIRQ_HPP_
+#define TIMERIRQ_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -61,6 +61,13 @@ namespace TimerIRQ
  *          enabled+pending flag, so a no-op on the timer that did not fire
  *          is safe. TIMER_1/TIMER_8 slots are reserved for a future
  *          advanced-timer PWM and are simply unregistered (no-op) until then.
+ * \note    Fan-in constraint: the advanced timers TIM1 and TIM8 each spread
+ *          their interrupts across FOUR vectors (BRK/UP/TRG_COM/CC), and every
+ *          one of those vectors dispatches the SAME single TIMER_1 (resp.
+ *          TIMER_8) slot. A handler installed there is therefore invoked from
+ *          all four vectors and must tolerate that -- HAL_TIM_IRQHandler does,
+ *          since it acts only on the enabled+pending flag. There is no
+ *          per-sub-vector slot.
  * \note    Enumerators are TIMER_n / DAC_UNDERRUN, not TIMn / DAC: CMSIS
  *          stm32f407xx.h bare-defines TIM1..TIM14 and DAC as peripheral
  *          pointer macros, so an enumerator literally named TIM2 would
@@ -117,4 +124,4 @@ bool Uninstall(Slot slot);
 } // namespace TimerIRQ
 
 
-#endif  // TIMER_IRQ_HPP_
+#endif  // TIMERIRQ_HPP_

@@ -18,8 +18,8 @@
  * \date    05-2021
  */
 
-#ifndef GENERIC_TIMER_HPP_
-#define GENERIC_TIMER_HPP_
+#ifndef GENERICTIMER_HPP_
+#define GENERICTIMER_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -103,7 +103,10 @@ public:
          */
         static const void* Id() { static const char sTag = 0; return &sTag; }
 
-        /** \brief Runtime type identity, see IConfig::ConfigId(). */
+        /**
+         * \brief   Runtime type identity, see IConfig::ConfigId().
+         * \returns Pointer uniquely identifying this Config type (same as Id()).
+         */
         const void* ConfigId() const override { return Id(); }
     };
 
@@ -118,12 +121,19 @@ public:
     bool IsStarted() const override;
     bool Stop() override;
 
+    // Explicit disabled constructors/operators
+    GenericTimer(const GenericTimer&)            = delete;
+    GenericTimer& operator=(const GenericTimer&) = delete;
+    GenericTimer(GenericTimer&&)                 = delete;
+    GenericTimer& operator=(GenericTimer&&)      = delete;
+
 private:
     GenericTimerInstance   mInstance;
     TIM_HandleTypeDef      mHandle = {};
     GenericTimerCallbacks& mGenericTimerCallback;
     bool                   mInitialized;
-    bool                   mStarted;
+    bool                   mStarted;     ///< Lifecycle flag; only mutated from task
+                                         ///< context (Start/Stop/Sleep), never the ISR.
 
     void SetInstance(const GenericTimerInstance& instance);
     void CheckAndEnablePeripheralClock(const GenericTimerInstance& instance);
@@ -137,4 +147,4 @@ private:
 };
 
 
-#endif  // GENERIC_TIMER_HPP_
+#endif  // GENERICTIMER_HPP_
