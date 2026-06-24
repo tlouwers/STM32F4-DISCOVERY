@@ -12,7 +12,7 @@
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  *          State is preserved (partly) within the hardware.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/drivers/Pin
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Pin
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -29,29 +29,6 @@
 #include <functional>
 #include "stm32f4xx_hal.h"
 #include "interfaces/IPin.hpp"
-
-
-/************************************************************************/
-/* Structures                                                           */
-/************************************************************************/
-/**
- * \brief   Structure to group the pin id and port.
- */
-struct PinIdPort
-{
-    uint16_t      id;       ///< The pin id bitmask from 'GPIO_pins_define'.
-    GPIO_TypeDef* port;     ///< Pointer to base 'GPIO_TypeDef' struct, like: 'GPIOA'.
-};
-
-/**
- * \brief   Structure to group the interrupt callback (if any) and flag if the
- *          callback should be called when the interrupt is triggered.
- */
-struct PinInterrupt
-{
-    std::function<void()> callback = nullptr;   ///< Callback to call when interrupt for pin triggers.
-    bool                  enabled  = false;     ///< Flag, indicating interrupt for pin is enabled or not.
-};
 
 
 /************************************************************************/
@@ -133,6 +110,29 @@ enum class Mode : bool
 {
     PUSH_PULL,
     OPEN_DRAIN,
+};
+
+
+/************************************************************************/
+/* Structures                                                           */
+/************************************************************************/
+/**
+ * \brief   Structure to group the pin id and port.
+ */
+struct PinIdPort
+{
+    uint16_t      id;       ///< The pin id bitmask from 'GPIO_pins_define'.
+    GPIO_TypeDef* port;     ///< Pointer to base 'GPIO_TypeDef' struct, like: 'GPIOA'.
+};
+
+/**
+ * \brief   Structure to group the interrupt callback (if any) and flag if the
+ *          callback should be called when the interrupt is triggered.
+ */
+struct PinInterrupt
+{
+    std::function<void()> callback = nullptr;   ///< Callback to call when interrupt for pin triggers.
+    bool                  enabled  = false;     ///< Flag, indicating interrupt for pin is enabled or not.
 };
 
 

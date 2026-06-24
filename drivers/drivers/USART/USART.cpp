@@ -22,6 +22,7 @@
 /************************************************************************/
 #include "drivers/USART/USART.hpp"
 #include "utility/Assert/Assert.h"
+#include "utility/ScopedIrqMask/ScopedIrqMask.hpp"
 #include "stm32f4xx_hal_usart.h"
 
 
@@ -110,10 +111,10 @@ USART::~USART()
  */
 bool USART::Init(const IConfig& config)
 {
-    CheckAndEnablePeripheralClock(mInstance);
-
     EXPECT(config.ConfigId() == Config::Id());
     if (config.ConfigId() != Config::Id()) { return false; }
+
+    CheckAndEnablePeripheralClock(mInstance);
 
     const Config& cfg = static_cast<const Config&>(config);
 
@@ -127,12 +128,14 @@ bool USART::Init(const IConfig& config)
 
     if (HAL_UART_Init(&mHandle) == HAL_OK)
     {
+        // Arm the shared IRQ callback slot before the NVIC line is enabled, so the ISR
+        // can never observe a half-written std::function on this instance's IRQ.
+        mUsartCallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
+
         // Configure NVIC to generate interrupt
         SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
         __HAL_UART_CLEAR_FLAG(&mHandle, UART_FLAG_IDLE);
-
-        mUsartCallbacks.callbackIRQ = [this]() { this->CallbackIRQ(); };
 
         mInitialized = true;
         return true;
@@ -214,11 +217,16 @@ bool USART::WriteDma(const uint8_t* src, uint16_t length, const std::function<vo
     if (!mInitialized) { return false; }
     if (nullptr == mHandle.hdmatx) { return false; }
 
-    mUsartCallbacks.callbackTx = handler;
-
     // Note: HAL_UART_Transmit_DMA will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
-    return (HAL_UART_Transmit_DMA(&mHandle, const_cast<uint8_t*>(src), length) == HAL_OK);
+    // Mask this instance's IRQ across start-and-assign (ScopedIrqMask): the handler slot is a
+    // std::function shared with the USART ISR, and assigning it (non-atomic, may touch the heap)
+    // while the ISR could fire is a data race. Masking keeps the assignment atomic w.r.t. the
+    // ISR while still only arming the handler on a successful start (no stale handler on reject).
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_UART_Transmit_DMA(&mHandle, const_cast<uint8_t*>(src), length) != HAL_OK) { return false; }
+    mUsartCallbacks.callbackTx = handler;
+    return true;
 }
 
 /**
@@ -241,16 +249,26 @@ bool USART::ReadDma(uint8_t* dest, uint16_t length, const std::function<void(uin
     if (!mInitialized) { return false; }
     if (nullptr == mHandle.hdmarx) { return false; }
 
-    mUsartCallbacks.callbackRx = handler;
-
     // Note: HAL_UART_Receive_DMA will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
+
+    // Mask this instance's IRQ across the whole start-arm-enable sequence (ScopedIrqMask): the
+    // handler slot is a std::function shared with the USART ISR, and the IDLE ISR dispatches the
+    // Rx callback then aborts the receive. Masking keeps the assignment atomic w.r.t. the ISR
+    // and prevents an early IDLE from firing before the handler exists, while still only arming
+    // the handler on a successful start (no stale handler on rejection). The guard re-enables
+    // the line on scope exit, after the IDLE-IT and half-buffer reassert below.
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_UART_Receive_DMA(&mHandle, dest, length) != HAL_OK) { return false; }
+
+    mUsartCallbacks.callbackRx = handler;
 
     if (useIdleDetection)
     {
         __HAL_UART_ENABLE_IT(&mHandle, UART_IT_IDLE);
     }
 
-    if (HAL_UART_Receive_DMA(&mHandle, dest, length) != HAL_OK) { return false; }
+    // hdmarx != nullptr (checked above) implies LinkDma's Rx path ran and set mDmaRx.
+    ASSERT(mDmaRx);
 
     // HAL_UART_Receive_DMA installs a half-complete callback and re-enables
     // DMA_IT_HT regardless of the user's HalfBufferInterrupt selection; reassert it.
@@ -273,11 +291,15 @@ bool USART::WriteInterrupt(const uint8_t* src, uint16_t length, const std::funct
 
     if (!mInitialized) { return false; }
 
-    mUsartCallbacks.callbackTx = handler;
-
     // Note: HAL_UART_Transmit_IT will check for src == nullptr and size == 0 --> returns HAL_ERROR.
 
-    return (HAL_UART_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length) == HAL_OK);
+    // Mask this instance's IRQ across start-and-assign (see WriteDma): the handler slot is a
+    // std::function shared with the USART ISR; with HAL_UART_Transmit_IT the TXE interrupt is
+    // armed immediately, so assign the handler atomically w.r.t. the ISR, only on success.
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_UART_Transmit_IT(&mHandle, const_cast<uint8_t*>(src), length) != HAL_OK) { return false; }
+    mUsartCallbacks.callbackTx = handler;
+    return true;
 }
 
 /**
@@ -296,16 +318,21 @@ bool USART::ReadInterrupt(uint8_t* dest, uint16_t length, const std::function<vo
 
     if (!mInitialized) { return false; }
 
-    mUsartCallbacks.callbackRx = handler;
-
     // Note: HAL_UART_Receive_IT will check for dest == nullptr and size == 0 --> returns HAL_ERROR.
+
+    // Mask this instance's IRQ across the start-arm-enable sequence (see ReadDma): the handler
+    // slot is shared with the USART ISR and the IDLE/RXNE interrupts can fire immediately.
+    ScopedIrqMask mask(GetIRQn(mInstance));
+    if (HAL_UART_Receive_IT(&mHandle, dest, length) != HAL_OK) { return false; }
+
+    mUsartCallbacks.callbackRx = handler;
 
     if (useIdleDetection)
     {
         __HAL_UART_ENABLE_IT(&mHandle, UART_IT_IDLE);
     }
 
-    return (HAL_UART_Receive_IT(&mHandle, dest, length) == HAL_OK);
+    return true;
 }
 
 /**
@@ -406,7 +433,7 @@ void USART::CheckAndDisablePeripheralClock(const UsartInstance& instance)
 }
 
 /**
- * \brief   Get the parify mode for the Usart.
+ * \brief   Get the parity mode for the Usart.
  * \param   parity  The parity mode to get.
  * \returns The parity mode value if successful, else 0.
  */
@@ -540,6 +567,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* handle)
         // used this number is in the NDTR register.
         // To be able to use both Interrupt and DMA while DMA is configured, both RxXferCount and NTDR are used in received byte calculation.
         uint16_t bytesReceived = static_cast<uint16_t>(handle->RxXferSize - handle->RxXferCount - ((handle->hdmarx) ? __HAL_DMA_GET_COUNTER(handle->hdmarx) : 0));
+
+        // Defence-in-depth: the subtraction above evaluates unsigned then narrows to 16 bits;
+        // clamp so a count handed across the trust boundary can never exceed the buffer the
+        // caller sized to 'length' (== RxXferSize), even on an unexpected termination.
+        if (bytesReceived > handle->RxXferSize) { bytesReceived = handle->RxXferSize; }
 
         if      (handle->Instance == USART1) { CallbackRxDone(usart1_callbacks, bytesReceived); }
         else if (handle->Instance == USART2) { CallbackRxDone(usart2_callbacks, bytesReceived); }

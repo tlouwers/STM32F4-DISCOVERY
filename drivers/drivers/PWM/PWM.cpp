@@ -54,12 +54,14 @@ PWM::~PWM()
  */
 bool PWM::Init(const IConfig& config)
 {
-    CheckAndEnablePeripheralClock(mInstance);
-
     EXPECT(config.ConfigId() == Config::Id());
     if (config.ConfigId() != Config::Id()) { return false; }
 
     const Config& cfg = static_cast<const Config&>(config);
+
+    // Enable the clock only after the config is validated, so a rejected
+    // config does not leave the peripheral clock running.
+    CheckAndEnablePeripheralClock(mInstance);
 
     // Start the timer as clock for PWM. No channels are configured yet.
     // Prescaler stays at 0 (divide-by-1) so CK_CNT is the full timer input
@@ -95,6 +97,8 @@ bool PWM::IsInit() const
  */
 bool PWM::Sleep()
 {
+    if (!mInitialized) { return true; }
+
     StopAllChannels();
 
     if (HAL_TIM_PWM_DeInit(&mHandle) != HAL_OK) { return false; }
@@ -109,7 +113,16 @@ bool PWM::Sleep()
  * \brief   Configure PWM output for a channel. The duty cycle and ON polarity
  *          can be configured. This does NOT start PWM output.
  * \param   channelConfig   The configuration for a PWM channel.
- * \result  True if the configuration could be applied, else false.
+ * \returns True if the configuration could be applied, else false.
+ * \note    NOT ISR-safe and NOT safe to call concurrently with SetDutyCycle():
+ *          HAL_TIM_PWM_ConfigChannel performs a multi-step read-modify-write on
+ *          mHandle and the CCMR/CCER/CCR registers. Call this only from a single
+ *          context, and not while SetDutyCycle() may run from an ISR.
+ * \note    OCMode and OCPolarity below are deliberately coupled. PWM mode 2 makes
+ *          OCxREF inactive (LOW) while CNT < CCR; the polarity is then inverted so
+ *          a logical "ON" maps to the requested pin level. CalculatePulse()'s
+ *          0%/100% edge handling assumes exactly this pairing -- changing one
+ *          without the other inverts every channel's output.
  */
 bool PWM::ConfigureChannel(const ChannelConfig& channelConfig)
 {
@@ -117,9 +130,10 @@ bool PWM::ConfigureChannel(const ChannelConfig& channelConfig)
 
     TIM_OC_InitTypeDef ocInit = {};
 
-    ocInit.OCMode     = TIM_OCMODE_PWM2;    // Clear on compare match
+    // PWM mode 2: OCxREF inactive (LOW) while CNT < CCR, active when CNT >= CCR.
+    ocInit.OCMode     = TIM_OCMODE_PWM2;
     ocInit.Pulse      = CalculatePulse(channelConfig.mDutyCycle, mHandle.Init.Period);
-    ocInit.OCPolarity = (channelConfig.mPolarity == Polarity::High) ? TIM_OCPOLARITY_LOW : TIM_OCPOLARITY_HIGH;
+    ocInit.OCPolarity = (channelConfig.mPolarity == Polarity::HIGH) ? TIM_OCPOLARITY_LOW : TIM_OCPOLARITY_HIGH;
     ocInit.OCFastMode = TIM_OCFAST_DISABLE;
 
     if (HAL_TIM_PWM_ConfigChannel(&mHandle, &ocInit, GetChannel(channelConfig.mChannel)) == HAL_OK)
@@ -151,7 +165,7 @@ bool PWM::SetDutyCycle(Channel channel, float dutyCycle)
 /**
  * \brief   Start PWM output for a channel (if configured first).
  * \param   channel     The channel to start PWM output for.
- * \result  True if the PWM output could be started for the given channel, else false.
+ * \returns True if the PWM output could be started for the given channel, else false.
  */
 bool PWM::Start(Channel channel)
 {
@@ -167,7 +181,7 @@ bool PWM::Start(Channel channel)
 /**
  * \brief   Stop PWM output for a channel (if configured first).
  * \param   channel     The channel to stop PWM output for.
- * \result  True if the PWM output could be stopped for the given channel, else false.
+ * \returns True if the PWM output could be stopped for the given channel, else false.
  */
 bool PWM::Stop(Channel channel)
 {
@@ -259,6 +273,14 @@ uint16_t PWM::CalculatePeriod(float desiredFrequency)
 {
     EXPECT(desiredFrequency > 0.1f);
 
+    // Hard guard before the float->uint32_t cast below: a sub-normal or
+    // near-zero frequency would make tick/desiredFrequency exceed UINT32_MAX,
+    // and casting an out-of-range float to an unsigned integer is undefined
+    // behaviour (C++14 [conv.fpint]). At >= 0.1 Hz the intermediate is at most
+    // 10 * tick (~840e6 at 84 MHz), comfortably within uint32_t. Clamp to the
+    // longest period (lowest frequency) for anything below the documented floor.
+    if (desiredFrequency < 0.1f) { return UINT16_MAX; }
+
     const uint32_t tick = GetTimerInputClockFreq();
 
     // timer_period = (timer_tick_frequency / PWM_frequency) - 1
@@ -304,19 +326,21 @@ uint32_t PWM::CalculatePulse(float desiredDutyCycle, uint32_t period)
 
 /**
  * \brief   Get the TIM_Channel define using the given channel.
- * \param   The channel to get the TIM_Channel define for.
- * \returns The TIM_Channel if successful, else 0.
+ * \param   channel     The channel to get the TIM_Channel define for.
+ * \returns The TIM_Channel if successful, else an invalid channel id
+ *          (0xFFFFFFFF) so the HAL rejects it rather than silently using
+ *          channel 1 (TIM_CHANNEL_1 == 0).
  */
 uint32_t PWM::GetChannel(Channel channel)
 {
-    uint32_t channelId = 0;
+    uint32_t channelId = 0xFFFFFFFFU;
 
     switch (channel)
     {
-        case Channel::Channel_1: channelId = TIM_CHANNEL_1; break;
-        case Channel::Channel_2: channelId = TIM_CHANNEL_2; break;
-        case Channel::Channel_3: channelId = TIM_CHANNEL_3; break;
-        case Channel::Channel_4: channelId = TIM_CHANNEL_4; break;
+        case Channel::CHANNEL_1: channelId = TIM_CHANNEL_1; break;
+        case Channel::CHANNEL_2: channelId = TIM_CHANNEL_2; break;
+        case Channel::CHANNEL_3: channelId = TIM_CHANNEL_3; break;
+        case Channel::CHANNEL_4: channelId = TIM_CHANNEL_4; break;
         default: ASSERT(false); break;      // Impossible selection
     }
 
@@ -331,13 +355,13 @@ bool PWM::StopAllChannels()
 {
     bool result = true;
 
-    result &= Stop(Channel::Channel_1);
+    result &= Stop(Channel::CHANNEL_1);
     EXPECT(result);
-    result &= Stop(Channel::Channel_2);
+    result &= Stop(Channel::CHANNEL_2);
     EXPECT(result);
-    result &= Stop(Channel::Channel_3);
+    result &= Stop(Channel::CHANNEL_3);
     EXPECT(result);
-    result &= Stop(Channel::Channel_4);
+    result &= Stop(Channel::CHANNEL_4);
     EXPECT(result);
 
     return result;

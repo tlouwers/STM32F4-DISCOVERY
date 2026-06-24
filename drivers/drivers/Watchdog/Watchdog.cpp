@@ -7,7 +7,6 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Watchdog
  *
  * \brief   Watchdog (IWDG) peripheral driver class.
  *
@@ -106,7 +105,12 @@ bool Watchdog::Sleep()
  */
 void Watchdog::Refresh() const
 {
-    HAL_IWDG_Refresh(const_cast<IWDG_HandleTypeDef*>(&mHandle));
+    // Guard against a refresh before Init(): mHandle.Instance is null until then,
+    // and HAL_IWDG_Refresh would dereference it (hard fault).
+    if (!mInitialized) { return; }
+
+    // mHandle is mutable, so no const_cast is needed despite the const method.
+    HAL_IWDG_Refresh(&mHandle);
 }
 
 

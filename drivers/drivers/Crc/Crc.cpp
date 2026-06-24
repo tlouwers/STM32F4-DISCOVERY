@@ -7,7 +7,6 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Crc
  *
  * \brief   Crc peripheral driver class.
  *
@@ -54,7 +53,7 @@ bool Crc::Init()
 {
     CheckAndEnablePeripheralClock();
 
-    if (HAL_CRC_Init(&mHandle) == HAL_OK)
+    if (HAL_OK == HAL_CRC_Init(&mHandle))
     {
         mInitialized = true;
         return true;
@@ -77,7 +76,12 @@ bool Crc::IsInit() const
  */
 bool Crc::Sleep()
 {
-    if (HAL_CRC_DeInit(&mHandle) != HAL_OK) { return false; }
+    // Guard against a Sleep()/~Crc() before Init(): with the clock never enabled,
+    // HAL_CRC_DeInit would write CRC->CR on an ungated AHB1 peripheral, raising a
+    // bus fault. Nothing to tear down if we were never initialised.
+    if (!mInitialized) { return true; }
+
+    if (HAL_OK != HAL_CRC_DeInit(&mHandle)) { return false; }
 
     mInitialized = false;
 
@@ -104,11 +108,24 @@ bool Crc::Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out)
     if (0 == length)       { return false; }
     if (!mInitialized)     { return false; }
 
+    // The CRC peripheral is a single shared accumulator with no HAL_BUSY state:
+    // HAL_CRC_Calculate resets CRC->DR then streams the words in, so a concurrent
+    // call (another task, or an ISR) would reset the accumulator mid-computation
+    // and silently corrupt both results. Serialise with a claim flag flipped in a
+    // brief critical section; reject a re-entrant caller rather than corrupt it.
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    if (mBusy) { __set_PRIMASK(primask); return false; }
+    mBusy = true;
+    __set_PRIMASK(primask);
+
     // HAL_CRC_Calculate's pBuffer parameter is non-const, but the function
     // only reads the buffer (writing the words into CRC->DR). Const-cast at
     // the boundary so callers can pass `const` data without lying to the
     // compiler.
     out = HAL_CRC_Calculate(&mHandle, const_cast<uint32_t*>(buffer), length);
+
+    mBusy = false;
     return true;
 }
 

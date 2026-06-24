@@ -16,8 +16,8 @@
  * \date    06-2021
  */
 
-#ifndef IGENERIC_TIMER_HPP_
-#define IGENERIC_TIMER_HPP_
+#ifndef IGENERICTIMER_HPP_
+#define IGENERICTIMER_HPP_
 
 /************************************************************************/
 /* Includes                                                             */
@@ -29,14 +29,36 @@
 /************************************************************************/
 /* Class declaration                                                    */
 /************************************************************************/
+/**
+ * \brief   Interface for a general-purpose elapsed-timer driver.
+ */
 class IGenericTimer
 {
 public:
     virtual ~IGenericTimer() = default;
+
+    /**
+     * \brief   Start the timer and register the elapsed handler.
+     * \param   handler     Callback invoked on each timer-elapsed event.
+     * \returns True if the timer could be started, else false.
+     * \note    The handler is invoked from INTERRUPT context
+     *          (HAL_TIM_PeriodElapsedCallback). Keep it short, do not allocate
+     *          heap, and use only the ...FromISR() variants of any RTOS APIs.
+     */
     virtual bool Start(const std::function<void()>& handler) = 0;
+
+    /**
+     * \brief   Indicate whether the timer is running.
+     * \returns True if started, else false.
+     */
     virtual bool IsStarted() const = 0;
+
+    /**
+     * \brief   Stop the timer.
+     * \returns True if stopped, else false.
+     */
     virtual bool Stop() = 0;
 };
 
 
-#endif  // IGENERIC_TIMER_HPP_
+#endif  // IGENERICTIMER_HPP_

@@ -85,13 +85,16 @@ bool BasicTimer::Init(const IConfig& config)
         masterConfig.MasterSlaveMode     = TIM_MASTERSLAVEMODE_DISABLE;
         if (HAL_TIMEx_MasterConfigSynchronization(&mHandle, &masterConfig) == HAL_OK)
         {
-            // Configure NVIC to generate interrupt
-            SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
-
-            // Own this timer's vector through the shared TimerIRQ dispatcher.
+            // Own this timer's vector through the shared TimerIRQ dispatcher
+            // BEFORE the NVIC line goes live: TimerIRQ requires the slot be armed
+            // while the line is disabled (std::function assignment is not atomic
+            // on Cortex-M4). SetIRQn enables the line as its final step.
             // Note: Start() uses HAL_TIM_Base_Start (no UDIE), so this slot is
             // wired but currently never fires -- see BasicTimer IRQ deferral.
             TimerIRQ::Install(GetSlot(mInstance), [this]() { HAL_TIM_IRQHandler(&mHandle); });
+
+            // Configure NVIC to generate interrupt
+            SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
 
             mInitialized = true;
             return true;
@@ -118,13 +121,15 @@ bool BasicTimer::Sleep()
 {
     Stop();
 
+    // Tear the vector down before de-init: disable the NVIC line and drop the
+    // dispatcher slot first, so no stale lambda capturing `this` can be reached
+    // during or after the teardown, then de-init the peripheral.
+    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
+    DisconnectCallbacks();
+
     if (HAL_TIM_Base_DeInit(&mHandle) != HAL_OK) { return false; }
 
     mInitialized = false;
-
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
-
-    DisconnectCallbacks();
 
     CheckAndDisablePeripheralClock(mInstance);
     return true;
@@ -140,7 +145,7 @@ bool BasicTimer::Start()
     {
         if (! mStarted)
         {
-            HAL_TIM_Base_Start(&mHandle);
+            if (HAL_TIM_Base_Start(&mHandle) != HAL_OK) { return false; }
             mStarted = true;
         }
         return true;
@@ -167,7 +172,7 @@ bool BasicTimer::Stop()
     {
         if (mStarted)
         {
-            HAL_TIM_Base_Stop(&mHandle);
+            if (HAL_TIM_Base_Stop(&mHandle) != HAL_OK) { return false; }
             mStarted = false;
         }
         return true;
@@ -242,6 +247,10 @@ uint32_t BasicTimer::GetTimerInputClockFreq()
  * \param   desiredFrequency    The desired frequency in Hz to use.
  * \returns Period value (TIM_ARR).
  * \note    The CLK_CNT is assumed to be 1 MHz.
+ * \note    TIM6/TIM7 are 16-bit, so the period saturates at 0xFFFF. A
+ *          desiredFrequency below 1 MHz/65536 (~15.26 Hz) therefore clamps to
+ *          the lowest representable frequency rather than producing a larger
+ *          ARR -- saturation is intentional, see the Config range note.
  */
 uint16_t BasicTimer::CalculatePeriod(uint16_t desiredFrequency)
 {

@@ -41,7 +41,13 @@ static std::function<void()> sSlots[SLOT_COUNT];
  */
 static void Dispatch(TimerIRQ::Slot slot)
 {
-    const std::function<void()>& handler = sSlots[static_cast<uint8_t>(slot)];
+    // Defence-in-depth: every caller passes a hardcoded enumerator, but guard
+    // the array index anyway -- this runs in ISR context, so fail silently
+    // rather than assert.
+    const uint8_t index = static_cast<uint8_t>(slot);
+    if (index >= SLOT_COUNT) { return; }
+
+    const std::function<void()>& handler = sSlots[index];
     if (handler)
     {
         handler();

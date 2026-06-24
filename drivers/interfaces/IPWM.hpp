@@ -39,14 +39,25 @@ public:
      */
     enum class Channel : uint8_t
     {
-        Channel_1 = 1,
-        Channel_2,
-        Channel_3,
-        Channel_4
+        CHANNEL_1 = 1,
+        CHANNEL_2,
+        CHANNEL_3,
+        CHANNEL_4
     };
 
 
+    /**
+     * \brief   Start PWM output for the given channel.
+     * \param   channel     The channel to start PWM output for.
+     * \returns True if PWM output could be started for the channel, else false.
+     */
     virtual bool Start(Channel channel) = 0;
+
+    /**
+     * \brief   Stop PWM output for the given channel.
+     * \param   channel     The channel to stop PWM output for.
+     * \returns True if PWM output could be stopped for the channel, else false.
+     */
     virtual bool Stop(Channel channel) = 0;
 };
 

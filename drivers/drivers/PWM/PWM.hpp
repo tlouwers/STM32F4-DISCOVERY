@@ -59,8 +59,8 @@ public:
      */
     enum class Polarity : bool
     {
-        Low = 0,
-        High
+        LOW = 0,
+        HIGH
     };
 
     /**
@@ -75,7 +75,7 @@ public:
          * \param   dutyCycle   On time as a fraction of the period, [0.0 .. 1.0].
          * \param   polarity    Polarity of the on time, high (default) or low.
          */
-        ChannelConfig(Channel channel, float dutyCycle, Polarity polarity = Polarity::High) :
+        ChannelConfig(Channel channel, float dutyCycle, Polarity polarity = Polarity::HIGH) :
             mChannel(channel),
             mDutyCycle(dutyCycle),
             mPolarity(polarity)
@@ -94,7 +94,12 @@ public:
     {
         /**
          * \brief   Constructor of the PWM configuration struct.
-         * \param   frequency   Clock frequency in Hz [0.1 .. 8000000.0].
+         * \param   frequency   PWM frequency in Hz [0.1 .. 8000000.0].
+         * \note    The effective minimum frequency is clock-dependent: the
+         *          period is capped at UINT16_MAX (see CalculatePeriod), so at a
+         *          typical 84 MHz timer clock the practical floor is ~1.3 kHz, not
+         *          0.1 Hz. The 0.1 Hz bound is the soft-assert guard, not a
+         *          guaranteed achievable frequency.
          */
         explicit Config(float frequency) :
             mFrequency(frequency)
@@ -125,10 +130,16 @@ public:
     bool Start(Channel channel) override;
     bool Stop(Channel channel) override;
 
+    // Explicit disabled constructors/operators
+    PWM(const PWM&)            = delete;
+    PWM& operator=(const PWM&) = delete;
+    PWM(PWM&&)                 = delete;
+    PWM& operator=(PWM&&)      = delete;
+
 private:
     PwmTimerInstance  mInstance;
     TIM_HandleTypeDef mHandle = {};
-    bool              mInitialized;
+    bool              mInitialized = false;
 
     void SetInstance(const PwmTimerInstance& instance);
     void CheckAndEnablePeripheralClock(const PwmTimerInstance& instance);

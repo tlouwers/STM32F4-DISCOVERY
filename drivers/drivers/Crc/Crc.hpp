@@ -49,9 +49,16 @@ public:
 
     bool Calculate(const uint32_t* buffer, uint32_t length, uint32_t& out) override;
 
+    // Explicit disabled constructors/operators
+    Crc(const Crc&)            = delete;
+    Crc& operator=(const Crc&) = delete;
+    Crc(Crc&&)                 = delete;
+    Crc& operator=(Crc&&)      = delete;
+
 private:
     CRC_HandleTypeDef mHandle = {};
-    bool              mInitialized;
+    bool              mInitialized = false;
+    volatile bool     mBusy        = false;     ///< Re-entrancy claim flag; the CRC accumulator is a single shared resource.
 
     void CheckAndEnablePeripheralClock();
     void CheckAndDisablePeripheralClock();

@@ -347,6 +347,7 @@ typedef struct
     volatile uint32_t CR;        ///< Clock control register
     volatile uint32_t PLLCFGR;   ///< PLL configuration register
     volatile uint32_t CFGR;      ///< Clock configuration register (APB prescalers)
+    volatile uint32_t DCKCFGR;   ///< Dedicated clocks configuration register (TIMPRE)
 } RCC_TypeDef;
 
 extern RCC_TypeDef* const RCC;
@@ -360,8 +361,13 @@ extern RCC_TypeDef* const RCC;
    off the DIV2 threshold. */
 #define RCC_CFGR_PPRE1           ((uint32_t)0x00001C00U)   ///< APB1 prescaler mask (bits 10..12)
 #define RCC_CFGR_PPRE1_DIV2      ((uint32_t)0x00001000U)   ///< APB1 prescaler /2
+#define RCC_CFGR_PPRE1_DIV4      ((uint32_t)0x00001400U)   ///< APB1 prescaler /4
 #define RCC_CFGR_PPRE2           ((uint32_t)0x0000E000U)   ///< APB2 prescaler mask (bits 13..15)
 #define RCC_CFGR_PPRE2_DIV2      ((uint32_t)0x00008000U)   ///< APB2 prescaler /2
+#define RCC_CFGR_PPRE2_DIV4      ((uint32_t)0x0000A000U)   ///< APB2 prescaler /4
+
+/* DCKCFGR TIMPRE: timer-clock prescaler selection (RM0090 §6.3.24, bit 24). */
+#define RCC_DCKCFGR_TIMPRE       ((uint32_t)0x01000000U)   ///< Timers clocks prescalers selection
 
 /**
  * \brief   RNG peripheral instance (opaque -- the fake never inspects it;
@@ -407,6 +413,10 @@ void FakeRNG_ResetObservation(void);
  */
 uint32_t HAL_RCC_GetPCLK1Freq(void);
 uint32_t HAL_RCC_GetPCLK2Freq(void);
+
+/* AHB (HCLK) frequency; read by GenericTimer when TIMPRE=1 selects HCLK as the
+   timer input clock. Fixed to the drafted 168 MHz PLL config. */
+uint32_t HAL_RCC_GetHCLKFreq(void);
 
 
 /**

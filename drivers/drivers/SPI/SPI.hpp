@@ -115,6 +115,12 @@ public:
     explicit SPI(const SPIInstance& instance);
     virtual ~SPI();
 
+    // Explicit disabled constructors/operators
+    SPI(const SPI&)            = delete;
+    SPI& operator=(const SPI&) = delete;
+    SPI(SPI&&)                 = delete;
+    SPI& operator=(SPI&&)      = delete;
+
     bool Init(const IConfig& config) override;
     bool IsInit() const override;
     bool Sleep() override;
@@ -144,9 +150,9 @@ private:
     void CheckAndEnablePeripheralClock(const SPIInstance& instance);
     void CheckAndDisablePeripheralClock(const SPIInstance& instance);
     uint32_t GetPeripheralClockFreq() const;
-    uint32_t GetPolarity(const Mode& mode);
-    uint32_t GetPhase(const Mode& mode);
-    uint32_t CalculatePrescaler(uint32_t busSpeed);
+    uint32_t GetPolarity(const Mode& mode) const;
+    uint32_t GetPhase(const Mode& mode) const;
+    uint32_t CalculatePrescaler(uint32_t busSpeed) const;
     IRQn_Type GetIRQn(const SPIInstance& instance);
     void SetIRQn(IRQn_Type type, uint32_t preemptPrio, uint32_t subPrio);
     void CallbackIRQ();

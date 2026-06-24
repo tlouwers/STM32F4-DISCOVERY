@@ -70,9 +70,12 @@ struct ForeignConfig : public IConfig
     const void* ConfigId() const override { return Id(); }
 };
 
+// The fake HAL_RCC_GetPCLK2Freq() reports 84 MHz (the 168 MHz PLL profile), so
+// DIV2 (42 MHz) exceeds the 36 MHz ADCCLK ceiling and Init() rejects it. Use
+// DIV4 (21 MHz) for every "valid config" so the clock guard passes.
 Adc::Config ValidConfig()
 {
-    return Adc::Config(0, Ch::CHANNEL_0);
+    return Adc::Config(0, Ch::CHANNEL_0, Adc::Resolution::_12_BIT, Adc::Prescaler::DIV4);
 }
 
 
@@ -83,7 +86,7 @@ class Adc_Test : public ::testing::Test
 {
 protected:
     Adc_Test()
-        : mSubject(ADCInstance::ADC_1)
+        : mSubject(AdcInstance::ADC_1)
     {
         FakeADC_Reset();
     }
@@ -135,8 +138,9 @@ TEST_F(Adc_Test, Init_EveryChannel_ReturnsTrue)
 {
     for (uint8_t c = 0; c <= static_cast<uint8_t>(Ch::CHANNEL_15); ++c)
     {
-        Adc adc(ADCInstance::ADC_1);
-        EXPECT_TRUE(adc.Init(Adc::Config(0, static_cast<Ch>(c))));
+        Adc adc(AdcInstance::ADC_1);
+        EXPECT_TRUE(adc.Init(Adc::Config(0, static_cast<Ch>(c),
+                                         Adc::Resolution::_12_BIT, Adc::Prescaler::DIV4)));
     }
 }
 
@@ -148,22 +152,34 @@ TEST_F(Adc_Test, Init_EveryResolution_ReturnsTrue)
     };
     for (const auto& res : resolutions)
     {
-        Adc adc(ADCInstance::ADC_1);
-        EXPECT_TRUE(adc.Init(Adc::Config(0, Ch::CHANNEL_0, res)));
+        Adc adc(AdcInstance::ADC_1);
+        EXPECT_TRUE(adc.Init(Adc::Config(0, Ch::CHANNEL_0, res, Adc::Prescaler::DIV4)));
     }
 }
 
-TEST_F(Adc_Test, Init_EveryPrescaler_ReturnsTrue)
+// At PCLK2 = 84 MHz every divider except DIV2 keeps ADCCLK within the 36 MHz
+// ceiling, so DIV4/DIV6/DIV8 init successfully (exercising the GetPrescaler and
+// GetPrescalerDivider switch arms for those values).
+TEST_F(Adc_Test, Init_PrescalerWithinAdcClkLimit_ReturnsTrue)
 {
     const Adc::Prescaler prescalers[] = {
-        Adc::Prescaler::DIV2, Adc::Prescaler::DIV4,
-        Adc::Prescaler::DIV6, Adc::Prescaler::DIV8
+        Adc::Prescaler::DIV4, Adc::Prescaler::DIV6, Adc::Prescaler::DIV8
     };
     for (const auto& pre : prescalers)
     {
-        Adc adc(ADCInstance::ADC_1);
+        Adc adc(AdcInstance::ADC_1);
         EXPECT_TRUE(adc.Init(Adc::Config(0, Ch::CHANNEL_0, Adc::Resolution::_12_BIT, pre)));
     }
+}
+
+// DIV2 at PCLK2 = 84 MHz yields ADCCLK = 42 MHz, over the 36 MHz limit; Init()
+// must reject it (the ASSERT/EXPECT is a no-op in the native build, so the guard
+// is observed via the false return).
+TEST_F(Adc_Test, Init_PrescalerExceedsAdcClkLimit_ReturnsFalseAndNotInit)
+{
+    EXPECT_FALSE(mSubject.Init(Adc::Config(0, Ch::CHANNEL_0,
+                                           Adc::Resolution::_12_BIT, Adc::Prescaler::DIV2)));
+    EXPECT_FALSE(mSubject.IsInit());
 }
 
 TEST_F(Adc_Test, Init_EverySamplingTime_ReturnsTrue)
@@ -176,10 +192,10 @@ TEST_F(Adc_Test, Init_EverySamplingTime_ReturnsTrue)
     };
     for (const auto& t : times)
     {
-        Adc adc(ADCInstance::ADC_1);
+        Adc adc(AdcInstance::ADC_1);
         EXPECT_TRUE(adc.Init(Adc::Config(0, Ch::CHANNEL_0,
                                          Adc::Resolution::_12_BIT,
-                                         Adc::Prescaler::DIV2, t)));
+                                         Adc::Prescaler::DIV4, t)));
     }
 }
 
@@ -187,9 +203,9 @@ TEST_F(Adc_Test, Init_EverySamplingTime_ReturnsTrue)
 // pointer; construct all three to exercise the SetInstance switch arms.
 TEST_F(Adc_Test, Init_EachInstance_ReturnsTrue)
 {
-    Adc adc1(ADCInstance::ADC_1);
-    Adc adc2(ADCInstance::ADC_2);
-    Adc adc3(ADCInstance::ADC_3);
+    Adc adc1(AdcInstance::ADC_1);
+    Adc adc2(AdcInstance::ADC_2);
+    Adc adc3(AdcInstance::ADC_3);
 
     EXPECT_TRUE(adc1.Init(ValidConfig()));
     EXPECT_TRUE(adc2.Init(ValidConfig()));
@@ -220,7 +236,7 @@ TEST_F(Adc_Test, Sleep_HalDeInitFails_ReturnsFalse)
 // take the all-slots-clear NVIC-disable branch; it still returns true.
 TEST_F(Adc_Test, Sleep_OtherInstanceStillActive_ReturnsTrue)
 {
-    Adc adc2(ADCInstance::ADC_2);
+    Adc adc2(AdcInstance::ADC_2);
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
     ASSERT_TRUE(adc2.Init(ValidConfig()));
 
@@ -324,7 +340,7 @@ TEST_F(Adc_Test, IRQHandler_AfterGetValueInterrupt_DispatchesEndOfConversion)
 
 TEST_F(Adc_Test, IRQHandler_Adc3Instance_DispatchesEndOfConversion)
 {
-    Adc adc3(ADCInstance::ADC_3);
+    Adc adc3(AdcInstance::ADC_3);
     ASSERT_TRUE(adc3.Init(ValidConfig()));
 
     bool wasCalled = false;

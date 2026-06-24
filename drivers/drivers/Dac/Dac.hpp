@@ -11,7 +11,7 @@
  *
  * \brief   Dac peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Dac
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Dac
  *
  * \note    Either use software trigger, or use DMA in combination with a timer - assume BasicTimer 6 or 7 is used?
  *          Can be any timer. Also can be external trigger.
@@ -147,6 +147,14 @@ public:
     bool LinkDma(const Channel& channel, DMA& dma);
 
     bool ConfigureChannel(const Channel& channel, const ChannelConfig& channelConfig);
+
+    /**
+     * \note    The buffer is owned by the DMA controller from the moment
+     *          StartWaveform() succeeds until StopWaveform() completes. Do NOT
+     *          modify or free it while the waveform is running -- a CPU write
+     *          concurrent with the DMA read is a data race. For double-buffering,
+     *          stop the waveform, swap the pointer, then restart.
+     */
     bool ConfigureWaveform(const Channel& channel, const uint16_t* values, uint16_t length);
 
     bool SetValue(const Channel& channel, uint16_t value) override;
@@ -156,9 +164,15 @@ public:
 
     bool Tick(const Channel& channel);
 
+    // Explicit disabled constructors/operators
+    Dac(const Dac&)            = delete;
+    Dac& operator=(const Dac&) = delete;
+    Dac(Dac&&)                 = delete;
+    Dac& operator=(Dac&&)      = delete;
+
 private:
     DAC_HandleTypeDef mHandle = {};
-    bool              mInitialized;
+    bool              mInitialized = false;
     ChannelConfig     mChannel1 = {};
     ChannelConfig     mChannel2 = {};
     Waveform          mWaveformChannel1 = {};

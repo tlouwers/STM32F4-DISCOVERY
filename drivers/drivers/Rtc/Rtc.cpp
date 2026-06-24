@@ -7,7 +7,6 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Rtc
  *
  * \brief   Rtc peripheral driver class.
  *
@@ -54,9 +53,7 @@ static constexpr uint16_t COLD_BOOT_SEED_YEAR = 2021;
 /**
  * \brief   Constructor.
  */
-Rtc::Rtc() :
-    mInitialized(false),
-    mWasColdBoot(false)
+Rtc::Rtc()
 {
     mHandle.Instance = RTC;
 }
@@ -140,16 +137,19 @@ bool Rtc::IsInit() const
 }
 
 /**
- * \brief   Puts the Rtc module in sleep mode.
- * \returns True if Rtc module could be put in sleep mode, else false.
+ * \brief   Puts the Rtc driver in sleep mode.
+ * \details The RTC lives in the always-on backup domain and is meant to keep
+ *          running across low-power sleep so battery-backed time is preserved.
+ *          Sleep() (and the destructor, which calls it) therefore deliberately
+ *          do NOT de-initialise the peripheral or reset the calendar -- doing
+ *          so would discard the very time the cold-boot / battery-backed design
+ *          works to keep. It only drops this driver's initialised state. For an
+ *          explicit, destructive teardown use Deinitialize().
+ * \returns True -- always succeeds; no hardware teardown is performed.
  */
 bool Rtc::Sleep()
 {
-    if (HAL_RTC_DeInit(&mHandle) != HAL_OK) { return false; }
-
     mInitialized = false;
-
-    DisablePeripheralClock();
     return true;
 }
 
@@ -236,6 +236,29 @@ bool Rtc::GetDateTime(DateTime &dateTime)
 bool Rtc::WasColdBoot() const
 {
     return mWasColdBoot;
+}
+
+/**
+ * \brief   Explicitly de-initialise the RTC: reset the calendar and disable the
+ *          RTC peripheral clock.
+ * \details DESTRUCTIVE -- this resets RTC_TR/RTC_DR to their hardware defaults
+ *          (2000-01-01) and clears RTCEN, discarding the kept time. Sleep() and
+ *          the destructor deliberately do NOT do this, so battery-backed /
+ *          backup-domain time survives object teardown and low-power sleep.
+ *          Call this only when a full RTC reset is genuinely intended.
+ * \returns True if the RTC was de-initialised (or was not initialised), else
+ *          false if the HAL de-init failed.
+ */
+bool Rtc::Deinitialize()
+{
+    if (!mInitialized) { return true; }
+
+    if (HAL_RTC_DeInit(&mHandle) != HAL_OK) { return false; }
+
+    mInitialized = false;
+
+    DisablePeripheralClock();
+    return true;
 }
 
 

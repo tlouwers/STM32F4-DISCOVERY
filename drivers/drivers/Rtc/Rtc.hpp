@@ -90,11 +90,18 @@ public:
     bool GetDateTime(DateTime& dateTime) override;
 
     bool WasColdBoot() const;
+    bool Deinitialize();
+
+    // Explicit disabled constructors/operators
+    Rtc(const Rtc&)            = delete;
+    Rtc& operator=(const Rtc&) = delete;
+    Rtc(Rtc&&)                 = delete;
+    Rtc& operator=(Rtc&&)      = delete;
 
 private:
     RTC_HandleTypeDef mHandle = {};
-    bool              mInitialized;
-    bool              mWasColdBoot;
+    bool              mInitialized = false;
+    bool              mWasColdBoot = false;
 
     void EnablePeripheralClock(const ClockSource& clockSource);
     void DisablePeripheralClock();

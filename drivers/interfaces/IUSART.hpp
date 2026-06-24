@@ -21,6 +21,16 @@
  *          Bus arbitration is not specified, but assumed to be implemented
  *          in low level drivers.
  *
+ * \note    Trust boundary: bytes delivered over this interface are received from
+ *          an external line and are UNTRUSTED. The caller owns 'dest' and must
+ *          size it to at least 'length'; the reported byte count is bounded by
+ *          'length' but the CONTENT must be validated by the caller before use.
+ *
+ * \note    Completion handlers execute in INTERRUPT context. Keep them short and,
+ *          under an RTOS, use only the ISR-safe API variants (e.g. FreeRTOS
+ *          'xQueueSendFromISR' / 'xSemaphoreGiveFromISR'); calling a non-ISR-safe
+ *          API from a handler corrupts the scheduler.
+ *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/Drivers/interfaces
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>

@@ -49,10 +49,16 @@ public:
 
     bool GetRandom(uint32_t& out) override;
 
+    // Explicit disabled constructors/operators
+    Rng(const Rng&)            = delete;
+    Rng& operator=(const Rng&) = delete;
+    Rng(Rng&&)                 = delete;
+    Rng& operator=(Rng&&)      = delete;
+
 private:
-    RNG_HandleTypeDef mHandle = {};
-    bool              mInitialized;
-    std::atomic_flag  mInUse = ATOMIC_FLAG_INIT;   ///< Reentrancy guard around HAL_RNG_GenerateRandomNumber
+    RNG_HandleTypeDef  mHandle = {};
+    std::atomic<bool>  mInitialized{false};        ///< Atomic: read by GetRandom() while Init()/Sleep() may run in another context
+    std::atomic_flag   mInUse = ATOMIC_FLAG_INIT;  ///< Reentrancy guard around HAL_RNG_GenerateRandomNumber
 
     void CheckAndEnablePeripheralClock();
     void CheckAndDisablePeripheralClock();

@@ -253,11 +253,29 @@ TEST_F(USART_Test, WriteInterrupt_ValidAfterInit_ReturnsTrue)
     EXPECT_TRUE(mSubject.WriteInterrupt(src, sizeof(src), nullptr));
 }
 
+TEST_F(USART_Test, WriteInterrupt_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeUSART_SetTransferResult(HAL_ERROR);
+
+    const uint8_t src[4] = { 1, 2, 3, 4 };
+    EXPECT_FALSE(mSubject.WriteInterrupt(src, sizeof(src), nullptr));
+}
+
 TEST_F(USART_Test, ReadInterrupt_WithIdleDetection_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
     uint8_t dest[4] = {};
     EXPECT_TRUE(mSubject.ReadInterrupt(dest, sizeof(dest), nullptr, true));
+}
+
+TEST_F(USART_Test, ReadInterrupt_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeUSART_SetTransferResult(HAL_ERROR);
+
+    uint8_t dest[4] = {};
+    EXPECT_FALSE(mSubject.ReadInterrupt(dest, sizeof(dest), nullptr, true));
 }
 
 TEST_F(USART_Test, ReadInterrupt_WithoutIdleDetection_ReturnsTrue)
@@ -288,6 +306,19 @@ TEST_F(USART_Test, WriteDma_TxDmaLinked_ReturnsTrue)
 
     const uint8_t src[4] = { 1, 2, 3, 4 };
     EXPECT_TRUE(mSubject.WriteDma(src, sizeof(src), nullptr));
+}
+
+TEST_F(USART_Test, WriteDma_HalTransferFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+
+    DMA tx(DMA::Stream::Dma2_Stream7);
+    ASSERT_TRUE(ConfigureDma(tx, DMA::Direction::MemoryToPeripheral));
+    ASSERT_TRUE(mSubject.LinkDma(tx));
+    FakeUSART_SetTransferResult(HAL_ERROR);
+
+    const uint8_t src[4] = { 1, 2, 3, 4 };
+    EXPECT_FALSE(mSubject.WriteDma(src, sizeof(src), nullptr));
 }
 
 TEST_F(USART_Test, ReadDma_NoRxDmaLinked_ReturnsFalse)

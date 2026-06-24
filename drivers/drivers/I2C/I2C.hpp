@@ -115,6 +115,12 @@ public:
     explicit I2C(const I2CInstance& instance);
     virtual ~I2C();
 
+    // Explicit disabled constructors/operators
+    I2C(const I2C&)            = delete;
+    I2C& operator=(const I2C&) = delete;
+    I2C(I2C&&)                 = delete;
+    I2C& operator=(I2C&&)      = delete;
+
     bool Init(const IConfig& config) override;
     bool IsInit() const override;
     bool Sleep() override;
@@ -139,8 +145,8 @@ private:
      */
     enum class IRQType : bool
     {
-        Event,      ///< Default
-        Error
+        EVENT,      ///< Default
+        ERROR
     };
 
     I2CInstance       mInstance;

@@ -72,7 +72,7 @@ bool Application::Init()
     result &= mPWM.Init(PWM::Config(500));
     EXPECT(result);
 
-    result &= mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::Channel_1, 0.5f, PWM::Polarity::High));
+    result &= mPWM.ConfigureChannel(PWM::ChannelConfig(PWM::Channel::CHANNEL_1, 0.5f, PWM::Polarity::HIGH));
     EXPECT(result);
 
 

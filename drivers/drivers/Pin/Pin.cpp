@@ -7,12 +7,11 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Pin
  *
  * \brief   Helper class intended as 'set & forget' for pin  configurations.
  *          State is preserved (partly) within the hardware.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Pin
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Pin
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
  * \version 1.0
@@ -165,7 +164,9 @@ void Pin::Configure(Level level, Drive drive /* = Drive::PUSH_PULL */)
         case Drive::OPEN_DRAIN:              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
         case Drive::OPEN_DRAIN_PULL_UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
         case Drive::OPEN_DRAIN_PULL_DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-        case Drive::OPEN_DRAIN_PULL_UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+        // PUPDR = 0b11 is reserved on STM32F4 (RM0090 §8.4.1); simultaneous pull-up
+        // and pull-down is not a valid hardware state, so fall back to no pull.
+        case Drive::OPEN_DRAIN_PULL_UP_DOWN: ASSERT(false); GPIO_InitStructure.Pull = GPIO_NOPULL;   break;
         default: ASSERT(false);              GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;    // Invalid drive
     }
     GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -202,7 +203,9 @@ void Pin::Configure(PullUpDown pullUpDown)
         {
             case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
             case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-            case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+            // PUPDR = 0b11 is reserved on STM32F4 (RM0090 §8.4.1); simultaneous pull-up
+            // and pull-down is not a valid hardware state, so fall back to no pull.
+            case PullUpDown::UP_DOWN: ASSERT(false); GPIO_InitStructure.Pull = GPIO_NOPULL;   break;
             case PullUpDown::HIGHZ:   // Fall through
             default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
         }
@@ -233,7 +236,9 @@ void Pin::Configure(Alternate alternate, PullUpDown pullUpDown /* = PullUpDown::
     {
         case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
         case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-        case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+        // PUPDR = 0b11 is reserved on STM32F4 (RM0090 §8.4.1); simultaneous pull-up
+        // and pull-down is not a valid hardware state, so fall back to no pull.
+        case PullUpDown::UP_DOWN: ASSERT(false); GPIO_InitStructure.Pull = GPIO_NOPULL;   break;
         case PullUpDown::HIGHZ:   // Fall through
         default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
     }
@@ -259,6 +264,8 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
     ASSERT(mDirection == Direction::INPUT);     // Cannot configure interrupt if pin is not configured as input
     ASSERT(callback);                           // Cannot configure interrupt without callback
 
+    if (INVALID_ENTRY == mId) { return false; } // Guard: GetIndexById(__builtin_ctz) is UB on an unset id
+
     // First disable a possible configured interrupt
     const IRQn_Type irq = GetIRQn(mId);
     if (!IsIRQSharedWithOtherPin(mId))
@@ -279,8 +286,15 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
     }
     else
     {
+        // The EXTI ISR reads this slot; publish callback+enabled atomically with
+        // respect to it via a brief global critical section. ScopedIrqMask is not
+        // used here: it force-enables the NVIC line on destruction, which would
+        // corrupt the enable-state of shared lines and disabled pins.
+        const uint32_t primask = __get_PRIMASK();
+        __disable_irq();
         pinInterruptList[index].callback = callback;
         pinInterruptList[index].enabled  = enableAfterConfigure;
+        __set_PRIMASK(primask);
     }
 
     GPIO_InitTypeDef GPIO_InitStructure = {};
@@ -302,7 +316,9 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
     {
         case PullUpDown::UP:      GPIO_InitStructure.Pull = GPIO_PULLUP;                   break;
         case PullUpDown::DOWN:    GPIO_InitStructure.Pull = GPIO_PULLDOWN;                 break;
-        case PullUpDown::UP_DOWN: GPIO_InitStructure.Pull = (GPIO_PULLUP | GPIO_PULLDOWN); break;
+        // PUPDR = 0b11 is reserved on STM32F4 (RM0090 §8.4.1); simultaneous pull-up
+        // and pull-down is not a valid hardware state, so fall back to no pull.
+        case PullUpDown::UP_DOWN: ASSERT(false); GPIO_InitStructure.Pull = GPIO_NOPULL;   break;
         case PullUpDown::ANALOG:  // Fall through -- analog + interrupt is invalid, treat as no pull
         case PullUpDown::HIGHZ:   // Fall through
         default:                  GPIO_InitStructure.Pull = GPIO_NOPULL;                   break;
@@ -313,7 +329,10 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
     // Configure NVIC to generate interrupt
     HAL_NVIC_ClearPendingIRQ(irq);
     HAL_NVIC_SetPriority(irq, INTERRUPT_PRIORITY, 0);
-    HAL_NVIC_EnableIRQ(irq);
+    if (enableAfterConfigure)   // Honour the caller's request to leave the line disabled
+    {
+        HAL_NVIC_EnableIRQ(irq);
+    }
 
     return true;
 }
@@ -325,6 +344,8 @@ bool Pin::Interrupt(Trigger trigger, const std::function<void()>& callback, bool
 bool Pin::InterruptEnable()
 {
     ASSERT(mDirection == Direction::INPUT);     // Cannot enable interrupt if pin is not configured as input
+
+    if (INVALID_ENTRY == mId) { return false; } // Guard: GetIndexById(__builtin_ctz) is UB on an unset id
 
     const auto index = GetIndexById(mId);
 
@@ -348,6 +369,8 @@ bool Pin::InterruptEnable()
 bool Pin::InterruptDisable()
 {
     ASSERT(mDirection == Direction::INPUT);     // Cannot disable interrupt if pin is not configured as input
+
+    if (INVALID_ENTRY == mId) { return false; } // Guard: GetIndexById(__builtin_ctz) is UB on an unset id
 
     const auto index = GetIndexById(mId);
 
@@ -376,6 +399,8 @@ bool Pin::InterruptDisable()
 bool Pin::InterruptRemove()
 {
     ASSERT(mDirection == Direction::INPUT);     // Cannot remove interrupt if pin is not configured as input
+
+    if (INVALID_ENTRY == mId) { return false; } // Guard: GetIndexById(__builtin_ctz) is UB on an unset id
 
     const auto index = GetIndexById(mId);
 
@@ -430,6 +455,7 @@ Level Pin::Get() const
     {
         case Direction::OUTPUT:
         case Direction::INPUT:
+        case Direction::ALTERNATE:  // IDR is readable for AF pins too; avoid the spin-forever fallback
             return (HAL_GPIO_ReadPin(mPort, mId) == GPIO_PIN_SET) ? Level::HIGH : Level::LOW;
             break;
         case Direction::UNDEFINED:      // Fall through
@@ -527,6 +553,10 @@ bool Pin::IsIRQSharedWithOtherPin(uint16_t id)
     int index = GetIndexById(id);
     uint8_t count = 0;
 
+    // The id is a single-bit GPIO_PIN_n bitmask (1 << n), so the `id < GPIO_PIN_5`
+    // style comparisons partition the pin into its EXTI vector group: 0..4 each have
+    // a dedicated line, 5..9 share EXTI9_5, 10..15 share EXTI15_10. The count below
+    // tallies configured callbacks in this pin's group, then excludes this pin itself.
     if (id < GPIO_PIN_5)
     {
         return false;
@@ -592,6 +622,10 @@ IRQn_Type Pin::GetIRQn(uint16_t id)
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+    // Guard the index math: __builtin_ctz(0) is undefined and a multi-bit mask would
+    // index out of bounds. Only a single-bit GPIO_PIN_n mask is a valid line id.
+    if (!IsOnlyASingleBitSetInIdMask(GPIO_Pin)) { return; }
+
     // No nested vector priority issue as all interrupt priorities for pins are the same.
     const auto index = GetIndexById(GPIO_Pin);
 

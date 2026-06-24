@@ -1,5 +1,5 @@
 /**
- * \file Dac.cpp
+ * \file    Dac.cpp
  *
  * \licence "THE BEER-WARE LICENSE" (Revision 42):
  *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
@@ -7,11 +7,10 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Dac
  *
  * \brief   Dac peripheral driver class.
  *
- * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/Dac
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Dac
  *
  * \note    For 12-bit only using right alignment in order to be consistent with 8-bit mode.
  *          Can only switch the config if the channel is off.
@@ -150,8 +149,9 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
                 StopChannel(Channel::CHANNEL_1);
                 if (HAL_DAC_ConfigChannel(&mHandle, &chanConf, DAC_CHANNEL_1) == HAL_OK)
                 {
-                    mChannel1.mPrecision = channelConfig.mPrecision;
-                    mChannel1.mTrigger   = channelConfig.mTrigger;
+                    mChannel1.mPrecision    = channelConfig.mPrecision;
+                    mChannel1.mTrigger      = channelConfig.mTrigger;
+                    mChannel1.mOutputBuffer = channelConfig.mOutputBuffer;
                     return true;
                 }
                 break;
@@ -159,8 +159,9 @@ bool Dac::ConfigureChannel(const Channel& channel, const ChannelConfig& channelC
                 StopChannel(Channel::CHANNEL_2);
                 if (HAL_DAC_ConfigChannel(&mHandle, &chanConf, DAC_CHANNEL_2) == HAL_OK)
                 {
-                    mChannel2.mPrecision = channelConfig.mPrecision;
-                    mChannel2.mTrigger   = channelConfig.mTrigger;
+                    mChannel2.mPrecision    = channelConfig.mPrecision;
+                    mChannel2.mTrigger      = channelConfig.mTrigger;
+                    mChannel2.mOutputBuffer = channelConfig.mOutputBuffer;
                     return true;
                 }
                 break;
@@ -196,6 +197,10 @@ bool Dac::ConfigureWaveform(const Channel& channel, const uint16_t* values, uint
  * \param   value       The value to output. This is in Dac counts.
  * \returns True if the value could be output, else false. Starts the channel
  *          if needed.
+ * \note    The valid range of \p value depends on the configured Precision
+ *          (0x000-0x0FF for _8_BIT_R, 0x000-0xFFF for the 12-bit modes). The
+ *          HAL masks the value to the register width, so an out-of-range value
+ *          is silently truncated rather than rejected.
  */
 bool Dac::SetValue(const Channel& channel, uint16_t value)
 {
@@ -234,6 +239,10 @@ bool Dac::SetValue(const Channel& channel, uint16_t value)
  *          from the channel Precision/alignment governs the access. The
  *          uint16_t* buffer is round-tripped through void* to express the
  *          intentional reinterpretation (and to keep -Wcast-align honest).
+ * \note    ES0182 §2.6.2: in DMA mode the DAC DMAUDR underrun flag may fail to
+ *          set if an internal trigger coincides with a DMA acknowledge. There is
+ *          no silicon workaround; callers must not rely on DMAUDR alone to detect
+ *          underrun.
  * \returns True if the waveform could be started on the given channel, else false.
  */
 bool Dac::StartWaveform(const Channel& channel)
@@ -244,6 +253,9 @@ bool Dac::StartWaveform(const Channel& channel)
     {
         case Channel::CHANNEL_1:
             if ((nullptr == mHandle.DMA_Handle1) || (0 == mWaveformChannel1.mLength)) { return false; }
+
+            // Invariant: DMA_Handle1 set <-> mDmaCh1 set (LinkDma assigns both together).
+            ASSERT(mDmaCh1);
 
             if (! mChannel1.mStarted)
             {
@@ -261,6 +273,9 @@ bool Dac::StartWaveform(const Channel& channel)
             break;
         case Channel::CHANNEL_2:
             if ((nullptr == mHandle.DMA_Handle2) || (0 == mWaveformChannel2.mLength)) { return false; }
+
+            // Invariant: DMA_Handle2 set <-> mDmaCh2 set (LinkDma assigns both together).
+            ASSERT(mDmaCh2);
 
             if (! mChannel2.mStarted)
             {
@@ -293,17 +308,17 @@ bool Dac::StopWaveform(const Channel& channel)
         case Channel::CHANNEL_1:
             if (mChannel1.mStarted)
             {
-                HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_1);
+                const bool stopped = (HAL_OK == HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_1));
                 mChannel1.mStarted = false;
-                return true;
+                return stopped;
             }
             break;
         case Channel::CHANNEL_2:
             if (mChannel2.mStarted)
             {
-                HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_2);
+                const bool stopped = (HAL_OK == HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_2));
                 mChannel2.mStarted = false;
-                return true;
+                return stopped;
             }
             break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
@@ -391,6 +406,10 @@ uint32_t Dac::GetTrigger(const Trigger& trigger)
         case Trigger::TIMER_7:    { trigger_value = DAC_TRIGGER_T7_TRGO;  } break;
         case Trigger::TIMER_8:    { trigger_value = DAC_TRIGGER_T8_TRGO;  } break;
         case Trigger::EXT_LINE_9: { trigger_value = DAC_TRIGGER_EXT_IT9;  } break;
+        // SOFTWARE drives the output via Tick()->HAL_DAC_SetValue (direct DHR
+        // write); DAC_TRIGGER_NONE auto-transfers DHR->DOR, which is exactly the
+        // per-sample CPU-driven behaviour wanted, so it maps to NONE (not the
+        // hardware SWTRIG path). See RM0090 §14.3.2.
         case Trigger::SOFTWARE:   { trigger_value = DAC_TRIGGER_NONE;     } break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection
     }
@@ -481,27 +500,21 @@ bool Dac::StopChannel(const Channel& channel)
         case Channel::CHANNEL_1:
             if (mChannel1.mStarted)
             {
-                if (0 == mWaveformChannel1.mLength)
-                {
-                    HAL_DAC_Stop(&mHandle, DAC_CHANNEL_1);
-                } else {
-                    HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_1);
-                }
+                const HAL_StatusTypeDef result = (0 == mWaveformChannel1.mLength)
+                    ? HAL_DAC_Stop(&mHandle, DAC_CHANNEL_1)
+                    : HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_1);
                 mChannel1.mStarted = false;
-                return true;
+                return (HAL_OK == result);
             }
             break;
         case Channel::CHANNEL_2:
             if (mChannel2.mStarted)
             {
-                if (0 == mWaveformChannel2.mLength)
-                {
-                    HAL_DAC_Stop(&mHandle, DAC_CHANNEL_2);
-                } else {
-                    HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_2);
-                }
+                const HAL_StatusTypeDef result = (0 == mWaveformChannel2.mLength)
+                    ? HAL_DAC_Stop(&mHandle, DAC_CHANNEL_2)
+                    : HAL_DAC_Stop_DMA(&mHandle, DAC_CHANNEL_2);
                 mChannel2.mStarted = false;
-                return true;
+                return (HAL_OK == result);
             }
             break;
         default: ASSERT(false); while(1) { __NOP(); } break;    // Impossible selection

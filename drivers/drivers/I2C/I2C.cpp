@@ -7,7 +7,6 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   I2C
  *
  * \brief   I2C master peripheral driver class.
  *
@@ -23,6 +22,7 @@
 /************************************************************************/
 #include "drivers/I2C/I2C.hpp"
 #include "utility/Assert/Assert.h"
+#include "utility/ScopedIrqMask/ScopedIrqMask.hpp"
 #include "stm32f4xx_hal_i2c.h"
 
 
@@ -172,10 +172,10 @@ bool I2C::Init(const IConfig& config)
     if (HAL_I2C_Init(&mHandle) == HAL_OK)
     {
         // Configure NVIC to generate interrupt on Event
-        SetIRQn(GetIRQn(mInstance, IRQType::Event), cfg.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance, IRQType::EVENT), cfg.mInterruptPriority, 0);
 
         // Configure NVIC to generate interrupt on Error
-        SetIRQn(GetIRQn(mInstance, IRQType::Error), cfg.mInterruptPriority, 0);
+        SetIRQn(GetIRQn(mInstance, IRQType::ERROR), cfg.mInterruptPriority, 0);
 
         mI2CCallbacks.callbackEvent = [this]() { this->CallbackEvent(); };
         mI2CCallbacks.callbackError = [this]() { this->CallbackError(); };
@@ -214,8 +214,8 @@ bool I2C::Sleep()
 
     mInitialized = false;
 
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::Event) );
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::Error) );
+    HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::EVENT) );
+    HAL_NVIC_DisableIRQ( GetIRQn(mInstance, IRQType::ERROR) );
 
     DisconnectCallbacks();
 
@@ -276,8 +276,15 @@ bool I2C::RecoverBus(PinIdPort scl, PinIdPort sda)
 
     const bool sdaReleased = (sdaPin.Get() == Level::HIGH);
 
-    // Generate a STOP (SDA low->high while SCL high) so a slave that was
-    // mid-transfer resynchronises to an idle bus.
+    // Generate a clean STOP (SDA low->high while SCL high) so a slave that
+    // was mid-transfer resynchronises to an idle bus. Drive SCL low *before*
+    // pulling SDA low: at this point SCL is high (loop exit, or the initial
+    // Configure when SDA was already released), so an SDA high->low edge here
+    // would itself be a START (DS8626 6.3.19 / I2C-bus spec) and could re-arm
+    // the very slave the 9 clocks just freed. Lowering SCL first keeps SDA's
+    // falling edge off the START pattern.
+    sclPin.Set(Level::LOW);
+    DelayMicroseconds(5);
     sdaPin.Set(Level::LOW);
     DelayMicroseconds(5);
     sclPin.Set(Level::HIGH);
@@ -348,9 +355,14 @@ bool I2C::WriteDMA(uint8_t slave, const uint8_t* src, uint16_t length, const std
     if (!mInitialized)  { return false; }
     if (nullptr == mHandle.hdmatx) { return false; }
 
+    // Arm the handler only after the HAL accepts the transfer, bracketed by the
+    // per-instance EV+ER NVIC mask (ScopedIrqMask): the std::function assignment
+    // is not atomic and, once the transfer is live, the EV/ER ISR may read the
+    // slot. A rejected start (HAL_BUSY/HAL_ERROR) leaves no stale handler armed.
+    ScopedIrqMask mask(GetIRQn(mInstance, IRQType::EVENT), GetIRQn(mInstance, IRQType::ERROR));
+    if (HAL_I2C_Master_Transmit_DMA(&mHandle, slave, const_cast<uint8_t*>(src), length) != HAL_OK) { return false; }
     mI2CCallbacks.callbackTx = handler;
-
-    return (HAL_I2C_Master_Transmit_DMA(&mHandle, slave, const_cast<uint8_t*>(src), length) == HAL_OK);
+    return true;
 }
 
 /**
@@ -373,10 +385,12 @@ bool I2C::ReadDMA(uint8_t slave, uint8_t* dest, uint16_t length, const std::func
     if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
     if (nullptr == mHandle.hdmarx) { return false; }
+    ASSERT(mDmaRx);     // hdmarx is only ever set alongside mDmaRx in LinkDma
 
-    mI2CCallbacks.callbackRx = handler;
-
+    // See WriteDMA: arm the handler only on HAL_OK, under the EV+ER NVIC mask.
+    ScopedIrqMask mask(GetIRQn(mInstance, IRQType::EVENT), GetIRQn(mInstance, IRQType::ERROR));
     if (HAL_I2C_Master_Receive_DMA(&mHandle, slave, dest, length) != HAL_OK) { return false; }
+    mI2CCallbacks.callbackRx = handler;
 
     // HAL re-enables DMA_IT_HT regardless of the user's HalfBufferInterrupt
     // selection; reassert it.
@@ -403,9 +417,11 @@ bool I2C::WriteInterrupt(uint8_t slave, const uint8_t* src, uint16_t length, con
     if (0 == length)    { return false; }
     if (!mInitialized)  { return false; }
 
+    // See WriteDMA: arm the handler only on HAL_OK, under the EV+ER NVIC mask.
+    ScopedIrqMask mask(GetIRQn(mInstance, IRQType::EVENT), GetIRQn(mInstance, IRQType::ERROR));
+    if (HAL_I2C_Master_Transmit_IT(&mHandle, slave, const_cast<uint8_t*>(src), length) != HAL_OK) { return false; }
     mI2CCallbacks.callbackTx = handler;
-
-    return (HAL_I2C_Master_Transmit_IT(&mHandle, slave, const_cast<uint8_t*>(src), length) == HAL_OK);
+    return true;
 }
 
 /**
@@ -427,9 +443,11 @@ bool I2C::ReadInterrupt(uint8_t slave, uint8_t* dest, uint16_t length, const std
     if (0 == length)     { return false; }
     if (!mInitialized)   { return false; }
 
+    // See WriteDMA: arm the handler only on HAL_OK, under the EV+ER NVIC mask.
+    ScopedIrqMask mask(GetIRQn(mInstance, IRQType::EVENT), GetIRQn(mInstance, IRQType::ERROR));
+    if (HAL_I2C_Master_Receive_IT(&mHandle, slave, dest, length) != HAL_OK) { return false; }
     mI2CCallbacks.callbackRx = handler;
-
-    return (HAL_I2C_Master_Receive_IT(&mHandle, slave, dest, length) == HAL_OK);
+    return true;
 }
 
 /**
@@ -539,7 +557,7 @@ void I2C::CheckAndDisablePeripheralClock(const I2CInstance& instance)
  */
 IRQn_Type I2C::GetIRQn(const I2CInstance& instance, IRQType type)
 {
-    if (type == IRQType::Event)
+    if (type == IRQType::EVENT)
     {
         switch (instance)
         {

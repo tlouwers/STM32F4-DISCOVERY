@@ -177,19 +177,19 @@ TEST_F(PWM_Test, Sleep_HalDeInitFails_ReturnsFalse)
 /************************************************************************/
 TEST_F(PWM_Test, ConfigureChannel_NotInit_ReturnsFalse)
 {
-    EXPECT_FALSE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::Channel_1, 0.5f)));
+    EXPECT_FALSE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::CHANNEL_1, 0.5f)));
 }
 
 TEST_F(PWM_Test, ConfigureChannel_ValidAfterInit_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::Channel_1, 0.5f)));
+    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::CHANNEL_1, 0.5f)));
 }
 
 TEST_F(PWM_Test, ConfigureChannel_LowPolarity_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::Channel_1, 0.5f, PWM::Polarity::Low)));
+    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::CHANNEL_1, 0.5f, PWM::Polarity::LOW)));
 }
 
 TEST_F(PWM_Test, ConfigureChannel_HalConfigFails_ReturnsFalse)
@@ -197,7 +197,7 @@ TEST_F(PWM_Test, ConfigureChannel_HalConfigFails_ReturnsFalse)
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
     FakeTIM_SetPwmConfigChannelResult(HAL_ERROR);
 
-    EXPECT_FALSE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::Channel_1, 0.5f)));
+    EXPECT_FALSE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::CHANNEL_1, 0.5f)));
 }
 
 // Configure all four channels -> exercise every GetChannel switch arm.
@@ -205,10 +205,10 @@ TEST_F(PWM_Test, ConfigureChannel_EveryChannel_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
 
-    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::Channel_1, 0.25f)));
-    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::Channel_2, 0.50f)));
-    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::Channel_3, 0.75f)));
-    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::Channel_4, 1.00f)));
+    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::CHANNEL_1, 0.25f)));
+    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::CHANNEL_2, 0.50f)));
+    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::CHANNEL_3, 0.75f)));
+    EXPECT_TRUE(mSubject.ConfigureChannel(PWM::ChannelConfig(Ch::CHANNEL_4, 1.00f)));
 }
 
 
@@ -217,37 +217,37 @@ TEST_F(PWM_Test, ConfigureChannel_EveryChannel_ReturnsTrue)
 /************************************************************************/
 TEST_F(PWM_Test, SetDutyCycle_NotInit_ReturnsFalse)
 {
-    EXPECT_FALSE(mSubject.SetDutyCycle(Ch::Channel_1, 0.5f));
+    EXPECT_FALSE(mSubject.SetDutyCycle(Ch::CHANNEL_1, 0.5f));
 }
 
 TEST_F(PWM_Test, SetDutyCycle_HalfDuty_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::Channel_1, 0.5f));
+    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::CHANNEL_1, 0.5f));
 }
 
 TEST_F(PWM_Test, SetDutyCycle_ZeroDuty_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::Channel_1, 0.0f));   // CalculatePulse 0%-special-case
+    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::CHANNEL_1, 0.0f));   // CalculatePulse 0%-special-case
 }
 
 TEST_F(PWM_Test, SetDutyCycle_FullDuty_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::Channel_1, 1.0f));
+    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::CHANNEL_1, 1.0f));
 }
 
 TEST_F(PWM_Test, SetDutyCycle_DutyAboveOne_ClampsReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::Channel_1, 1.5f));   // clamp > 1.0
+    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::CHANNEL_1, 1.5f));   // clamp > 1.0
 }
 
 TEST_F(PWM_Test, SetDutyCycle_NegativeDuty_ClampsReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::Channel_1, -0.5f));  // clamp < 0.0
+    EXPECT_TRUE(mSubject.SetDutyCycle(Ch::CHANNEL_1, -0.5f));  // clamp < 0.0
 }
 
 
@@ -256,13 +256,13 @@ TEST_F(PWM_Test, SetDutyCycle_NegativeDuty_ClampsReturnsTrue)
 /************************************************************************/
 TEST_F(PWM_Test, Start_NotInit_ReturnsFalse)
 {
-    EXPECT_FALSE(mSubject.Start(Ch::Channel_1));
+    EXPECT_FALSE(mSubject.Start(Ch::CHANNEL_1));
 }
 
 TEST_F(PWM_Test, Start_AfterInit_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.Start(Ch::Channel_1));
+    EXPECT_TRUE(mSubject.Start(Ch::CHANNEL_1));
 }
 
 TEST_F(PWM_Test, Start_HalStartFails_ReturnsFalse)
@@ -270,18 +270,18 @@ TEST_F(PWM_Test, Start_HalStartFails_ReturnsFalse)
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
     FakeTIM_SetPwmStartResult(HAL_ERROR);
 
-    EXPECT_FALSE(mSubject.Start(Ch::Channel_1));
+    EXPECT_FALSE(mSubject.Start(Ch::CHANNEL_1));
 }
 
 TEST_F(PWM_Test, Stop_NotInit_ReturnsFalse)
 {
-    EXPECT_FALSE(mSubject.Stop(Ch::Channel_1));
+    EXPECT_FALSE(mSubject.Stop(Ch::CHANNEL_1));
 }
 
 TEST_F(PWM_Test, Stop_AfterInit_ReturnsTrue)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
-    EXPECT_TRUE(mSubject.Stop(Ch::Channel_1));
+    EXPECT_TRUE(mSubject.Stop(Ch::CHANNEL_1));
 }
 
 TEST_F(PWM_Test, Stop_HalStopFails_ReturnsFalse)
@@ -289,7 +289,7 @@ TEST_F(PWM_Test, Stop_HalStopFails_ReturnsFalse)
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
     FakeTIM_SetPwmStopResult(HAL_ERROR);
 
-    EXPECT_FALSE(mSubject.Stop(Ch::Channel_1));
+    EXPECT_FALSE(mSubject.Stop(Ch::CHANNEL_1));
 }
 
 

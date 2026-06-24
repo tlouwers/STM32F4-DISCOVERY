@@ -22,22 +22,23 @@
 /************************************************************************/
 #include "drivers/GenericTimer/GenericTimer.hpp"
 #include "utility/Assert/Assert.h"
+#include "utility/ScopedIrqMask/ScopedIrqMask.hpp"
 #include "stm32f4xx_hal_tim.h"
 
 
 /************************************************************************/
 /* Static variables                                                     */
 /************************************************************************/
-static GenericTimerCallbacks timer2_callback {};
-static GenericTimerCallbacks timer3_callback {};
-static GenericTimerCallbacks timer4_callback {};
-static GenericTimerCallbacks timer5_callback {};
-static GenericTimerCallbacks timer9_callback {};
-static GenericTimerCallbacks timer10_callback {};
-static GenericTimerCallbacks timer11_callback {};
-static GenericTimerCallbacks timer12_callback {};
-static GenericTimerCallbacks timer13_callback {};
-static GenericTimerCallbacks timer14_callback {};
+static GenericTimerCallbacks sTimer2Callback {};
+static GenericTimerCallbacks sTimer3Callback {};
+static GenericTimerCallbacks sTimer4Callback {};
+static GenericTimerCallbacks sTimer5Callback {};
+static GenericTimerCallbacks sTimer9Callback {};
+static GenericTimerCallbacks sTimer10Callback {};
+static GenericTimerCallbacks sTimer11Callback {};
+static GenericTimerCallbacks sTimer12Callback {};
+static GenericTimerCallbacks sTimer13Callback {};
+static GenericTimerCallbacks sTimer14Callback {};
 
 
 /************************************************************************/
@@ -65,15 +66,15 @@ static void CallbackElapsed(const GenericTimerCallbacks& timer_callback)
  */
 GenericTimer::GenericTimer(const GenericTimerInstance& instance) :
     mInstance(instance),
-    mGenericTimerCallback( ((instance == GenericTimerInstance::TIMER_2) ? timer2_callback :
-                           ((instance == GenericTimerInstance::TIMER_3) ? timer3_callback :
-                           ((instance == GenericTimerInstance::TIMER_4) ? timer4_callback :
-                           ((instance == GenericTimerInstance::TIMER_5) ? timer5_callback :
-                           ((instance == GenericTimerInstance::TIMER_9) ? timer9_callback :
-                           ((instance == GenericTimerInstance::TIMER_10) ? timer10_callback :
-                           ((instance == GenericTimerInstance::TIMER_11) ? timer11_callback :
-                           ((instance == GenericTimerInstance::TIMER_12) ? timer12_callback :
-                           ((instance == GenericTimerInstance::TIMER_13) ? timer13_callback : timer14_callback))))))))) ),
+    mGenericTimerCallback( ((instance == GenericTimerInstance::TIMER_2) ? sTimer2Callback :
+                           ((instance == GenericTimerInstance::TIMER_3) ? sTimer3Callback :
+                           ((instance == GenericTimerInstance::TIMER_4) ? sTimer4Callback :
+                           ((instance == GenericTimerInstance::TIMER_5) ? sTimer5Callback :
+                           ((instance == GenericTimerInstance::TIMER_9) ? sTimer9Callback :
+                           ((instance == GenericTimerInstance::TIMER_10) ? sTimer10Callback :
+                           ((instance == GenericTimerInstance::TIMER_11) ? sTimer11Callback :
+                           ((instance == GenericTimerInstance::TIMER_12) ? sTimer12Callback :
+                           ((instance == GenericTimerInstance::TIMER_13) ? sTimer13Callback : sTimer14Callback))))))))) ),
     mInitialized(false),
     mStarted(false)
 {
@@ -112,6 +113,10 @@ bool GenericTimer::Init(const IConfig& config)
     EXPECT(cfg.mFrequency > 0.0f);
     if (cfg.mFrequency <= 0.0f) { return false; }
 
+    // CK_CNT is 10 kHz, so 10000 Hz (ARR = 0) is the highest representable rate.
+    EXPECT(cfg.mFrequency <= 10000.0f);
+    if (cfg.mFrequency > 10000.0f) { return false; }
+
     // (Freq. timer input) / (Prescaler + 1) = (Freq. CK_CNT) --> aim for 10 kHz CNT
     mHandle.Init.Prescaler         = (GetTimerInputClockFreq(mInstance) / 10000U) - 1U;
     mHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
@@ -121,11 +126,14 @@ bool GenericTimer::Init(const IConfig& config)
 
     if (HAL_TIM_Base_Init(&mHandle) == HAL_OK)
     {
+        // Own this timer's vector through the shared TimerIRQ dispatcher BEFORE
+        // the NVIC line goes live: TimerIRQ requires the slot be armed while the
+        // line is disabled (std::function assignment is not atomic on Cortex-M4).
+        // SetIRQn enables the line as its final step.
+        TimerIRQ::Install(GetSlot(mInstance), [this]() { HAL_TIM_IRQHandler(&mHandle); });
+
         // Configure NVIC to generate interrupt
         SetIRQn(GetIRQn(mInstance), cfg.mInterruptPriority, 0);
-
-        // Own this timer's vector through the shared TimerIRQ dispatcher.
-        TimerIRQ::Install(GetSlot(mInstance), [this]() { HAL_TIM_IRQHandler(&mHandle); });
 
         mInitialized = true;
         return true;
@@ -150,14 +158,17 @@ bool GenericTimer::IsInit() const
 bool GenericTimer::Sleep()
 {
     Stop();
+    mStarted = false;   // force-clear even if Stop()'s HAL stop was rejected
+
+    // Tear the vector down before de-init: disable the NVIC line and drop the
+    // dispatcher slot first, so no stale lambda capturing `this` can be reached
+    // during or after the teardown, then de-init the peripheral.
+    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
+    DisconnectCallbacks();
 
     if (HAL_TIM_Base_DeInit(&mHandle) != HAL_OK) { return false; }
 
     mInitialized = false;
-
-    HAL_NVIC_DisableIRQ( GetIRQn(mInstance) );
-
-    DisconnectCallbacks();
 
     CheckAndDisablePeripheralClock(mInstance);
     return true;
@@ -174,9 +185,13 @@ bool GenericTimer::Start(const std::function<void()>& handler)
 
     if (!mStarted)
     {
+        // Arm the handler only after the HAL accepts the start, bracketed by the
+        // per-instance NVIC mask (ScopedIrqMask): the std::function assignment is
+        // not atomic and, once the IRQ is live, the timer ISR may read the slot.
+        // A rejected start (HAL_BUSY/HAL_ERROR) leaves no stale handler armed.
+        ScopedIrqMask mask(GetIRQn(mInstance));
+        if (HAL_TIM_Base_Start_IT(&mHandle) != HAL_OK) { return false; }
         mGenericTimerCallback.callbackElapsed = handler;
-
-        HAL_TIM_Base_Start_IT(&mHandle);
         mStarted = true;
     }
 
@@ -202,7 +217,7 @@ bool GenericTimer::Stop()
 
     if (mStarted)
     {
-        HAL_TIM_Base_Stop_IT(&mHandle);
+        if (HAL_TIM_Base_Stop_IT(&mHandle) != HAL_OK) { return false; }
         mStarted = false;
     }
 
@@ -286,28 +301,36 @@ void GenericTimer::CheckAndDisablePeripheralClock(const GenericTimerInstance& in
 /**
  * \brief   Return the input clock feeding the given GenericTimer instance.
  * \details TIM2/3/4/5/12/13/14 are clocked from APB1; TIM9/10/11 from APB2.
- *          Per RM0090 §6.2 the timer input clock equals the bus when its
- *          prescaler is 1, otherwise twice the bus.
+ *          The timer input clock depends on the APB prescaler AND the
+ *          RCC_DCKCFGR.TIMPRE bit (RM0090 §6.2):
+ *            - TIMPRE = 0 (reset default): TIMxCLK = PCLKx when the APB
+ *              prescaler is 1, otherwise 2 x PCLKx.
+ *            - TIMPRE = 1: TIMxCLK = HCLK when the APB prescaler is 1, 2 or 4,
+ *              otherwise 4 x PCLKx.
  * \param   instance    The GenericTimer instance to query.
  * \returns Timer input clock in Hz.
  */
 uint32_t GenericTimer::GetTimerInputClockFreq(const GenericTimerInstance& instance)
 {
-    switch (instance)
+    // Select the APB bus feeding this timer (RM0090 §6.2 / F407 datasheet Table 52).
+    const bool isApb2 = (instance == GenericTimerInstance::TIMER_9)  ||
+                        (instance == GenericTimerInstance::TIMER_10) ||
+                        (instance == GenericTimerInstance::TIMER_11);
+
+    const uint32_t pclk    = isApb2 ? HAL_RCC_GetPCLK2Freq() : HAL_RCC_GetPCLK1Freq();
+    const uint32_t ppreMsk = isApb2 ? RCC_CFGR_PPRE2      : RCC_CFGR_PPRE1;
+    const uint32_t ppreVal =  RCC->CFGR & ppreMsk;
+    const uint32_t div2    = isApb2 ? RCC_CFGR_PPRE2_DIV2 : RCC_CFGR_PPRE1_DIV2;
+    const uint32_t div4    = isApb2 ? RCC_CFGR_PPRE2_DIV4 : RCC_CFGR_PPRE1_DIV4;
+
+    if ((RCC->DCKCFGR & RCC_DCKCFGR_TIMPRE) == 0U)
     {
-        case GenericTimerInstance::TIMER_9:
-        case GenericTimerInstance::TIMER_10:
-        case GenericTimerInstance::TIMER_11:
-        {
-            const uint32_t apb2 = HAL_RCC_GetPCLK2Freq();
-            return ((RCC->CFGR & RCC_CFGR_PPRE2) >= RCC_CFGR_PPRE2_DIV2) ? (apb2 * 2U) : apb2;
-        }
-        default:
-        {
-            const uint32_t apb1 = HAL_RCC_GetPCLK1Freq();
-            return ((RCC->CFGR & RCC_CFGR_PPRE1) >= RCC_CFGR_PPRE1_DIV2) ? (apb1 * 2U) : apb1;
-        }
+        // TIMPRE = 0: x1 when APB prescaler is 1, otherwise x2.
+        return (ppreVal >= div2) ? (pclk * 2U) : pclk;
     }
+
+    // TIMPRE = 1: HCLK when APB prescaler is 1, 2 or 4, otherwise 4 x PCLK.
+    return (ppreVal <= div4) ? HAL_RCC_GetHCLKFreq() : (pclk * 4U);
 }
 
 /**
@@ -327,15 +350,18 @@ uint32_t GenericTimer::CalculatePeriod(float desiredFrequency)
     // (Freq. desired) = (Freq. CK_CNT) / (TIM_ARR + 1)
     // (10000 / desiredFrequency) - 1 = TIM_ARR
 
-    uint32_t period = static_cast<uint32_t>(10000.0f / desiredFrequency - 1.0f);
-
     const bool is32Bit = (mInstance == GenericTimerInstance::TIMER_2) ||
                          (mInstance == GenericTimerInstance::TIMER_5);
     const uint32_t maxPeriod = is32Bit ? 0xFFFFFFFFUL : static_cast<uint32_t>(UINT16_MAX);
 
-    if (period > maxPeriod) { period = maxPeriod; }
+    // Clamp in the float domain BEFORE the cast: a very small (but positive)
+    // desiredFrequency makes the intermediate exceed UINT32_MAX, and casting an
+    // out-of-range float to uint32_t is undefined behaviour on Cortex-M.
+    const float rawPeriod = (10000.0f / desiredFrequency) - 1.0f;
+    if (rawPeriod >= static_cast<float>(maxPeriod)) { return maxPeriod; }
+    if (rawPeriod <= 0.0f)                          { return 0U; }
 
-    return period;
+    return static_cast<uint32_t>(rawPeriod);
 }
 
 /**
@@ -429,14 +455,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* handle)
 {
     ASSERT(handle);
 
-    if (handle->Instance == TIM2)  { CallbackElapsed(timer2_callback);  }
-    if (handle->Instance == TIM3)  { CallbackElapsed(timer3_callback);  }
-    if (handle->Instance == TIM4)  { CallbackElapsed(timer4_callback);  }
-    if (handle->Instance == TIM5)  { CallbackElapsed(timer5_callback);  }
-    if (handle->Instance == TIM9)  { CallbackElapsed(timer9_callback);  }
-    if (handle->Instance == TIM10) { CallbackElapsed(timer10_callback); }
-    if (handle->Instance == TIM11) { CallbackElapsed(timer11_callback); }
-    if (handle->Instance == TIM12) { CallbackElapsed(timer12_callback); }
-    if (handle->Instance == TIM13) { CallbackElapsed(timer13_callback); }
-    if (handle->Instance == TIM14) { CallbackElapsed(timer14_callback); }
+    // handle->Instance is a unique peripheral pointer, so at most one arm
+    // matches: else-if avoids the remaining comparisons in ISR context.
+    if      (handle->Instance == TIM2)  { CallbackElapsed(sTimer2Callback);  }
+    else if (handle->Instance == TIM3)  { CallbackElapsed(sTimer3Callback);  }
+    else if (handle->Instance == TIM4)  { CallbackElapsed(sTimer4Callback);  }
+    else if (handle->Instance == TIM5)  { CallbackElapsed(sTimer5Callback);  }
+    else if (handle->Instance == TIM9)  { CallbackElapsed(sTimer9Callback);  }
+    else if (handle->Instance == TIM10) { CallbackElapsed(sTimer10Callback); }
+    else if (handle->Instance == TIM11) { CallbackElapsed(sTimer11Callback); }
+    else if (handle->Instance == TIM12) { CallbackElapsed(sTimer12Callback); }
+    else if (handle->Instance == TIM13) { CallbackElapsed(sTimer13Callback); }
+    else if (handle->Instance == TIM14) { CallbackElapsed(sTimer14Callback); }
 }

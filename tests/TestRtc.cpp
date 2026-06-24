@@ -18,7 +18,9 @@
  *          and the cold/warm-boot magic detection (cold boot seeds a placeholder
  *          and stamps BKP_DR0; warm boot leaves a running clock untouched; a
  *          failed seed leaves the magic unstamped); the IsInit/Sleep lifecycle
- *          incl. the HAL_RTC_DeInit failure branch; SetDateTime's full per-field
+ *          (Sleep is non-destructive -- it never DeInits the running clock) and
+ *          the explicit Deinitialize() teardown incl. its HAL_RTC_DeInit failure
+ *          branch; SetDateTime's full per-field
  *          range-guard block plus both HAL set-failure points; GetDateTime's
  *          not-init guard, the set/get round-trip, and both HAL get-failure
  *          points. The BCD register behaviour itself is hardware-only and not
@@ -210,12 +212,41 @@ TEST_F(Rtc_Test, Sleep_AfterInit_ReturnsTrueAndNotInit)
     EXPECT_FALSE(mSubject.IsInit());
 }
 
-TEST_F(Rtc_Test, Sleep_HalDeInitFails_ReturnsFalse)
+// Sleep() must NOT de-initialise a running RTC -- the backup-domain clock keeps
+// ticking so battery-backed time survives. Proof: even with HAL_RTC_DeInit rigged
+// to fail, Sleep() still succeeds because it never calls it.
+TEST_F(Rtc_Test, Sleep_DoesNotDeInit_ReturnsTrueEvenIfHalDeInitWouldFail)
 {
     ASSERT_TRUE(mSubject.Init(ValidConfig()));
     FakeRTC_SetDeInitResult(HAL_ERROR);
 
-    EXPECT_FALSE(mSubject.Sleep());
+    EXPECT_TRUE(mSubject.Sleep());
+    EXPECT_FALSE(mSubject.IsInit());
+}
+
+
+/************************************************************************/
+/* Deinitialize (explicit destructive teardown)                         */
+/************************************************************************/
+TEST_F(Rtc_Test, Deinitialize_AfterInit_ReturnsTrueAndNotInit)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+
+    EXPECT_TRUE(mSubject.Deinitialize());
+    EXPECT_FALSE(mSubject.IsInit());
+}
+
+TEST_F(Rtc_Test, Deinitialize_BeforeInit_ReturnsTrue)
+{
+    EXPECT_TRUE(mSubject.Deinitialize());
+}
+
+TEST_F(Rtc_Test, Deinitialize_HalDeInitFails_ReturnsFalse)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeRTC_SetDeInitResult(HAL_ERROR);
+
+    EXPECT_FALSE(mSubject.Deinitialize());
 }
 
 

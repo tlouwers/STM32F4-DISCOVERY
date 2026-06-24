@@ -215,9 +215,28 @@ TEST_F(BasicTimer_Test, Start_CalledTwice_StaysStarted)
     EXPECT_TRUE(mSubject.IsStarted());
 }
 
+TEST_F(BasicTimer_Test, Start_HalStartFails_ReturnsFalseAndNotStarted)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    FakeTIM_SetStartResult(HAL_ERROR);
+
+    EXPECT_FALSE(mSubject.Start());
+    EXPECT_FALSE(mSubject.IsStarted());
+}
+
 TEST_F(BasicTimer_Test, Stop_NotInit_ReturnsFalse)
 {
     EXPECT_FALSE(mSubject.Stop());
+}
+
+TEST_F(BasicTimer_Test, Stop_HalStopFails_ReturnsFalseAndStaysStarted)
+{
+    ASSERT_TRUE(mSubject.Init(ValidConfig()));
+    ASSERT_TRUE(mSubject.Start());
+    FakeTIM_SetStopResult(HAL_ERROR);
+
+    EXPECT_FALSE(mSubject.Stop());
+    EXPECT_TRUE(mSubject.IsStarted());
 }
 
 TEST_F(BasicTimer_Test, Stop_AfterStart_ReturnsTrueAndNotStarted)

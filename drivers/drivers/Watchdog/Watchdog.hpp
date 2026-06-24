@@ -13,6 +13,13 @@
  *
  * \note    The IWDG depends on the LSI clock to be available and running.
  *
+ * \note    The reload/prescaler values assume a 32 kHz nominal LSI. Per DS8626
+ *          Table 35 the LSI is only specified as 17..47 kHz over temperature and
+ *          supply, so the real timeout can vary by roughly +/-47% from the
+ *          configured value (a nominal 4 s can fire as early as ~2.7 s). Callers
+ *          needing tighter accuracy should calibrate the LSI via TIM5_CH4
+ *          (RM0090 §13.3.6).
+ *
  * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/drivers/drivers/Watchdog
  *
  * \author  T. Louwers <terry.louwers@fourtress.nl>
@@ -94,9 +101,15 @@ public:
 
     void Refresh() const override;
 
+    // Explicit disabled constructors/operators
+    Watchdog(const Watchdog&)            = delete;
+    Watchdog& operator=(const Watchdog&) = delete;
+    Watchdog(Watchdog&&)                 = delete;
+    Watchdog& operator=(Watchdog&&)      = delete;
+
 private:
-    IWDG_HandleTypeDef mHandle = {};
-    bool               mInitialized;
+    mutable IWDG_HandleTypeDef mHandle = {};    ///< mutable: Refresh() is const but HAL_IWDG_Refresh takes a non-const handle.
+    volatile bool              mInitialized;    ///< volatile: written by Init(), read by a (possibly separate) Refresh() task.
 
     static bool IsLSIClockReady();
     static uint32_t CalculatePrescaler(Timeout timeout);
