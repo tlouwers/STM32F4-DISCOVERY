@@ -32,6 +32,15 @@ class IRng
 {
 public:
     virtual ~IRng() = default;
+
+    /**
+     * \brief   Get a hardware-generated random number.
+     * \param   out     Receives the generated random number on success;
+     *                  left unchanged on failure.
+     * \returns True if a random number was generated, else false (peripheral
+     *          not initialised, contention with a concurrent caller, or a HAL
+     *          clock/seed/timeout error).
+     */
     virtual bool GetRandom(uint32_t& out) = 0;
 };
 

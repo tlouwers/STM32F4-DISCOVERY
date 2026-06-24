@@ -7,7 +7,6 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
- * \class   Rng
  *
  * \brief   Hardware random number generator class.
  *
@@ -32,8 +31,7 @@
 /**
  * \brief   Constructor, prepares the internal Rng instance administration.
  */
-Rng::Rng() :
-    mInitialized(false)
+Rng::Rng()
 {
     mHandle.Instance = RNG;
 }
@@ -84,6 +82,8 @@ bool Rng::IsInit() const
  */
 bool Rng::Sleep()
 {
+    if (!mInitialized) { return true; }
+
     if (HAL_RNG_DeInit(&mHandle) != HAL_OK) { return false; }
 
     mInitialized = false;
