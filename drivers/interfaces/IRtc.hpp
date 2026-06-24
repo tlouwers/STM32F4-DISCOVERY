@@ -50,7 +50,24 @@ class IRtc
 {
 public:
     virtual ~IRtc() = default;
+
+    /**
+     * \brief   Set the RTC date and time.
+     * \param   dateTime    The date and time to apply. Fields are range-checked
+     *                      (year [2000..2099], month [1..12], day [1..31],
+     *                      hour [0..23], minute / second [0..59]).
+     * \returns True if the date and time were applied, else false (peripheral
+     *          not initialised, an out-of-range field, or a HAL failure).
+     */
     virtual bool SetDateTime(const DateTime& dateTime) = 0;
+
+    /**
+     * \brief   Get the current RTC date and time.
+     * \param   dateTime    Receives the current date and time on success;
+     *                      unchanged on failure.
+     * \returns True if the date and time were read, else false (peripheral not
+     *          initialised, or a HAL failure).
+     */
     virtual bool GetDateTime(DateTime& dateTime) = 0;
 };
 
