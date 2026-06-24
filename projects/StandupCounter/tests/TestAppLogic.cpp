@@ -110,8 +110,8 @@ TEST_F(AppLogic_Test, Process_AfterButtonPress_RunsFullCountdownSequence)
     // long beep = 11 Start/Stop pairs; the display is cleared once at the end.
     EXPECT_CALL(mMatrix, WriteDigits(_)).Times(12);
     EXPECT_CALL(mMatrix, ClearDisplay()).Times(1);
-    EXPECT_CALL(mPWM, Start(IPWM::Channel::Channel_1)).Times(11);
-    EXPECT_CALL(mPWM, Stop(IPWM::Channel::Channel_1)).Times(11);
+    EXPECT_CALL(mPWM, Start(IPWM::Channel::CHANNEL_1)).Times(11);
+    EXPECT_CALL(mPWM, Stop(IPWM::Channel::CHANNEL_1)).Times(11);
 
     mSubject.OnButtonPressed();
     mSubject.Process();

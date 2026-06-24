@@ -111,10 +111,10 @@ void AppLogic::Process()
             EXPECT(result);
 
             // Short beep
-            result = mPWM.Start(IPWM::Channel::Channel_1);
+            result = mPWM.Start(IPWM::Channel::CHANNEL_1);
             EXPECT(result);
             mClock.DelayMs(BEEP_SHORT_MS);
-            result = mPWM.Stop(IPWM::Channel::Channel_1);
+            result = mPWM.Stop(IPWM::Channel::CHANNEL_1);
             EXPECT(result);
 
             // Wait before next loop
@@ -129,10 +129,10 @@ void AppLogic::Process()
         mLedOrange.Set(Level::LOW);
         mLedRed.Set(Level::HIGH);
         mMatrix.WriteDigits(symbol_sadface);
-        result = mPWM.Start(IPWM::Channel::Channel_1);
+        result = mPWM.Start(IPWM::Channel::CHANNEL_1);
         EXPECT(result);
         mClock.DelayMs(BEEP_LONG_MS);
-        result = mPWM.Stop(IPWM::Channel::Channel_1);
+        result = mPWM.Stop(IPWM::Channel::CHANNEL_1);
         EXPECT(result);
 
         // Reset counters
