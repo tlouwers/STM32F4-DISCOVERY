@@ -38,6 +38,7 @@ public static class CliRunner
         new VerifyCommand(),
         new ReadCommand(),
         new GoCommand(),
+        new StampCommand(),
     };
 
     /// <summary>Parses, dispatches, and returns the process exit code.</summary>

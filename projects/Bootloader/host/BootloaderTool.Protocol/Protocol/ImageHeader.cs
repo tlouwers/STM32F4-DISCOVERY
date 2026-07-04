@@ -82,6 +82,9 @@ public sealed class ImageHeader
     /// <summary>Declared total image size in bytes; 0 when not stamped.</summary>
     public uint ImageSize { get; }
 
+    /// <summary>Self-CRC over the first 28 header bytes; 0 when not stamped.</summary>
+    public uint HeaderCrc { get; }
+
     /// <summary>Byte offset within the scanned data at which the header was found.</summary>
     public int Offset { get; }
 
@@ -89,13 +92,14 @@ public sealed class ImageHeader
     public string VersionText => $"v{Major}.{Minor}.{Patch}";
 
     private ImageHeader(string product, ushort major, ushort minor, ushort patch,
-                        uint imageSize, int offset)
+                        uint imageSize, uint headerCrc, int offset)
     {
         Product   = product;
         Major     = major;
         Minor     = minor;
         Patch     = patch;
         ImageSize = imageSize;
+        HeaderCrc = headerCrc;
         Offset    = offset;
     }
 
@@ -166,6 +170,34 @@ public sealed class ImageHeader
             BinaryPrimitives.ReadUInt16LittleEndian(raw.Slice(18, 2)),
             BinaryPrimitives.ReadUInt16LittleEndian(raw.Slice(20, 2)),
             BinaryPrimitives.ReadUInt32LittleEndian(raw.Slice(24, 4)),
+            headerCrc,
             offset);
+    }
+
+    /// <summary>
+    /// Fills in the stamped fields of the header inside an image, in place:
+    /// <c>imageSize</c> is set to the image length, then <c>headerCrc</c> is
+    /// computed over the first 28 header bytes. The post-build step firmware
+    /// cannot do at compile time. Idempotent — re-stamping recomputes both.
+    /// </summary>
+    /// <param name="data">The full image; mutated in place.</param>
+    /// <returns>The header as re-parsed after stamping.</returns>
+    /// <exception cref="InvalidOperationException">The image has no valid header.</exception>
+    public static ImageHeader Stamp(byte[] data)
+    {
+        if (data is null)
+            throw new ArgumentNullException(nameof(data));
+
+        ImageHeader? header = FindIn(data);
+        if (header is null)
+            throw new InvalidOperationException(
+                "no TLFWIMG1 header found in the image — the firmware must embed one (see docs/image-header.md).");
+
+        int offset = header.Offset;
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(offset + 24, 4), (uint)data.Length);
+        uint crc = new Crc32().Compute(data.AsSpan(offset, 28));
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(offset + 28, 4), crc);
+
+        return FindIn(data)!;
     }
 }

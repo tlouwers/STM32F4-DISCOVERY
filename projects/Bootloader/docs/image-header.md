@@ -40,7 +40,12 @@ after the vector table; larger vector tables on F7/H7 just push it further).
 | 28     | 4    | `headerCrc` | CRC-32/MPEG-2 over bytes 0–27; **0 = not stamped**   |
 
 `imageSize` and `headerCrc` cannot be computed at compile time; they stay 0
-unless a post-build *stamp* step fills them in (a future `stamp` CLI command).
+unless the post-build stamp step fills them in:
+
+```
+BootloaderTool stamp -f firmware.bin
+```
+
 A host accepts a header when the magic matches, the product tag is printable
 ASCII, and — when `headerCrc` is non-zero — the self-CRC checks out. In a
 stamped image, a non-zero `imageSize` that disagrees with the file size marks

@@ -36,8 +36,10 @@ public sealed class GoCommand : ICliCommand
 
         using (serial)
         {
-            var client = new An3155Client(serial, options.Retries);
-            if (!client.Sync())
+            // SyncWithRetries also accepts the NACK an already-armed bootloader
+            // sends to a repeated 0x7F, where a bare Sync() would fail.
+            var client = new An3155Client(serial);
+            if (!client.SyncWithRetries(attempts: options.Retries))
                 return Task.FromResult(CliResult.NoSync(context));
 
             uint address = options.Address ?? FirmwareImage.DefaultStartAddress;

@@ -51,8 +51,8 @@ public sealed class VerifyCommand : ICliCommand
 
         using (serial)
         {
-            var client = new An3155Client(serial, options.Retries);
-            if (!client.SyncWithRetries())
+            var client = new An3155Client(serial);
+            if (!client.SyncWithRetries(attempts: options.Retries))
                 return Task.FromResult(CliResult.NoSync(context));
 
             try

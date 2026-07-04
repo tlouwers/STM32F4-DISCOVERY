@@ -238,4 +238,62 @@ public class CliRunnerTests
         Assert.Contains("COM_TEST", output);
         Assert.Contains("bootloader", output);
     }
+
+    // ── Stamp (offline, no port) ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task Stamp_NoFile_ReturnsUsageError()
+    {
+        int code = await CliRunner.RunAsync(new[] { "stamp" }, Context());
+
+        Assert.Equal(2, code);
+        Assert.Contains("no firmware image", _err.ToString());
+    }
+
+    [Fact]
+    public async Task Stamp_HeaderPresent_WritesStampedFile_ReturnsZero()
+    {
+        byte[] image = new byte[64];
+        ImageHeader.Magic.CopyTo(image, 0);
+        System.Text.Encoding.ASCII.GetBytes("F4DISCO1").CopyTo(image, 8);
+
+        string path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(path, image);
+
+            int code = await CliRunner.RunAsync(new[] { "stamp", "-f", path }, Context());
+
+            Assert.Equal(0, code);
+            Assert.Contains("Stamped F4DISCO1", _out.ToString());
+
+            ImageHeader? header = ImageHeader.FindIn(File.ReadAllBytes(path));
+            Assert.NotNull(header);
+            Assert.Equal(64u, header!.ImageSize);
+            Assert.NotEqual(0u, header.HeaderCrc);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Stamp_NoHeaderInImage_ReturnsFailure()
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(path, new byte[64]);
+
+            int code = await CliRunner.RunAsync(new[] { "stamp", "-f", path }, Context());
+
+            Assert.Equal(1, code);
+            Assert.Contains("no TLFWIMG1 header", _err.ToString());
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

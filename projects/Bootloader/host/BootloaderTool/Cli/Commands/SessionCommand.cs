@@ -61,6 +61,7 @@ internal static class SessionCommand
             {
                 RunGo          = runGo,
                 ExpectedChipId = guardChipId ? Stm32F4ChipId : null,
+                SyncAttempts   = options.Retries,
             };
 
             var session  = new FactoryResetSession(serial, resetOptions);

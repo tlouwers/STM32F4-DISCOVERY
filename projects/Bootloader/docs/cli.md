@@ -26,6 +26,7 @@ Run `BootloaderTool <command> --help` for command-specific options.
 | `verify` | Compare the device's contents over a region against an image. |
 | `read` | Read a memory region to a file. |
 | `go` | Jump to an application address (Go, 0x21). |
+| `stamp` | Post-build: fill in `imageSize` + `headerCrc` in an image's `TLFWIMG1` header (offline, no port). See [image-header.md](image-header.md). |
 
 ```
 list   [--baud <n>] [--timeout <ms>]
@@ -35,6 +36,7 @@ upload -p <port> -f <image.bin> [--addr <hex>] [--baud <n>] [--timeout <ms>] [--
 verify -p <port> -f <image.bin> [--addr <hex>] [--baud <n>] [--timeout <ms>] [--json]
 read   -p <port> --addr <hex> --len <n> -o <file> [--baud <n>] [--timeout <ms>] [--json]
 go     -p <port> [--addr <hex>] [--baud <n>] [--timeout <ms>]
+stamp  -f <image.bin> [--json]
 ```
 
 ## Options
@@ -49,7 +51,7 @@ go     -p <port> [--addr <hex>] [--baud <n>] [--timeout <ms>]
 | `--no-go` | off | Skip the final Go; leave the device in bootloader mode. |
 | `--baud <n>` | `115200` | UART baud rate (parity stays 8E1). |
 | `--timeout <ms>` | `2000` | Per-command serial read/write timeout. |
-| `--retries <n>` | `3` | Per-command retry budget. |
+| `--retries <n>` | `5` | Sync (0x7F) attempts before giving up on a silent device. |
 | `--json` | off | Machine-readable JSON Lines progress/results. |
 
 ## Exit codes

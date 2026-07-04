@@ -156,6 +156,36 @@ public class ImageHeaderTests
         Assert.Null(ImageHeader.FindIn(Embed(MakeHeader(""), ConventionOffset, 2048)));
     }
 
+    [Fact]
+    public void Stamp_FillsImageSizeAndSelfCrc()
+    {
+        byte[] image = Embed(MakeHeader(), ConventionOffset, 2048);
+
+        ImageHeader stamped = ImageHeader.Stamp(image);
+
+        Assert.Equal(2048u, stamped.ImageSize);
+        Assert.NotEqual(0u, stamped.HeaderCrc);
+        Assert.NotNull(ImageHeader.FindIn(image)); // header still validates after mutation
+    }
+
+    [Fact]
+    public void Stamp_IsIdempotent()
+    {
+        byte[] image = Embed(MakeHeader(), ConventionOffset, 2048);
+
+        ImageHeader.Stamp(image);
+        byte[] afterFirst = (byte[])image.Clone();
+        ImageHeader.Stamp(image);
+
+        Assert.Equal(afterFirst, image);
+    }
+
+    [Fact]
+    public void Stamp_NoHeader_Throws()
+    {
+        Assert.Throws<InvalidOperationException>(() => ImageHeader.Stamp(new byte[2048]));
+    }
+
     [Theory]
     [InlineData(1, 2, 3, 1, 2, 3, 0)]   // equal
     [InlineData(1, 2, 3, 1, 2, 4, -1)]  // older patch

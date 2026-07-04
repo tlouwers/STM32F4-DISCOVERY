@@ -37,18 +37,10 @@ public sealed class GetResult
 public sealed class An3155Client
 {
     private readonly ISerial _serial;
-    private readonly int _maxRetries;
 
-    /// <summary>Raised on progress updates during multi-step operations.</summary>
-    public event Action<string, uint, uint>? Progress;
-
-    /// <summary>Raised for log messages.</summary>
-    public event Action<string, string>? Log;
-
-    public An3155Client(ISerial serial, int maxRetries = 3)
+    public An3155Client(ISerial serial)
     {
         _serial = serial;
-        _maxRetries = maxRetries;
     }
 
     // -----------------------------------------------------------------------

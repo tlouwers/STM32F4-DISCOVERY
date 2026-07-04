@@ -44,10 +44,12 @@ public sealed class ReadCommand : ICliCommand
 
         using (serial)
         {
-            var client   = new An3155Client(serial, options.Retries);
+            var client   = new An3155Client(serial);
             var progress = new ConsoleProgress(context.Out, options.Json);
 
-            if (!client.Sync())
+            // SyncWithRetries also accepts the NACK an already-armed bootloader
+            // sends to a repeated 0x7F, where a bare Sync() would fail.
+            if (!client.SyncWithRetries(attempts: options.Retries))
                 return Task.FromResult(CliResult.NoSync(context));
 
             uint address  = options.Address.Value;

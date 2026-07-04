@@ -43,8 +43,8 @@ public sealed class CliOptions
     /// <summary>Serial baud rate. The ST bootloader auto-detects via 0x7F.</summary>
     public int Baud { get; set; } = 115200;
 
-    /// <summary>Per-command retry budget passed to the protocol client.</summary>
-    public int Retries { get; set; } = 3;
+    /// <summary>Number of 0x7F sync attempts before giving up on a silent device.</summary>
+    public int Retries { get; set; } = 5;
 
     /// <summary>Per-command serial read/write timeout in milliseconds.</summary>
     public int TimeoutMs { get; set; } = 2000;
