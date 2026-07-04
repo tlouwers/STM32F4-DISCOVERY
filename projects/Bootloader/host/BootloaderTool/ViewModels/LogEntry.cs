@@ -49,4 +49,10 @@ public sealed class LogEntry
     /// message text hangs aligned under the message, not back under the timestamp.
     /// </summary>
     public string Prefix => $"{Timestamp:HH:mm:ss}  [{Level}]";
+
+    /// <summary>True for "error" entries — drives the red log line in the view.</summary>
+    public bool IsError => string.Equals(Level, "error", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>True for "warn" entries — drives the amber log line in the view.</summary>
+    public bool IsWarning => string.Equals(Level, "warn", StringComparison.OrdinalIgnoreCase);
 }

@@ -125,10 +125,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Single always-present line under the flash button (kept visible in every
     /// state so the card never changes height): names what is still missing while
-    /// disabled, confirms readiness when armed, and reassures while flashing.
+    /// disabled, confirms readiness when armed, reassures while flashing, and
+    /// reports the outcome after a successful run (which clears the image, so
+    /// without this the card would silently reset to "select a .bin image").
     /// </summary>
     public string FlashHint
         => IsBusy                          ? "Flashing — keep the cable connected until it finishes."
+            : FlashDoneHint is not null    ? FlashDoneHint
             : !DeviceDetected && !HasFirmware ? "Connect a device and select a .bin image to enable flashing."
             : !DeviceDetected              ? "Connect a device to enable flashing."
             : !HasFirmware                 ? "Select a .bin image to enable flashing."
@@ -141,8 +144,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// </summary>
     public string FlashButtonText => IsBusy ? "In progress…" : "Flash firmware";
 
-    /// <summary>Largest image the tool will accept (matches the ".bin — up to 2 MB" hint).</summary>
-    private const long MaxFirmwareBytes = 2L * 1024 * 1024;
+    /// <summary>
+    /// Largest image the tool will accept (matches the ".bin — up to 1 MB" hint).
+    /// Bounded by the device's flash, so an oversized image is rejected at
+    /// selection instead of failing later at flash time.
+    /// </summary>
+    private const long MaxFirmwareBytes = Stm32F4FlashLayout.FlashSize;
+
+    // STM32F407 memory ranges used for the vector-table plausibility check: a
+    // genuine application image has its initial stack pointer in SRAM (or CCM)
+    // and its reset handler in flash. End addresses are exclusive; the stack
+    // pointer may equal the end (a full-descending stack starts one past the top).
+    private const uint SramBase = 0x20000000, SramEnd = 0x20020000;
+    private const uint CcmBase  = 0x10000000, CcmEnd  = 0x10010000;
 
     [ObservableProperty]
     private SerialPortInfo? _selectedPort;
@@ -165,6 +179,21 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private double _progressValue;
     [ObservableProperty] private string _progressText = string.Empty;
     [ObservableProperty] private bool   _runGo        = true;
+
+    /// <summary>
+    /// True while the running stage has no measurable progress (erase and verify
+    /// wrap one blocking command each) — the bar animates instead of sitting
+    /// frozen at 0% for what can be tens of seconds at 115200 baud.
+    /// </summary>
+    [ObservableProperty] private bool _progressIndeterminate;
+
+    /// <summary>
+    /// Outcome line shown as the flash hint after a successful run, until the
+    /// next image is selected. Null when no completed run is being reported.
+    /// </summary>
+    [ObservableProperty] private string? _flashDoneHint;
+
+    partial void OnFlashDoneHintChanged(string? value) => OnPropertyChanged(nameof(FlashHint));
 
     // -- Connection stoplight (card 1): green connected, red not, spinner busy --
     [ObservableProperty] private string _statusTitle = "Not connected";
@@ -255,6 +284,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ErrorMessage  = null;
         ProgressValue = 0;
         ProgressText  = string.Empty;
+        ProgressIndeterminate = false;
+        FlashDoneHint = null;
         Log.Clear();
         IsBusy = true;
 
@@ -303,9 +334,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
             Stage         = "Done";
             ProgressValue = 100;
+            ProgressIndeterminate = false;
             ProgressText  = runGo ? "Device booted." : "Image written and verified.";
             AppendLog("info", runGo ? "Done — device booted." : "Done — image written and verified.");
             succeeded     = true;
+            FlashDoneHint = runGo
+                ? $"Done — {name} flashed and booted. Select a new image to flash again."
+                : $"Done — {name} written and verified. Select a new image to flash again.";
 
             // Clear the image so the next flash is a deliberate re-selection,
             // keeping the user in the loop rather than silently re-flashing.
@@ -316,6 +351,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             HasError     = true;
             ErrorMessage = Describe(ex);
             Stage        = "Failed";
+            ProgressIndeterminate = false;
             AppendLog("error", ErrorMessage);
 
             // A failure that did not lose the link leaves the bootloader in
@@ -697,8 +733,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // Helpers
     // -----------------------------------------------------------------------
 
-    /// <summary>Loads a firmware image from a dropped or picked path.</summary>
-    public void LoadFirmwareFromPath(string path) => LoadFirmware(path);
+    /// <summary>
+    /// Loads a firmware image from a dropped or picked path. Ignored while a
+    /// flash runs: drag-and-drop bypasses the Browse command's CanExecute, and
+    /// replacing the selection mid-flash would desynchronise card 2 from the
+    /// image actually being written.
+    /// </summary>
+    public void LoadFirmwareFromPath(string path)
+    {
+        if (IsBusy)
+            return;
+        LoadFirmware(path);
+    }
 
     /// <summary>
     /// Loads a firmware image and fills the statistics, or rejects it. Only
@@ -718,21 +764,58 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             long length = new FileInfo(path).Length;
             if (length > MaxFirmwareBytes)
             {
-                RejectFirmware($"Image is too large ({length / 1024.0 / 1024.0:F1} MB) — the limit is 2 MB.");
+                RejectFirmware($"Image is too large ({length / 1024.0 / 1024.0:F1} MB) — the device has 1 MB of flash.");
                 return;
             }
 
-            var image        = new FirmwareImage(path);
+            var image = new FirmwareImage(path);
+
+            string? notAnImage = CheckVectorTable(image);
+            if (notAnImage is not null)
+            {
+                RejectFirmware(notAnImage);
+                return;
+            }
+
             FirmwareName     = Path.GetFileName(path);
             FirmwareSizeText = $"{image.Size:N0} bytes";
             FirmwareCrcText  = $"0x{image.Crc32:X8}";
             FirmwareError    = null;
+            FlashDoneHint    = null;   // a new image supersedes the last outcome
             FirmwarePath     = path;   // set last: drives HasFirmware / panels
         }
         catch (Exception ex)
         {
             RejectFirmware($"Cannot load image: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Plausibility check on the Cortex-M vector table at the start of the image:
+    /// the initial stack pointer must land in SRAM/CCM and the reset handler in
+    /// flash with the Thumb bit set. Catches "wrong file" mistakes (an image for
+    /// another MCU, a data blob, an .elf renamed to .bin) before anything is
+    /// erased, without requiring any change to the image format.
+    /// </summary>
+    /// <param name="image">The loaded image to inspect.</param>
+    /// <returns>A rejection reason, or null when the image looks genuine.</returns>
+    private static string? CheckVectorTable(FirmwareImage image)
+    {
+        if (image.Size < 8)
+            return $"Image is too small ({image.Size} bytes) to contain a vector table — not a firmware image.";
+
+        uint sp = image.InitialStackPointer;
+        bool spInSram = sp > SramBase && sp <= SramEnd;
+        bool spInCcm  = sp > CcmBase  && sp <= CcmEnd;
+        if (!spInSram && !spInCcm)
+            return $"Not an STM32F407 application image — its stack pointer (0x{sp:X8}) is not in device RAM.";
+
+        uint reset = image.ResetHandler;
+        uint flashEnd = Stm32F4FlashLayout.FlashBase + Stm32F4FlashLayout.FlashSize;
+        if ((reset & 1) == 0 || reset < Stm32F4FlashLayout.FlashBase || reset >= flashEnd)
+            return $"Not an STM32F407 application image — its reset handler (0x{reset:X8}) is not in device flash.";
+
+        return null;
     }
 
     /// <summary>Clears the current image selection and shows why it was rejected.</summary>
@@ -742,6 +825,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         FirmwareSizeText = string.Empty;
         FirmwareCrcText  = string.Empty;
         FirmwareError    = reason;
+        FlashDoneHint    = null;
         FirmwarePath     = null;
     }
 
@@ -758,13 +842,23 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Maps a (stage, current, total) event to the progress bar + caption.</summary>
     private void UpdateProgress(string stage, uint current, uint total)
     {
-        Stage         = stage;
+        Stage = stage;
+
+        bool isWriting = string.Equals(stage, "Writing", StringComparison.Ordinal);
+
+        // Only the write phase reports real byte counts. Erase and verify raise a
+        // single 0→N step around one blocking command (a read-back verify can take
+        // tens of seconds at 115200 baud), so a plain bar would sit frozen at 0% —
+        // animate it instead until that stage's completion event arrives.
+        ProgressIndeterminate = !isWriting && current < total;
+
         // total == 0 means "no measurable work yet" — show an empty bar, not a
         // misleading full one, until real counts arrive.
         ProgressValue = total == 0 ? 0 : current * 100.0 / total;
-        // Only the write phase has a meaningful byte count; erase/verify show just
-        // the stage label and bar (no terse "0/1" counter).
-        ProgressText  = string.Equals(stage, "Writing", StringComparison.Ordinal)
+
+        // Only the write phase shows a byte counter; erase/verify show just the
+        // stage label and bar (no terse "0/1" counter).
+        ProgressText = isWriting
             ? $"{current / 1024.0:F1} / {total / 1024.0:F1} KB"
             : string.Empty;
     }

@@ -24,6 +24,7 @@
         <SolidColorBrush x:Key="TextSecondary"      Color="#8A90A2" />
         <SolidColorBrush x:Key="TextMuted"          Color="#AEB3C2" />
         <SolidColorBrush x:Key="DangerBrush"        Color="#D24B4B" />
+        <SolidColorBrush x:Key="WarnBrush"          Color="#B8791E" />
         <SolidColorBrush x:Key="DangerSoftBg"       Color="#FCEDED" />
         <SolidColorBrush x:Key="DangerSoftBorder"   Color="#F3C9C9" />
         <SolidColorBrush x:Key="BadgeInactiveBg"    Color="#EEF0F6" />
@@ -75,6 +76,11 @@
             <Setter Property="Background" Value="{StaticResource DoneSoftBg}" />
             <Setter Property="BorderBrush" Value="{StaticResource DoneSoftBorder}" />
         </Style>
+        <!-- Firmware card while a .bin drag hovers over it: accent border as the
+             "you can drop this here" cue. Declared after .done so it wins. -->
+        <Style Selector="Border.card.dragOver">
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        </Style>
 
         <!-- Folded Activity bar: a subtle clickable strip below card 3 that
              unfolds the activity log overlay. Styled like a flat card row. -->
@@ -124,6 +130,21 @@
             <Setter Property="FontSize" Value="13" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Activity-log lines: default colours per column, overridden per severity
+             (warn/error declared last so they win when both classes apply). -->
+        <Style Selector="TextBlock.logPrefix">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+        </Style>
+        <Style Selector="TextBlock.logMessage">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+        </Style>
+        <Style Selector="TextBlock.logWarn">
+            <Setter Property="Foreground" Value="{StaticResource WarnBrush}" />
+        </Style>
+        <Style Selector="TextBlock.logError">
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
         </Style>
 
         <!-- Headings / text helpers -->

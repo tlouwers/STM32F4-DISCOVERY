@@ -86,6 +86,27 @@ public class FirmwareImageTests
     }
 
     [Fact]
+    public void VectorTable_ParsedLittleEndian()
+    {
+        // SP = 0x20020000 (top of SRAM), Reset = 0x08000199 (flash, Thumb bit).
+        byte[] data = { 0x00, 0x00, 0x02, 0x20, 0x99, 0x01, 0x00, 0x08 };
+
+        var image = new FirmwareImage(data);
+
+        Assert.Equal(0x20020000u, image.InitialStackPointer);
+        Assert.Equal(0x08000199u, image.ResetHandler);
+    }
+
+    [Fact]
+    public void VectorTable_ImageSmallerThanEightBytes_ReadsAsZero()
+    {
+        var image = new FirmwareImage(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF });
+
+        Assert.Equal(0u, image.InitialStackPointer);
+        Assert.Equal(0u, image.ResetHandler);
+    }
+
+    [Fact]
     public void Constructor_FromFile_LoadsBytesAndComputesCrc()
     {
         byte[] data = Enumerable.Range(0, 64).Select(i => (byte)i).ToArray();

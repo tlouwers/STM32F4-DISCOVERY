@@ -17,6 +17,7 @@
 //  Date:    06-2026
 // ----------------------------------------------------------------------------
 
+using System.Buffers.Binary;
 using BootloaderTool.Protocol.Crc;
 
 namespace BootloaderTool.Protocol.Protocol;
@@ -49,6 +50,20 @@ public sealed class FirmwareImage
     public uint Crc32 { get; }
 
     /// <summary>
+    /// Initial stack pointer — word 0 of the Cortex-M vector table (0 when the
+    /// image is too small to contain one). Callers use this for a plausibility
+    /// check: a genuine application image points it into device RAM.
+    /// </summary>
+    public uint InitialStackPointer { get; }
+
+    /// <summary>
+    /// Reset handler address — word 1 of the Cortex-M vector table (0 when the
+    /// image is too small to contain one). A genuine application image points
+    /// it into flash, with the Thumb bit (bit 0) set.
+    /// </summary>
+    public uint ResetHandler { get; }
+
+    /// <summary>
     /// Loads a firmware image from a <c>.bin</c> file on disk.
     /// </summary>
     /// <param name="path">Path to the raw binary image.</param>
@@ -74,6 +89,13 @@ public sealed class FirmwareImage
         Data = data;
         StartAddress = startAddress;
         Crc32 = new Crc32().Compute(data);
+
+        if (data.Length >= 8)
+        {
+            // Vector-table words are little-endian in flash, regardless of host.
+            InitialStackPointer = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0, 4));
+            ResetHandler        = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(4, 4));
+        }
     }
 
     /// <summary>

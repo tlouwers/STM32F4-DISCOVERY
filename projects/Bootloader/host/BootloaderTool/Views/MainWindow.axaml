@@ -178,7 +178,7 @@
                                         <TextBlock Text="Drop a firmware image here"
                                                    HorizontalAlignment="Center"
                                                    Foreground="{StaticResource TextPrimary}" />
-                                        <TextBlock Classes="muted" Text=".bin — up to 2 MB"
+                                        <TextBlock Classes="muted" Text=".bin — up to 1 MB"
                                                    FontFamily="Cascadia Code,Consolas,Menlo,monospace"
                                                    FontSize="11" HorizontalAlignment="Center" />
                                         <Button Classes="secondary" Content="Browse files"
@@ -258,6 +258,7 @@
                                            VerticalAlignment="Center" />
                                 <ProgressBar Grid.Column="1" Minimum="0" Maximum="100"
                                              Value="{Binding ProgressValue}" MinWidth="70"
+                                             IsIndeterminate="{Binding ProgressIndeterminate}"
                                              Foreground="{StaticResource AccentBrush}"
                                              VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="2" Text="{Binding ProgressText}" FontSize="12"
@@ -370,19 +371,26 @@
                               VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
                     <ItemsControl ItemsSource="{Binding Log}">
                         <ItemsControl.ItemTemplate>
+                            <!-- Colours come from the log* classes (App.axaml) so
+                                 warn/error lines stand out; a local Foreground
+                                 would override the class styles. -->
                             <DataTemplate x:DataType="vm:LogEntry">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <TextBlock Grid.Column="0" Text="{Binding Prefix}"
                                                Width="118"
+                                               Classes="logPrefix"
+                                               Classes.logWarn="{Binding IsWarning}"
+                                               Classes.logError="{Binding IsError}"
                                                FontFamily="Cascadia Code,Consolas,Menlo,monospace"
                                                FontSize="12"
-                                               Foreground="{StaticResource TextSecondary}"
                                                VerticalAlignment="Top" />
                                     <TextBlock Grid.Column="1" Text="{Binding Message}"
                                                Margin="6,0,0,0"
+                                               Classes="logMessage"
+                                               Classes.logWarn="{Binding IsWarning}"
+                                               Classes.logError="{Binding IsError}"
                                                FontFamily="Cascadia Code,Consolas,Menlo,monospace"
                                                FontSize="12"
-                                               Foreground="{StaticResource TextPrimary}"
                                                TextWrapping="Wrap" />
                                 </Grid>
                             </DataTemplate>

@@ -38,6 +38,7 @@ public partial class MainWindow : Window
 
         TitleBar.PointerPressed += OnTitleBarPointerPressed;
         DropZone.AddHandler(DragDrop.DragOverEvent, OnDropZoneDragOver);
+        DropZone.AddHandler(DragDrop.DragLeaveEvent, OnDropZoneDragLeave);
         DropZone.AddHandler(DragDrop.DropEvent, OnDropZoneDrop);
     }
 
@@ -100,6 +101,19 @@ public partial class MainWindow : Window
             viewModel.ActivityExpanded = false;
     }
 
+    /// <summary>Folds the activity sheet back on Escape, matching the scrim tap.</summary>
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Key == Key.Escape
+            && DataContext is MainWindowViewModel viewModel
+            && viewModel.ActivityExpanded)
+        {
+            viewModel.ActivityExpanded = false;
+            e.Handled = true;
+        }
+    }
+
     /************************************************************************/
     /* Window chrome                                                        */
     /************************************************************************/
@@ -129,17 +143,27 @@ public partial class MainWindow : Window
     /* Drag-and-drop firmware                                               */
     /************************************************************************/
 
-    /// <summary>Allows the drop only when the payload carries a file.</summary>
+    /// <summary>
+    /// Allows the drop only for a .bin file while no flash is running, mirrored
+    /// by the cursor and an accent border on the card so the user sees before
+    /// releasing whether the drop will be accepted.
+    /// </summary>
     private void OnDropZoneDragOver(object? sender, DragEventArgs e)
     {
-        e.DragEffects = e.DataTransfer is not null && e.DataTransfer.Contains(DataFormat.File)
-            ? DragDropEffects.Copy
-            : DragDropEffects.None;
+        bool acceptable = IsAcceptableDrop(e);
+        e.DragEffects = acceptable ? DragDropEffects.Copy : DragDropEffects.None;
+        DropZone.Classes.Set("dragOver", acceptable);
     }
+
+    /// <summary>Clears the drag highlight when the drag leaves the card.</summary>
+    private void OnDropZoneDragLeave(object? sender, DragEventArgs e)
+        => DropZone.Classes.Set("dragOver", false);
 
     /// <summary>Loads the dropped local file as the firmware image.</summary>
     private void OnDropZoneDrop(object? sender, DragEventArgs e)
     {
+        DropZone.Classes.Set("dragOver", false);
+
         if (DataContext is not MainWindowViewModel viewModel || e.DataTransfer is null)
             return;
 
@@ -147,5 +171,21 @@ public partial class MainWindow : Window
         string? path = item?.TryGetLocalPath();
         if (!string.IsNullOrEmpty(path))
             viewModel.LoadFirmwareFromPath(path);
+    }
+
+    /// <summary>Whether a drag payload would be accepted if dropped right now.</summary>
+    private bool IsAcceptableDrop(DragEventArgs e)
+    {
+        if (e.DataTransfer is null || !e.DataTransfer.Contains(DataFormat.File))
+            return false;
+
+        // The view model ignores drops mid-flash; reflect that in the cursor too.
+        if (DataContext is MainWindowViewModel viewModel && viewModel.IsBusy)
+            return false;
+
+        // Some drag sources reveal the file only at drop time — keep those
+        // allowed and let the load path reject a wrong type with its notice.
+        IStorageItem? item = e.DataTransfer.TryGetFile();
+        return item is null || item.Name.EndsWith(".bin", StringComparison.OrdinalIgnoreCase);
     }
 }
