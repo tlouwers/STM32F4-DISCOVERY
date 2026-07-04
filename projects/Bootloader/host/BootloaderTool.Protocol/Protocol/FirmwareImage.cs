@@ -64,6 +64,13 @@ public sealed class FirmwareImage
     public uint ResetHandler { get; }
 
     /// <summary>
+    /// The "TLFWIMG1" metadata header embedded after the vector table (product
+    /// tag + version), or null for images that do not carry one. See
+    /// <see cref="ImageHeader"/> for the format.
+    /// </summary>
+    public ImageHeader? Header { get; }
+
+    /// <summary>
     /// Loads a firmware image from a <c>.bin</c> file on disk.
     /// </summary>
     /// <param name="path">Path to the raw binary image.</param>
@@ -96,6 +103,8 @@ public sealed class FirmwareImage
             InitialStackPointer = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0, 4));
             ResetHandler        = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(4, 4));
         }
+
+        Header = ImageHeader.FindIn(data);
     }
 
     /// <summary>

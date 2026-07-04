@@ -63,10 +63,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Result of a one-shot bootloader probe on a port.</summary>
-    private readonly record struct ProbeResult(bool Success, string Info, LiveConnection? Connection = null)
+    private readonly record struct ProbeResult(
+        bool Success, string Info, LiveConnection? Connection = null, ImageHeader? DeviceHeader = null)
     {
-        public static ProbeResult Ok(string info, LiveConnection connection) => new(true, info, connection);
-        public static ProbeResult Fail(string info)                          => new(false, info);
+        public static ProbeResult Ok(string info, LiveConnection connection, ImageHeader? deviceHeader)
+            => new(true, info, connection, deviceHeader);
+        public static ProbeResult Fail(string info) => new(false, info);
     }
 
     /// <summary>How long to wait before re-probing a port that has no bootloader yet.</summary>
@@ -135,6 +137,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             : !DeviceDetected && !HasFirmware ? "Connect a device and select a .bin image to enable flashing."
             : !DeviceDetected              ? "Connect a device to enable flashing."
             : !HasFirmware                 ? "Select a .bin image to enable flashing."
+            : HasCompatibilityError        ? "This image does not match the connected device."
+            : ShowDowngradeBanner          ? "Confirm the downgrade to flash this older image."
             : "Ready to flash — press Flash firmware.";
 
     /// <summary>
@@ -163,6 +167,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(FlashFirmwareCommand))]
+    [NotifyCanExecuteChangedFor(nameof(FlashAnywayCommand))]
     private string? _firmwarePath;
 
     // -- Firmware panel (empty state vs. selected/split state) ----------------
@@ -170,6 +175,50 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string  _firmwareSizeText = string.Empty;
     [ObservableProperty] private string  _firmwareCrcText  = string.Empty;
     [ObservableProperty] private string? _firmwareError;
+
+    // -- Image identity ("TLFWIMG1" metadata header) ---------------------------
+
+    /// <summary>Metadata header of the selected image; null when not stamped.</summary>
+    private ImageHeader? _imageHeader;
+
+    /// <summary>Metadata header read back from the connected device; null when unknown.</summary>
+    private ImageHeader? _deviceHeader;
+
+    /// <summary>Once the flash confirms a downgrade via "Flash anyway"; reset when either header changes.</summary>
+    private bool _downgradeConfirmed;
+
+    /// <summary>Version + product of the selected image ("v1.3.2 · F4DISCO1"), or "not stamped".</summary>
+    [ObservableProperty] private string _firmwareVersionText = string.Empty;
+
+    /// <summary>Product-mismatch message; non-null blocks the flash outright.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(FlashFirmwareCommand))]
+    [NotifyCanExecuteChangedFor(nameof(FlashAnywayCommand))]
+    private string? _compatibilityError;
+
+    /// <summary>Downgrade message; non-null gates the flash behind "Flash anyway".</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(FlashFirmwareCommand))]
+    [NotifyCanExecuteChangedFor(nameof(FlashAnywayCommand))]
+    private string? _downgradeWarning;
+
+    /// <summary>True when the product-mismatch banner should show.</summary>
+    public bool HasCompatibilityError => !string.IsNullOrEmpty(CompatibilityError);
+
+    /// <summary>True when the downgrade confirm banner should show (hidden while flashing).</summary>
+    public bool ShowDowngradeBanner => !string.IsNullOrEmpty(DowngradeWarning) && !IsBusy;
+
+    partial void OnCompatibilityErrorChanged(string? value)
+    {
+        OnPropertyChanged(nameof(HasCompatibilityError));
+        OnPropertyChanged(nameof(FlashHint));
+    }
+
+    partial void OnDowngradeWarningChanged(string? value)
+    {
+        OnPropertyChanged(nameof(ShowDowngradeBanner));
+        OnPropertyChanged(nameof(FlashHint));
+    }
 
     /// <summary>True when the last load attempt was rejected (drives the inline notice).</summary>
     public bool HasFirmwareError => !string.IsNullOrEmpty(FirmwareError);
@@ -212,6 +261,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>True when the last probe found a live bootloader on the selected port.</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(FlashFirmwareCommand))]
+    [NotifyCanExecuteChangedFor(nameof(FlashAnywayCommand))]
     private bool _deviceDetected;
 
     [ObservableProperty] private bool    _hasError;
@@ -380,6 +430,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Confirms a version downgrade (the amber banner's "Flash anyway") and
+    /// starts the flash. A separate deliberate click, so an accidental press of
+    /// the greyed main button can never roll a device back.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanFlashAnyway))]
+    private Task FlashAnyway()
+    {
+        _downgradeConfirmed = true;
+        FlashFirmwareCommand.NotifyCanExecuteChanged();
+        return FlashFirmware();
+    }
+
     /// <summary>Unfolds or folds the activity log overlay.</summary>
     [RelayCommand]
     private void ToggleActivity() => ActivityExpanded = !ActivityExpanded;
@@ -419,7 +482,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private bool NotBusy() => !IsBusy;
 
     private bool CanFlashFirmware()
-        => !IsBusy && DeviceDetected && !string.IsNullOrEmpty(FirmwarePath);
+        => !IsBusy && DeviceDetected && !string.IsNullOrEmpty(FirmwarePath)
+           && CompatibilityError is null
+           && (DowngradeWarning is null || _downgradeConfirmed);
+
+    private bool CanFlashAnyway()
+        => !IsBusy && DeviceDetected && !string.IsNullOrEmpty(FirmwarePath)
+           && CompatibilityError is null;
 
     // -----------------------------------------------------------------------
     // Header status model
@@ -430,6 +499,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsReadyToFlash));
         OnPropertyChanged(nameof(FlashButtonText));
         OnPropertyChanged(nameof(FlashHint));
+        OnPropertyChanged(nameof(ShowDowngradeBanner));
+        FlashAnywayCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnDeviceDetectedChanged(bool value)
@@ -633,6 +704,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         DropConnection();
         DeviceDetected = false;
+        _deviceHeader  = null;
+        RefreshCompatibility();
 
         SerialPortInfo? port = SelectedPort;
         if (port is null)
@@ -685,9 +758,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                         }
                         DropConnection();
                         _connection    = result.Connection;
+                        _deviceHeader  = result.DeviceHeader;
                         IsProbing      = false;
                         DeviceInfo     = result.Info;
                         DeviceDetected = true;
+                        RefreshCompatibility();
                     });
                     return;
                 }
@@ -735,14 +810,35 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
             GetResult get = client.Get();
             ushort    id  = client.GetId();
+
+            // Read the start of application flash and look for a "TLFWIMG1"
+            // metadata header, so the UI can show what the device currently
+            // runs and gate product/version checks before a flash. Best-effort:
+            // a read-protected or erased device simply reports no header.
+            ImageHeader? deviceHeader = null;
+            try
+            {
+                byte[] head = client.ReadRegion(FirmwareImage.DefaultStartAddress, ImageHeader.ScanLimit);
+                deviceHeader = ImageHeader.FindIn(head);
+            }
+            catch (Exception ex) when (ex is NackException || ex is BootloaderTimeoutException)
+            {
+                // Read Memory refused (e.g. RDP active) or timed out — treat as
+                // unknown. A lost connection propagates and fails the probe.
+                // Clear any partial response so later commands start clean.
+                serial.FlushInput();
+            }
+
             string info =
                 $"Connected on {portName}  ·  chip 0x{id:X4}  ·  protocol v{get.ProtocolVersion >> 4}.{get.ProtocolVersion & 0x0F}" +
-                $"  ·  {get.SupportedCommands.Length} commands";
+                (deviceHeader is not null
+                    ? $"  ·  runs {deviceHeader.Product} {deviceHeader.VersionText}"
+                    : $"  ·  {get.SupportedCommands.Length} commands");
 
             // Keep the port open and synced for the flash (single session).
             var connection = new LiveConnection(serial, client);
             serial = null; // ownership transferred to the connection
-            return ProbeResult.Ok(info, connection);
+            return ProbeResult.Ok(info, connection, deviceHeader);
         }
         catch (Exception ex)
         {
@@ -799,17 +895,60 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 return;
             }
 
+            // A stamped header may declare the total size — a mismatch means a
+            // truncated or padded file, not the binary the build produced.
+            ImageHeader? header = image.Header;
+            if (header is not null && header.ImageSize != 0 && header.ImageSize != (uint)image.Size)
+            {
+                RejectFirmware($"Image is damaged — its header declares {header.ImageSize:N0} bytes " +
+                               $"but the file is {image.Size:N0} bytes.");
+                return;
+            }
+
+            _imageHeader        = header;
+            FirmwareVersionText = header is not null
+                ? $"{header.VersionText} · {header.Product}"
+                : "not stamped";
+
             FirmwareName     = Path.GetFileName(path);
             FirmwareSizeText = $"{image.Size:N0} bytes";
             FirmwareCrcText  = $"0x{image.Crc32:X8}";
             FirmwareError    = null;
             FlashDoneHint    = null;   // a new image supersedes the last outcome
             FirmwarePath     = path;   // set last: drives HasFirmware / panels
+            RefreshCompatibility();
         }
         catch (Exception ex)
         {
             RejectFirmware($"Cannot load image: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Recomputes the product/version gates from the image and device headers.
+    /// A product mismatch blocks the flash outright; a downgrade arms the amber
+    /// confirm banner. Either header missing (unstamped image, erased or legacy
+    /// device) means no gate — the checks only bite when both sides declare.
+    /// </summary>
+    private void RefreshCompatibility()
+    {
+        _downgradeConfirmed = false;
+
+        ImageHeader? image  = _imageHeader;
+        ImageHeader? device = _deviceHeader;
+
+        CompatibilityError =
+            image is not null && device is not null
+            && !string.Equals(image.Product, device.Product, StringComparison.Ordinal)
+                ? $"This image is built for '{image.Product}' — the connected device runs '{device.Product}'."
+                : null;
+
+        DowngradeWarning =
+            CompatibilityError is null
+            && image is not null && device is not null
+            && image.CompareVersionTo(device) < 0
+                ? $"The device runs {device.VersionText}; this image is {image.VersionText} (older)."
+                : null;
     }
 
     /// <summary>
@@ -843,22 +982,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Clears the current image selection and shows why it was rejected.</summary>
     private void RejectFirmware(string reason)
     {
-        FirmwareName     = string.Empty;
-        FirmwareSizeText = string.Empty;
-        FirmwareCrcText  = string.Empty;
-        FirmwareError    = reason;
-        FlashDoneHint    = null;
-        FirmwarePath     = null;
+        FirmwareName        = string.Empty;
+        FirmwareSizeText    = string.Empty;
+        FirmwareCrcText     = string.Empty;
+        FirmwareVersionText = string.Empty;
+        FirmwareError       = reason;
+        FlashDoneHint       = null;
+        FirmwarePath        = null;
+        _imageHeader        = null;
+        RefreshCompatibility();
     }
 
     /// <summary>Clears the image selection without an error (after a successful flash).</summary>
     private void ClearFirmwareSelection()
     {
-        FirmwareName     = string.Empty;
-        FirmwareSizeText = string.Empty;
-        FirmwareCrcText  = string.Empty;
-        FirmwareError    = null;
-        FirmwarePath     = null;
+        FirmwareName        = string.Empty;
+        FirmwareSizeText    = string.Empty;
+        FirmwareCrcText     = string.Empty;
+        FirmwareVersionText = string.Empty;
+        FirmwareError       = null;
+        FirmwarePath        = null;
+        _imageHeader        = null;
+        RefreshCompatibility();
     }
 
     /// <summary>Maps a (stage, current, total) event to the progress bar + caption.</summary>

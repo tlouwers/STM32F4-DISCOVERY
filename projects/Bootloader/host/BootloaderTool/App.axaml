@@ -27,6 +27,8 @@
         <SolidColorBrush x:Key="WarnBrush"          Color="#B8791E" />
         <SolidColorBrush x:Key="DangerSoftBg"       Color="#FCEDED" />
         <SolidColorBrush x:Key="DangerSoftBorder"   Color="#F3C9C9" />
+        <SolidColorBrush x:Key="WarnSoftBg"         Color="#FBF4E2" />
+        <SolidColorBrush x:Key="WarnSoftBorder"     Color="#EDD9A8" />
         <SolidColorBrush x:Key="BadgeInactiveBg"    Color="#EEF0F6" />
         <SolidColorBrush x:Key="BadgeInactiveFg"    Color="#9AA0B0" />
         <SolidColorBrush x:Key="DotIdle"            Color="#C2C7D2" />

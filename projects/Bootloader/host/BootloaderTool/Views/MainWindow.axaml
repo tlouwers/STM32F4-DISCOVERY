@@ -210,7 +210,7 @@
 
                                     <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
                                         <TextBlock Classes="muted" Text="Statistics" FontSize="11" />
-                                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
+                                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"
                                               RowSpacing="6" ColumnSpacing="14">
                                             <TextBlock Grid.Row="0" Grid.Column="0" Classes="subtle" Text="Size" />
                                             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding FirmwareSizeText}"
@@ -218,6 +218,12 @@
                                                        Foreground="{StaticResource TextPrimary}" />
                                             <TextBlock Grid.Row="1" Grid.Column="0" Classes="subtle" Text="CRC32" />
                                             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FirmwareCrcText}"
+                                                       FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                                       Foreground="{StaticResource TextPrimary}" />
+                                            <!-- From the image's TLFWIMG1 metadata header,
+                                                 or "not stamped" for a plain binary. -->
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Classes="subtle" Text="Version" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FirmwareVersionText}"
                                                        FontFamily="Cascadia Code,Consolas,Menlo,monospace"
                                                        Foreground="{StaticResource TextPrimary}" />
                                         </Grid>
@@ -280,6 +286,34 @@
                              flashing) so the card keeps a constant height. -->
                         <TextBlock Classes="muted" FontSize="12" HorizontalAlignment="Center"
                                    Text="{Binding FlashHint}" />
+
+                        <!-- Product-mismatch banner: this image is for a different
+                             product than the connected device — flashing is blocked. -->
+                        <Border IsVisible="{Binding HasCompatibilityError}"
+                                Background="{StaticResource DangerSoftBg}"
+                                BorderBrush="{StaticResource DangerSoftBorder}"
+                                BorderThickness="1" CornerRadius="10" Padding="14">
+                            <TextBlock Text="{Binding CompatibilityError}"
+                                       Foreground="{StaticResource DangerBrush}"
+                                       TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </Border>
+
+                        <!-- Downgrade confirm banner (amber): the image is older than
+                             what the device runs; flashing needs a deliberate second
+                             click here — the main button stays greyed. -->
+                        <Border IsVisible="{Binding ShowDowngradeBanner}"
+                                Background="{StaticResource WarnSoftBg}"
+                                BorderBrush="{StaticResource WarnSoftBorder}"
+                                BorderThickness="1" CornerRadius="10" Padding="14">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBlock Grid.Column="0" Text="{Binding DowngradeWarning}"
+                                           Foreground="{StaticResource WarnBrush}"
+                                           TextWrapping="Wrap" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="secondary" Content="Flash anyway"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding FlashAnywayCommand}" />
+                            </Grid>
+                        </Border>
 
                         <!-- Error / recovery banner -->
                         <Border IsVisible="{Binding HasError}"

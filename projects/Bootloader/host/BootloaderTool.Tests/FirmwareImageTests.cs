@@ -107,6 +107,27 @@ public class FirmwareImageTests
     }
 
     [Fact]
+    public void Header_PresentInImage_IsParsed()
+    {
+        byte[] image = new byte[1024];
+        ImageHeader.Magic.CopyTo(image, 0x188);
+        System.Text.Encoding.ASCII.GetBytes("F4DISCO1").CopyTo(image, 0x188 + 8);
+        image[0x188 + 16] = 2; // major = 2 (little-endian u16)
+
+        var firmware = new FirmwareImage(image);
+
+        Assert.NotNull(firmware.Header);
+        Assert.Equal("F4DISCO1", firmware.Header!.Product);
+        Assert.Equal(2, firmware.Header.Major);
+    }
+
+    [Fact]
+    public void Header_AbsentFromImage_IsNull()
+    {
+        Assert.Null(new FirmwareImage(new byte[1024]).Header);
+    }
+
+    [Fact]
     public void Constructor_FromFile_LoadsBytesAndComputesCrc()
     {
         byte[] data = Enumerable.Range(0, 64).Select(i => (byte)i).ToArray();

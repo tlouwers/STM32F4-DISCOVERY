@@ -149,6 +149,15 @@ three-step flow (Device → Firmware → Flash):
   shows the file, size, and CRC32. Up to 1 MB (the F407's flash), and the image
   must carry a plausible Cortex-M vector table — wrong-MCU images, data blobs,
   and renamed `.elf`/`.hex` files are rejected before anything is erased.
+* **Image identity.** An image may embed a 32-byte `TLFWIMG1` metadata header
+  (product tag + version) after its vector table — see
+  [docs/image-header.md](docs/image-header.md). The firmware card then shows a
+  *Version* row, and the device card shows what the board currently runs (read
+  back over the bootloader on connect). A product mismatch blocks the flash
+  (red banner); flashing an older version needs an explicit *Flash anyway*
+  (orange banner). Unstamped images and erased devices are unaffected — the
+  checks only engage when both sides declare. The format is portable to other
+  firmwares and bootloaders: anything that can read the first 1 KB can use it.
 * **Activity log.** A foldable in-app log records each step. Everything is also
   mirrored to an append-only `bootloader.log` under the per-user data folder
   (`%LOCALAPPDATA%\BootloaderTool` on Windows — *Open log file* in the activity
