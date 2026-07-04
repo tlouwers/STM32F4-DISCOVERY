@@ -232,8 +232,13 @@ public sealed class An3155Client
     /// </summary>
     /// <param name="address">Start address.</param>
     /// <param name="length">Total number of bytes to read (>= 1).</param>
+    /// <param name="progress">
+    /// Optional per-chunk callback: (bytes read so far, total bytes). A full
+    /// read-back at 115200 baud takes seconds per 100 KB, so callers surface
+    /// this to the user rather than blocking silently.
+    /// </param>
     /// <returns>The bytes read; the array length equals <paramref name="length"/>.</returns>
-    public byte[] ReadRegion(uint address, int length)
+    public byte[] ReadRegion(uint address, int length, Action<int, int>? progress = null)
     {
         if (length < 1)
             throw new ArgumentOutOfRangeException(nameof(length), "Must be >= 1");
@@ -246,6 +251,7 @@ public sealed class An3155Client
             byte[] part = ReadMemory(address + (uint)offset, chunk);
             Array.Copy(part, 0, result, offset, chunk);
             offset += chunk;
+            progress?.Invoke(offset, length);
         }
         return result;
     }

@@ -146,10 +146,14 @@ three-step flow (Device → Firmware → Flash):
   Once connected the port is locked for the session; a successful flash clears
   the image so the next one is a deliberate re-selection.
 * **Firmware.** Drag-and-drop a `.bin` onto the window (or *Browse*); the card
-  shows the file, size, and CRC32. Up to 2 MB.
+  shows the file, size, and CRC32. Up to 1 MB (the F407's flash), and the image
+  must carry a plausible Cortex-M vector table — wrong-MCU images, data blobs,
+  and renamed `.elf`/`.hex` files are rejected before anything is erased.
 * **Activity log.** A foldable in-app log records each step. Everything is also
-  mirrored to an append-only `bootloader.log` next to the executable (timestamped,
-  with the flashed file name + path and a rule between runs) for later inspection.
+  mirrored to an append-only `bootloader.log` under the per-user data folder
+  (`%LOCALAPPDATA%\BootloaderTool` on Windows — *Open log file* in the activity
+  sheet opens it), timestamped, with the flashed file name + path and a rule
+  between runs, for later inspection.
 
 The GUI shares all protocol/serial code with the CLI via `BootloaderTool.Protocol`.
 

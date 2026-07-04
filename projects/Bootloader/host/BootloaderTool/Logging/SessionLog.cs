@@ -9,9 +9,11 @@
 //
 //  Append-only file logger for the GUI. Every line that reaches the on-screen
 //  activity log is also written here so a flash can be inspected after the fact.
-//  The file lives beside the application binary (bootloader.log) and is only ever
-//  appended to — never overwritten — with each flash run separated by a rule.
-//  File-I/O failures are swallowed: persistent logging must never break the app.
+//  The file lives in the per-user application-data folder
+//  (%LOCALAPPDATA%\BootloaderTool\bootloader.log on Windows) — always writable,
+//  unlike a folder beside the binary when installed under Program Files — and is
+//  only ever appended to, with each flash run separated by a rule. File-I/O
+//  failures are swallowed: persistent logging must never break the app.
 //
 //  https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader
 //
@@ -23,9 +25,9 @@
 namespace BootloaderTool.Logging;
 
 /// <summary>
-/// Thread-safe, append-only logger that mirrors the activity log to a file next
-/// to the executable. Best-effort: any I/O error is ignored so logging never
-/// disrupts the UI.
+/// Thread-safe, append-only logger that mirrors the activity log to a file in
+/// the per-user application-data folder. Best-effort: any I/O error is ignored
+/// so logging never disrupts the UI.
 /// </summary>
 public sealed class SessionLog
 {
@@ -34,9 +36,15 @@ public sealed class SessionLog
     private readonly object _gate = new();
     private readonly string _path;
 
-    /// <summary>Creates a logger writing to "bootloader.log" beside the binary.</summary>
+    /// <summary>
+    /// Creates a logger writing to "bootloader.log" under the per-user
+    /// application-data folder (%LOCALAPPDATA%\BootloaderTool on Windows) —
+    /// writable regardless of where the binary is installed.
+    /// </summary>
     public SessionLog()
-        : this(System.IO.Path.Combine(AppContext.BaseDirectory, "bootloader.log"))
+        : this(System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "BootloaderTool", "bootloader.log"))
     {
     }
 
@@ -70,6 +78,10 @@ public sealed class SessionLog
     {
         try
         {
+            string? directory = System.IO.Path.GetDirectoryName(_path);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+
             File.AppendAllText(_path, text);
         }
         catch

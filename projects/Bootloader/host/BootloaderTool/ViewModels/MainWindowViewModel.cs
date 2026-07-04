@@ -384,6 +384,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ToggleActivity() => ActivityExpanded = !ActivityExpanded;
 
+    /// <summary>
+    /// Opens the append-only log file in the OS default viewer, so the full
+    /// history (the on-screen log is cleared each run) is one click away from
+    /// the activity sheet. Best-effort: failure is reported in the log itself.
+    /// </summary>
+    [RelayCommand]
+    private void OpenLogFile()
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(_sessionLog.Path) { UseShellExecute = true });
+        }
+        catch
+        {
+            AppendLog("warn", $"Could not open the log file ({_sessionLog.Path}).");
+        }
+    }
+
+    /// <summary>Full path of the append-only log file (shown as a tooltip).</summary>
+    public string LogFilePath => _sessionLog.Path;
+
     partial void OnActivityExpandedChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowActivityBar));
@@ -844,21 +866,24 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         Stage = stage;
 
-        bool isWriting = string.Equals(stage, "Writing", StringComparison.Ordinal);
+        // Write always reports byte counts; verify does too on the read-back
+        // path (total = image size), but raises a single 0→1 step around one
+        // blocking command on the device-checksum path. Erase is one blocking
+        // command per run. Stages without byte counts animate the bar instead
+        // of sitting frozen at 0% until their completion event arrives.
+        bool isWriting     = string.Equals(stage, "Writing", StringComparison.Ordinal);
+        bool isVerifying   = string.Equals(stage, "Verifying", StringComparison.Ordinal);
+        bool hasByteCounts = isWriting || (isVerifying && total > 1);
 
-        // Only the write phase reports real byte counts. Erase and verify raise a
-        // single 0→N step around one blocking command (a read-back verify can take
-        // tens of seconds at 115200 baud), so a plain bar would sit frozen at 0% —
-        // animate it instead until that stage's completion event arrives.
-        ProgressIndeterminate = !isWriting && current < total;
+        ProgressIndeterminate = !hasByteCounts && current < total;
 
         // total == 0 means "no measurable work yet" — show an empty bar, not a
         // misleading full one, until real counts arrive.
         ProgressValue = total == 0 ? 0 : current * 100.0 / total;
 
-        // Only the write phase shows a byte counter; erase/verify show just the
-        // stage label and bar (no terse "0/1" counter).
-        ProgressText = isWriting
+        // Byte-counted stages show a KB counter; the rest show just the stage
+        // label and bar (no terse "0/1" counter).
+        ProgressText = hasByteCounts
             ? $"{current / 1024.0:F1} / {total / 1024.0:F1} KB"
             : string.Empty;
     }

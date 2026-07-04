@@ -347,10 +347,17 @@
                 CornerRadius="12" Padding="16,12,16,14"
                 BoxShadow="0 8 28 0 #40000000">
             <Grid RowDefinitions="Auto,*">
-                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto">
                     <TextBlock Grid.Column="0" Classes="h2" Text="Activity Log"
                                VerticalAlignment="Center" />
-                    <Button Grid.Column="2" Classes="activityToggle"
+                    <!-- The on-screen log is cleared each run; the full history
+                         lives in the append-only file this opens. -->
+                    <Button Grid.Column="2" Classes="secondary" Content="Open log file"
+                            FontSize="12" Padding="10,4" Margin="0,0,10,0"
+                            VerticalAlignment="Center"
+                            Command="{Binding OpenLogFileCommand}"
+                            ToolTip.Tip="{Binding LogFilePath}" />
+                    <Button Grid.Column="3" Classes="activityToggle"
                             Command="{Binding ToggleActivityCommand}"
                             ToolTip.Tip="Hide the activity log">
                         <Panel Width="12" Height="12">

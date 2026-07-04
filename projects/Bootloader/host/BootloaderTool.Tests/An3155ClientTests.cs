@@ -228,6 +228,25 @@ public class An3155ClientTests : IDisposable
         Assert.Throws<ArgumentOutOfRangeException>(() => _client.ReadMemory(0x08000000, 257));
     }
 
+    [Fact]
+    public void ReadRegion_MultiChunk_ReportsPerChunkProgress()
+    {
+        // 260 bytes = one full 256-byte chunk + one 4-byte remainder.
+        for (int chunk = 0; chunk < 2; chunk++)
+        {
+            _serial.EnqueueResponse(An3155Constants.Ack); // cmd ACK
+            _serial.EnqueueResponse(An3155Constants.Ack); // address ACK
+            _serial.EnqueueResponse(An3155Constants.Ack); // N ACK
+            _serial.EnqueueResponse(new byte[chunk == 0 ? 256 : 4]); // data
+        }
+
+        var progress = new List<(int done, int total)>();
+        byte[] data = _client.ReadRegion(0x08000000, 260, (done, total) => progress.Add((done, total)));
+
+        Assert.Equal(260, data.Length);
+        Assert.Equal(new[] { (256, 260), (260, 260) }, progress);
+    }
+
     // ── Go ─────────────────────────────────────────────────────────────────
 
     [Fact]

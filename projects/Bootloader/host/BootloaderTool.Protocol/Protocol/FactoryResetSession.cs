@@ -285,13 +285,15 @@ public sealed class FactoryResetSession
     /// <returns>True if the read-back CRC32 matches the image CRC32.</returns>
     private bool VerifyByReadBack(FirmwareImage image)
     {
-        Progress?.Invoke("Verifying", 0, 1);
+        // Byte-granular progress (total = image size): a full read-back takes
+        // seconds per 100 KB at 115200 baud, so the UI shows a real bar here —
+        // unlike the checksum path's single 0→1 step around one blocking command.
+        Progress?.Invoke("Verifying", 0, (uint)image.Size);
 
-        byte[] readBack = _client.ReadRegion(image.StartAddress, image.Size);
+        byte[] readBack = _client.ReadRegion(image.StartAddress, image.Size,
+            (done, total) => Progress?.Invoke("Verifying", (uint)done, (uint)total));
         _lastDeviceCrc = new Crc32().Compute(readBack);
         bool ok = _lastDeviceCrc == image.Crc32;
-
-        Progress?.Invoke("Verifying", 1, 1);
         Log?.Invoke(ok ? "info" : "warn",
             $"Read-back CRC32 0x{_lastDeviceCrc:X8}, expected 0x{image.Crc32:X8}.");
         return ok;
