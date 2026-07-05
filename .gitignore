@@ -1,4 +1,6 @@
 # Ignore build folders
+projects/Bootloader/build/**
+projects/Bootloader/target/build/**
 projects/ExampleProject/build/**
 projects/ExampleProject/target/build/**
 projects/FreeRTOSProject/build/**
@@ -10,7 +12,12 @@ projects/TiltExample/target/build/**
 projects/UnitTestExample/build/**
 projects/UnitTestExample/target/build/**
 
+# Ignore .NET build output
+**/bin/
+**/obj/
+
 # Ignore Cortex-Debug temporary files
+projects/Bootloader/.vscode/.cortex-debug*
 projects/ExampleProject/.vscode/.cortex-debug*
 projects/FreeRTOSProject/.vscode/.cortex-debug*
 projects/StandupCounter/.vscode/.cortex-debug*

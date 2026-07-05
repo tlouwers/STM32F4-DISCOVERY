@@ -1,0 +1,40 @@
+@startuml FactoryReset_HappyPath
+title Factory reset (host -> ST ROM bootloader) — happy path, F4 read-back verify
+
+actor Operator
+participant "BootloaderTool\n(host)" as Host
+participant "ST ROM bootloader\nAN3155 @ 0x1FFF0000" as BL
+participant "App flash\n@ 0x08000000" as App
+
+Operator -> BL : enter bootloader\n(blue button -> magic -> reset -> jump)
+note over BL : fresh entry — first 0x7F auto-bauds
+
+Host -> BL : 0x7F (sync)
+BL --> Host : ACK (0x79)
+
+Host -> BL : Get (0x00)
+BL --> Host : v3.1, 11 cmds (no 0xA1)
+Host -> BL : Get ID (0x02)
+BL --> Host : 0x0413 (STM32F407)
+note over Host : 0xA1 absent -> verify by read-back
+
+Host -> BL : Extended Erase (0x44), sector(s)
+BL --> Host : ACK (after erase completes)
+
+loop each 256-byte chunk
+  Host -> BL : Write Memory (0x31) addr + data
+  BL --> Host : ACK
+end
+
+loop each 256-byte chunk
+  Host -> BL : Read Memory (0x11) addr + len
+  BL --> Host : data
+end
+Host -> Host : CRC32(read-back) == image.CRC32  (OK)
+
+Host -> BL : Go (0x21) 0x08000000
+BL --> Host : ACK
+BL -> App : jump
+App -> App : blink LED (new firmware running)
+
+@enduml

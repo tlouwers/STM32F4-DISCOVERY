@@ -1,0 +1,35 @@
+/**
+ * \file    Board.hpp
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ * \class   Board
+ *
+ * \brief   Clock configuration for the blink_orange sample application.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader/target/blink_orange/Src/board
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    06-2026
+ */
+
+#ifndef BOARD_HPP_
+#define BOARD_HPP_
+
+
+/************************************************************************/
+/* Class declaration                                                    */
+/************************************************************************/
+class Board
+{
+public:
+    static bool InitClock();
+};
+
+
+#endif  // BOARD_HPP_
