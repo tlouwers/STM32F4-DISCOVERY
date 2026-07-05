@@ -246,10 +246,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(BrowseFirmwareCommand))]
     [NotifyCanExecuteChangedFor(nameof(FlashFirmwareCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ReconnectCommand))]
     private bool _isBusy;
 
     /// <summary>True while a background probe is identifying the selected port.</summary>
-    [ObservableProperty] private bool _isProbing;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ReconnectCommand))]
+    [NotifyPropertyChangedFor(nameof(ReconnectButtonText))]
+    private bool _isProbing;
+
+    /// <summary>Reconnect button label — feedback that a probe is already running,
+    /// so a fast double-click cannot queue a second one.</summary>
+    public string ReconnectButtonText => IsProbing ? "Reconnecting" : "Reconnect";
 
     /// <summary>True when the last probe found a live bootloader on the selected port.</summary>
     [ObservableProperty]
@@ -306,6 +314,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // -----------------------------------------------------------------------
     // Commands
     // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Forces a fresh probe, dropping any held connection first. A failure that
+    /// keeps <c>_connection</c> "usable" deliberately holds it open so Retry is
+    /// instant — but if the hardware has since been power-cycled, reset, or
+    /// reflashed outside the tool, that held connection is stale and nothing
+    /// else in the GUI restarts the probe on its own.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanReconnect))]
+    private void Reconnect() => RestartProbe();
+
+    /// <summary>Blocks a second click while a probe (initial or reconnect) is already running.</summary>
+    private bool CanReconnect() => !IsBusy && !IsProbing;
 
     /// <summary>Opens the file picker and loads the selected firmware image.</summary>
     [RelayCommand(CanExecute = nameof(NotBusy))]

@@ -20,11 +20,12 @@
         xmlns:serial="clr-namespace:BootloaderTool.Protocol.Serial;assembly=BootloaderTool.Protocol"
         x:Class="BootloaderTool.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Width="640" Height="815"
-        MinWidth="520" MinHeight="660"
+        Width="640" Height="930"
+        MinWidth="520" MinHeight="740"
         Background="{StaticResource PageBackground}"
         ExtendClientAreaToDecorationsHint="True"
         WindowDecorations="None"
+        Icon="/Assets/app.ico"
         Title="BootloaderTool — STM32 UART Bootloader">
 
     <!-- OffScreenMargin keeps content clear of the OS frame when maximised. -->
@@ -39,12 +40,9 @@
             <!-- App identity -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
                         VerticalAlignment="Center" Margin="10,0,0,0">
-                <Border Width="22" Height="22" CornerRadius="6"
-                        Background="{StaticResource AccentGradientBrush}"
-                        VerticalAlignment="Center">
-                    <Rectangle Width="9" Height="9" RadiusX="2" RadiusY="2" Fill="White"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
+                <Image Source="/Assets/app-icon-small.png" Width="22" Height="22"
+                       VerticalAlignment="Center"
+                       RenderOptions.BitmapInterpolationMode="HighQuality" />
                 <TextBlock Text="Bootloader" FontWeight="Bold"
                            Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
                 <Border CornerRadius="5" Background="#E9EBF3" Padding="7,2" VerticalAlignment="Center">
@@ -101,19 +99,32 @@
                                 <TextBlock Classes="h2" Text="Device" VerticalAlignment="Center" />
                             </StackPanel>
 
-                            <!-- Status indicator: spinner while connecting, else a colour dot -->
-                            <Panel Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center">
-                                <Panel IsVisible="{Binding IsProbing}">
-                                    <Ellipse Width="16" Height="16" Stroke="{StaticResource SpinnerTrack}" StrokeThickness="2" />
-                                    <Path Classes="spinnerArc"
-                                          Stroke="{StaticResource AccentBrush}" StrokeThickness="2"
-                                          StrokeLineCap="Round" Data="M 8,2 A 6,6 0 1 1 2,8" />
+                            <!-- Reconnect (forces a fresh probe) + status indicator (spinner
+                                 while connecting, else a colour dot). Reconnect matters when a
+                                 held connection is stale relative to the hardware — e.g. the
+                                 board was power-cycled, reset, or reflashed outside the tool
+                                 after a failure that deliberately kept the connection "usable"
+                                 so Retry would be instant. -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
+                                        VerticalAlignment="Center">
+                                <Button Classes="secondary" Content="{Binding ReconnectButtonText}" FontSize="12"
+                                        Padding="10,4" Width="96" HorizontalContentAlignment="Center"
+                                        Command="{Binding ReconnectCommand}"
+                                        ToolTip.Tip="Drop the current connection and probe again" />
+
+                                <Panel Width="16" Height="16" VerticalAlignment="Center">
+                                    <Panel IsVisible="{Binding IsProbing}">
+                                        <Ellipse Width="16" Height="16" Stroke="{StaticResource SpinnerTrack}" StrokeThickness="2" />
+                                        <Path Classes="spinnerArc"
+                                              Stroke="{StaticResource AccentBrush}" StrokeThickness="2"
+                                              StrokeLineCap="Round" Data="M 8,2 A 6,6 0 1 1 2,8" />
+                                    </Panel>
+                                    <Ellipse Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                             Fill="{StaticResource DotConnected}" IsVisible="{Binding IsConnectedState}" />
+                                    <Ellipse Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                             Fill="{StaticResource DangerBrush}" IsVisible="{Binding IsDisconnectedState}" />
                                 </Panel>
-                                <Ellipse Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                         Fill="{StaticResource DotConnected}" IsVisible="{Binding IsConnectedState}" />
-                                <Ellipse Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                         Fill="{StaticResource DangerBrush}" IsVisible="{Binding IsDisconnectedState}" />
-                            </Panel>
+                            </StackPanel>
                         </Grid>
 
                         <!-- Connection status title + detail. MinHeight reserves room
