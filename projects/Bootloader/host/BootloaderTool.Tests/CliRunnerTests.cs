@@ -239,6 +239,57 @@ public class CliRunnerTests
         Assert.Contains("bootloader", output);
     }
 
+    // ── Pre-flash gates (upload / factory-reset) ─────────────────────────────
+
+    [Fact]
+    public async Task Upload_NotAFirmwareImage_BlocksBeforeTouchingThePort()
+    {
+        // A data blob with no plausible vector table must be rejected by the
+        // shared sanity gate before the port is even opened.
+        var serial = new MockSerial();
+        string path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(path, new byte[16]);
+
+            int code = await CliRunner.RunAsync(
+                new[] { "upload", "-p", "COM1", "-f", path }, Context(serial));
+
+            Assert.Equal(1, code);
+            Assert.Contains("Use --force", _err.ToString());
+            Assert.Empty(serial.AllWrittenBytes);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Upload_NotAFirmwareImage_ForceProceedsWithWarning()
+    {
+        // --force turns the hard block into a warning; with a silent device the
+        // run then fails at sync — proving the gate itself was bypassed.
+        var serial = new MockSerial();
+        string path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(path, new byte[16]);
+
+            int code = await CliRunner.RunAsync(
+                new[] { "upload", "-p", "COM1", "-f", path, "--force" }, Context(serial));
+
+            Assert.Equal(1, code);
+            string err = _err.ToString();
+            Assert.Contains("warning:", err);
+            Assert.Contains("did not respond", err);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     // ── Stamp (offline, no port) ─────────────────────────────────────────────
 
     [Fact]

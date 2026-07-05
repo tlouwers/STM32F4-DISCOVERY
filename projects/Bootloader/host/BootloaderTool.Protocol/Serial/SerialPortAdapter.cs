@@ -26,8 +26,11 @@ namespace BootloaderTool.Protocol.Serial;
 public sealed class SerialPortAdapter : ISerial
 {
     private SerialPort? _port;
+    private int _timeoutMs = 2000;
 
     public bool IsOpen => _port?.IsOpen ?? false;
+
+    public int TimeoutMs => _timeoutMs;
 
     public bool Open(string portName, SerialConfig config)
     {
@@ -46,6 +49,7 @@ public sealed class SerialPortAdapter : ISerial
                 RtsEnable    = true
             };
             _port.Open();
+            _timeoutMs = config.TimeoutMs;
             return true;
         }
         catch (Exception)
@@ -92,11 +96,11 @@ public sealed class SerialPortAdapter : ISerial
         if (_port is not { IsOpen: true })
             return -1;
 
+        byte[] array = new byte[buffer.Length];
+        int totalRead = 0;
+
         try
         {
-            byte[] array = new byte[buffer.Length];
-            int totalRead = 0;
-
             while (totalRead < array.Length)
             {
                 int bytesRead = _port.Read(array, totalRead, array.Length - totalRead);
@@ -104,22 +108,24 @@ public sealed class SerialPortAdapter : ISerial
                     break;
                 totalRead += bytesRead;
             }
-
-            array.AsSpan(0, totalRead).CopyTo(buffer);
-            return totalRead;
         }
         catch (TimeoutException)
         {
-            return 0;
+            // Fall through — bytes read before the timeout are already consumed
+            // from the OS buffer and must be returned to keep the stream aligned.
         }
         catch (Exception)
         {
             return -1;
         }
+
+        array.AsSpan(0, totalRead).CopyTo(buffer);
+        return totalRead;
     }
 
     public void SetTimeout(int timeoutMs)
     {
+        _timeoutMs = timeoutMs;
         if (_port != null)
         {
             _port.ReadTimeout  = timeoutMs;

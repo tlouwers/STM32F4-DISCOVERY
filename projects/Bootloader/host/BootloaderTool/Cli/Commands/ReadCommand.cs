@@ -18,7 +18,6 @@
 // ----------------------------------------------------------------------------
 
 using BootloaderTool.Protocol.Protocol;
-using BootloaderTool.Protocol.Serial;
 
 namespace BootloaderTool.Cli.Commands;
 
@@ -38,44 +37,18 @@ public sealed class ReadCommand : ICliCommand
         if (string.IsNullOrWhiteSpace(options.Output))
             return Task.FromResult(CliResult.UsageError(context, "no output file specified (use -o <file>)"));
 
-        ISerial? serial = context.OpenPort(options, out string? error);
-        if (serial is null)
-            return Task.FromResult(CliResult.UsageOrFail(context, error!, options.Port is null));
-
-        using (serial)
+        return ClientCommand.Run(options, context, client =>
         {
-            var client   = new An3155Client(serial);
-            var progress = new ConsoleProgress(context.Out, options.Json);
-
-            // SyncWithRetries also accepts the NACK an already-armed bootloader
-            // sends to a repeated 0x7F, where a bare Sync() would fail.
-            if (!client.SyncWithRetries(attempts: options.Retries))
-                return Task.FromResult(CliResult.NoSync(context));
-
+            var  progress = new ConsoleProgress(context.Out, options.Json);
             uint address  = options.Address.Value;
             int  total    = options.Length.Value;
-            var  buffer   = new byte[total];
-            int  readSoFar = 0;
 
-            try
-            {
-                while (readSoFar < total)
-                {
-                    int chunk = Math.Min(An3155Constants.MaxReadBytes, total - readSoFar);
-                    byte[] part = client.ReadMemory(address + (uint)readSoFar, chunk);
-                    Array.Copy(part, 0, buffer, readSoFar, chunk);
-                    readSoFar += chunk;
-                    progress.OnProgress("Reading", (uint)readSoFar, (uint)total);
-                }
+            byte[] buffer = client.ReadRegion(address, total,
+                (done, len) => progress.OnProgress("Reading", (uint)done, (uint)len));
 
-                File.WriteAllBytes(options.Output, buffer);
-                progress.OnLog("info", $"Read {total} bytes to {options.Output}.");
-                return Task.FromResult(CliResult.Success);
-            }
-            catch (Exception ex)
-            {
-                return Task.FromResult(CliResult.Protocol(context, ex));
-            }
-        }
+            File.WriteAllBytes(options.Output!, buffer);
+            progress.OnLog("info", $"Read {total} bytes to {options.Output}.");
+            return CliResult.Success;
+        });
     }
 }

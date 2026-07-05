@@ -38,6 +38,8 @@ public sealed class MockSerial : ISerial
 
     public bool IsOpen => _isOpen;
 
+    public int TimeoutMs => _timeoutMs;
+
     // ---- Scripting API (used by tests) ------------------------------------
 
     /// <summary>Enqueue a canned response that Read() will return.</summary>

@@ -65,15 +65,5 @@ public static class CliResult
 
     /// <summary>Maps a protocol exception to a friendly message and failure code.</summary>
     public static int Protocol(CliContext context, Exception ex)
-    {
-        string message = ex switch
-        {
-            NackException nack          => $"device rejected command 0x{nack.Command:X2} (NACK).",
-            BootloaderTimeoutException  => $"timed out waiting for the device: {ex.Message}",
-            ConnectionLostException     => $"serial connection lost: {ex.Message}",
-            ChecksumMismatchException c => $"verification failed: expected 0x{c.Expected:X8}, device 0x{c.Actual:X8}.",
-            _                           => ex.Message,
-        };
-        return Fail(context, message);
-    }
+        => Fail(context, ProtocolErrors.Describe(ex));
 }

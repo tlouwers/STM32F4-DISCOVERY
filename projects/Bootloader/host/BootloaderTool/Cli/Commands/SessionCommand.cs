@@ -20,7 +20,6 @@
 // ----------------------------------------------------------------------------
 
 using BootloaderTool.Protocol.Protocol;
-using BootloaderTool.Protocol.Serial;
 
 namespace BootloaderTool.Cli.Commands;
 
@@ -35,11 +34,11 @@ internal static class SessionCommand
     /// <param name="context">Ambient writers and serial seam.</param>
     /// <param name="runGo">Issue Go (0x21) after a successful verify.</param>
     /// <param name="guardChipId">Fail if the device ID is not STM32F40x/41x.</param>
-    public static async Task<int> RunAsync(
+    public static Task<int> RunAsync(
         CliOptions options, CliContext context, bool runGo, bool guardChipId)
     {
         if (string.IsNullOrWhiteSpace(options.File))
-            return CliResult.UsageError(context, "no firmware image specified (use -f <image.bin>)");
+            return Task.FromResult(CliResult.UsageError(context, "no firmware image specified (use -f <image.bin>)"));
 
         FirmwareImage image;
         try
@@ -48,15 +47,51 @@ internal static class SessionCommand
         }
         catch (Exception ex)
         {
-            return CliResult.Fail(context, $"cannot load firmware '{options.File}': {ex.Message}");
+            return Task.FromResult(CliResult.Fail(context, $"cannot load firmware '{options.File}': {ex.Message}"));
         }
 
-        ISerial? serial = context.OpenPort(options, out string? error);
-        if (serial is null)
-            return CliResult.UsageOrFail(context, error!, options.Port is null);
-
-        using (serial)
+        // Image sanity — the same gates the GUI applies at selection. A blob
+        // deliberately written elsewhere (e.g. data at a custom --addr) can be
+        // pushed past them with --force.
+        string? rejection = ImageCompatibility.CheckVectorTable(image)
+                            ?? ImageCompatibility.CheckDeclaredSize(image);
+        if (rejection is not null)
         {
+            if (!options.Force)
+                return Task.FromResult(CliResult.Fail(context, $"{rejection} Use --force to flash anyway."));
+            context.Err.WriteLine($"warning: {rejection} Continuing (--force).");
+        }
+
+        return ClientCommand.RunAsync(options, context, async client =>
+        {
+            var progress = new ConsoleProgress(context.Out, options.Json);
+
+            // Read the start of the target region and look for a "TLFWIMG1"
+            // metadata header, so the product/downgrade gates can compare
+            // against what the device currently runs. Best-effort: a
+            // read-protected or erased device simply reports no header.
+            ImageHeader? deviceHeader = null;
+            try
+            {
+                byte[] head = client.ReadRegion(image.StartAddress, ImageHeader.ScanLimit);
+                deviceHeader = ImageHeader.FindIn(head);
+            }
+            catch (Exception ex) when (ex is NackException || ex is BootloaderTimeoutException)
+            {
+                // Read Memory refused (e.g. RDP active) or timed out — treat as
+                // unknown. Clear any partial response so later commands start clean.
+                client.Serial.FlushInput();
+            }
+
+            string? gate = ImageCompatibility.CheckProduct(image.Header, deviceHeader)
+                           ?? ImageCompatibility.CheckDowngrade(image.Header, deviceHeader);
+            if (gate is not null)
+            {
+                if (!options.Force)
+                    return CliResult.Fail(context, $"{gate} Use --force to flash anyway.");
+                context.Err.WriteLine($"warning: {gate} Continuing (--force).");
+            }
+
             var resetOptions = new FactoryResetOptions
             {
                 RunGo          = runGo,
@@ -64,8 +99,9 @@ internal static class SessionCommand
                 SyncAttempts   = options.Retries,
             };
 
-            var session  = new FactoryResetSession(serial, resetOptions);
-            var progress = new ConsoleProgress(context.Out, options.Json);
+            // The client is already synced (one-shot 0x7F consumed by the
+            // runner), so hand it over and let the session skip its own sync.
+            var session = new FactoryResetSession(client, resetOptions);
             session.Log      += progress.OnLog;
             session.Progress += progress.OnProgress;
 
@@ -80,21 +116,9 @@ internal static class SessionCommand
             }
             catch (Exception ex)
             {
-                progress.OnError(Describe(ex));
+                progress.OnError(ProtocolErrors.Describe(ex));
                 return CliResult.Failure;
             }
-        }
+        });
     }
-
-    private static string Describe(Exception ex) => ex switch
-    {
-        NackException nack          => $"device rejected command 0x{nack.Command:X2} (NACK).",
-        BootloaderTimeoutException  => $"timed out waiting for the device: {ex.Message}",
-        ConnectionLostException     => "connection lost during transfer (" + ex.Message +
-                                       "). The bootloader cannot resume a partial write — re-enter the " +
-                                       "bootloader (RESET, then the blue button) and run the command again.",
-        ChecksumMismatchException c => $"verification failed after retries: expected 0x{c.Expected:X8}, device 0x{c.Actual:X8}.",
-        InvalidOperationException   => ex.Message,
-        _                           => ex.Message,
-    };
 }

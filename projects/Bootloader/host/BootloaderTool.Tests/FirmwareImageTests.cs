@@ -86,6 +86,31 @@ public class FirmwareImageTests
     }
 
     [Fact]
+    public void WordAlignedCrc32_WordAlignedImage_EqualsCrc32()
+    {
+        byte[] data = { 0xDE, 0xAD, 0xBE, 0xEF, 0x12, 0x34, 0x56, 0x78 };
+
+        var image = new FirmwareImage(data);
+
+        Assert.Equal(image.Crc32, image.WordAlignedCrc32);
+    }
+
+    [Fact]
+    public void WordAlignedCrc32_UnalignedImage_MatchesFFPaddedCrc()
+    {
+        // A 6-byte image spans 2 words on the device; Get-Checksum CRCs the
+        // 2 erased (0xFF) tail bytes too. WordAlignedCrc32 must model that —
+        // and it differs from the byte-exact Crc32 (which zero-pads).
+        byte[] data   = { 0xDE, 0xAD, 0xBE, 0xEF, 0x12, 0x34 };
+        byte[] padded = { 0xDE, 0xAD, 0xBE, 0xEF, 0x12, 0x34, 0xFF, 0xFF };
+
+        var image = new FirmwareImage(data);
+
+        Assert.Equal(new Crc32().Compute(padded), image.WordAlignedCrc32);
+        Assert.NotEqual(image.Crc32, image.WordAlignedCrc32);
+    }
+
+    [Fact]
     public void VectorTable_ParsedLittleEndian()
     {
         // SP = 0x20020000 (top of SRAM), Reset = 0x08000199 (flash, Thumb bit).

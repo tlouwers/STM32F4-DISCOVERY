@@ -42,6 +42,28 @@ public partial class MainWindow : Window
         DropZone.AddHandler(DragDrop.DropEvent, OnDropZoneDrop);
     }
 
+    /// <summary>True once the graceful shutdown has run; lets the close proceed.</summary>
+    private bool _shutdownComplete;
+
+    /// <summary>
+    /// Holds the window open until a running flash has unwound and the serial
+    /// port is closed, then completes the close. Without this, closing
+    /// mid-flash would end the process while the writer still owns the COM
+    /// port, killing the write mid-frame.
+    /// </summary>
+    protected override async void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+
+        if (_shutdownComplete || DataContext is not MainWindowViewModel viewModel)
+            return;
+
+        e.Cancel = true;                  // hold the window until the flash unwinds
+        await viewModel.ShutdownAsync();
+        _shutdownComplete = true;
+        Close();
+    }
+
     /// <summary>Stops the port watcher and probe loop when the window closes.</summary>
     protected override void OnClosed(EventArgs e)
     {

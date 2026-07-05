@@ -52,6 +52,12 @@ public sealed class CliOptions
     /// <summary>Suppress the final Go (0x21); leave the device in bootloader mode.</summary>
     public bool NoGo { get; set; }
 
+    /// <summary>
+    /// Override the pre-flash gates (image sanity, product mismatch, downgrade)
+    /// with a warning instead of a hard block (factory-reset, upload).
+    /// </summary>
+    public bool Force { get; set; }
+
     /// <summary>Emit machine-readable JSON Lines instead of a human progress bar.</summary>
     public bool Json { get; set; }
 }

@@ -126,6 +126,10 @@ public static class CliParser
                     o.NoGo = true;
                     break;
 
+                case "--force":
+                    o.Force = true;
+                    break;
+
                 case "--json":
                     o.Json = true;
                     break;

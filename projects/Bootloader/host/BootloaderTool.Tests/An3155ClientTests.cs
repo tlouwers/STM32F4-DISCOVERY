@@ -222,6 +222,35 @@ public class An3155ClientTests : IDisposable
     }
 
     [Fact]
+    public void ReadMemory_DataArrivesInFragments_ReassemblesFully()
+    {
+        // ISerial.Read may return fewer bytes than requested (partial read);
+        // the client must keep reading until the frame is complete.
+        _serial.EnqueueResponse(An3155Constants.Ack);  // cmd ACK
+        _serial.EnqueueResponse(An3155Constants.Ack);  // address ACK
+        _serial.EnqueueResponse(An3155Constants.Ack);  // N ACK
+        _serial.EnqueueResponse(0xDE, 0xAD);           // data, first fragment
+        _serial.EnqueueResponse(0xBE, 0xEF);           // data, second fragment
+
+        byte[] data = _client.ReadMemory(0x08000000, 4);
+
+        Assert.Equal(new byte[] { 0xDE, 0xAD, 0xBE, 0xEF }, data);
+    }
+
+    [Fact]
+    public void ReadMemory_PartialDataThenTimeout_ThrowsTimeoutException()
+    {
+        // A partial fragment followed by silence is a timeout, not a clean
+        // read — and the partial bytes must not be silently discarded.
+        _serial.EnqueueResponse(An3155Constants.Ack);  // cmd ACK
+        _serial.EnqueueResponse(An3155Constants.Ack);  // address ACK
+        _serial.EnqueueResponse(An3155Constants.Ack);  // N ACK
+        _serial.EnqueueResponse(0xDE, 0xAD);           // only 2 of 4 data bytes
+
+        Assert.Throws<BootloaderTimeoutException>(() => _client.ReadMemory(0x08000000, 4));
+    }
+
+    [Fact]
     public void ReadMemory_InvalidLength_Throws()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => _client.ReadMemory(0x08000000, 0));
@@ -356,6 +385,43 @@ public class An3155ClientTests : IDisposable
             _client.ExtendedErase(new ushort[] { 0 }));
     }
 
+    [Fact]
+    public void ExtendedErase_EmptySectors_ThrowsWithoutTouchingTheWire()
+    {
+        // N-1 = (ushort)(0 - 1) = 0xFFFF is the special mass-erase frame; an
+        // empty sector list must be rejected before any byte is sent.
+        Assert.Throws<ArgumentException>(() =>
+            _client.ExtendedErase(Array.Empty<ushort>()));
+
+        Assert.Empty(_serial.AllWrittenBytes);
+    }
+
+    [Fact]
+    public void ExtendedErase_HappyPath_RestoresConfiguredTimeout()
+    {
+        // A user-configured timeout (e.g. --timeout 5000) must survive the
+        // temporary erase-timeout bump — not be clobbered to a hardcoded value.
+        _serial.SetTimeout(5000);
+        _serial.EnqueueResponse(An3155Constants.Ack); // cmd ACK
+        _serial.EnqueueResponse(An3155Constants.Ack); // erase ACK
+
+        _client.ExtendedErase(new ushort[] { 0 });
+
+        Assert.Equal(5000, _serial.TimeoutMs);
+    }
+
+    [Fact]
+    public void ExtendedErase_EraseNack_RestoresConfiguredTimeout()
+    {
+        _serial.SetTimeout(5000);
+        _serial.EnqueueResponse(An3155Constants.Ack);  // cmd ACK
+        _serial.EnqueueResponse(An3155Constants.Nack); // erase NACK
+
+        Assert.Throws<NackException>(() => _client.ExtendedErase(new ushort[] { 0 }));
+
+        Assert.Equal(5000, _serial.TimeoutMs);
+    }
+
     // ── Mass Erase ─────────────────────────────────────────────────────────
 
     [Fact]
@@ -371,6 +437,18 @@ public class An3155ClientTests : IDisposable
         Assert.Equal(0xFF, written[2]);
         Assert.Equal(0xFF, written[3]);
         Assert.Equal(0x00, written[4]);
+    }
+
+    [Fact]
+    public void MassErase_HappyPath_RestoresConfiguredTimeout()
+    {
+        _serial.SetTimeout(5000);
+        _serial.EnqueueResponse(An3155Constants.Ack); // cmd ACK
+        _serial.EnqueueResponse(An3155Constants.Ack); // erase ACK
+
+        _client.MassErase();
+
+        Assert.Equal(5000, _serial.TimeoutMs);
     }
 
     // ── Get Checksum ───────────────────────────────────────────────────────

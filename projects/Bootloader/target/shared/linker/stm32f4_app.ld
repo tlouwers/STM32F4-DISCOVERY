@@ -31,6 +31,15 @@ SECTIONS
         . = ALIGN(4);
     } > FLASH_APP
 
+    /* Optional 32-byte TLFWIMG1 metadata header (docs/image-header.md).
+     * Empty/no-op for apps that do not define an .image_header symbol. */
+    .image_header :
+    {
+        . = ALIGN(4);
+        KEEP(*(.image_header))
+        . = ALIGN(4);
+    } > FLASH_APP
+
     /* Program code and read-only data */
     .text :
     {

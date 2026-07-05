@@ -38,6 +38,9 @@ public sealed class An3155Client
 {
     private readonly ISerial _serial;
 
+    /// <summary>The serial port this client talks over (owned by the caller).</summary>
+    public ISerial Serial => _serial;
+
     public An3155Client(ISerial serial)
     {
         _serial = serial;
@@ -314,6 +317,17 @@ public sealed class An3155Client
     /// <param name="eraseTimeoutMs">Timeout for the erase ACK (default 60 s).</param>
     public void ExtendedErase(ushort[] sectors, int eraseTimeoutMs = 60000)
     {
+        // Guard before anything touches the wire: an empty list would encode
+        // N-1 = 0xFFFF, which is byte-for-byte the special mass-erase frame.
+        if (sectors.Length == 0)
+            throw new ArgumentException(
+                "At least one sector is required — an empty list would encode the mass-erase frame.",
+                nameof(sectors));
+        if (sectors.Length > 0xFFF0)
+            throw new ArgumentException(
+                "Too many sectors — counts above 0xFFF0 collide with AN3155 special erase codes.",
+                nameof(sectors));
+
         SendCommand(An3155Constants.CmdExtendedErase);
         ExpectAck(An3155Constants.CmdExtendedErase);
 
@@ -341,7 +355,7 @@ public sealed class An3155Client
         WriteBytes(frame);
 
         // Erase can take a long time — temporarily increase timeout
-        int savedTimeout = _serial is SerialPortAdapter ? 2000 : 0;
+        int savedTimeout = _serial.TimeoutMs;
         _serial.SetTimeout(eraseTimeoutMs);
         try
         {
@@ -349,7 +363,7 @@ public sealed class An3155Client
         }
         finally
         {
-            _serial.SetTimeout(savedTimeout > 0 ? savedTimeout : 2000);
+            _serial.SetTimeout(savedTimeout);
         }
     }
 
@@ -366,6 +380,7 @@ public sealed class An3155Client
         byte[] frame = { 0xFF, 0xFF, 0x00 };
         WriteBytes(frame);
 
+        int savedTimeout = _serial.TimeoutMs;
         _serial.SetTimeout(eraseTimeoutMs);
         try
         {
@@ -373,7 +388,7 @@ public sealed class An3155Client
         }
         finally
         {
-            _serial.SetTimeout(2000);
+            _serial.SetTimeout(savedTimeout);
         }
     }
 

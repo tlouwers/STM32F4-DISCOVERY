@@ -18,7 +18,6 @@
 // ----------------------------------------------------------------------------
 
 using BootloaderTool.Protocol.Protocol;
-using BootloaderTool.Protocol.Serial;
 
 namespace BootloaderTool.Cli.Commands;
 
@@ -30,52 +29,35 @@ public sealed class InfoCommand : ICliCommand
     public string Usage   => "info -p <port> [--baud <n>] [--timeout <ms>] [--json]";
 
     public Task<int> ExecuteAsync(CliOptions options, CliContext context)
-    {
-        ISerial? serial = context.OpenPort(options, out string? error);
-        if (serial is null)
-            return Task.FromResult(CliResult.UsageOrFail(context, error!, options.Port is null));
-
-        using (serial)
+        => ClientCommand.Run(options, context, client =>
         {
-            var client = new An3155Client(serial);
-            if (!client.SyncWithRetries(attempts: options.Retries))
-                return Task.FromResult(CliResult.NoSync(context));
+            GetResult get = client.Get();
+            ushort id     = client.GetId();
 
-            try
+            string version = $"{get.ProtocolVersion >> 4}.{get.ProtocolVersion & 0x0F}";
+            string commands = string.Join(" ", get.SupportedCommands.Select(c => $"0x{c:X2}"));
+
+            if (options.Json)
             {
-                GetResult get = client.Get();
-                ushort id     = client.GetId();
-
-                string version = $"{get.ProtocolVersion >> 4}.{get.ProtocolVersion & 0x0F}";
-                string commands = string.Join(" ", get.SupportedCommands.Select(c => $"0x{c:X2}"));
-
-                if (options.Json)
+                context.Out.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
                 {
-                    context.Out.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        chipId        = $"0x{id:X4}",
-                        chipName      = ChipName(id),
-                        protocol      = version,
-                        commandCount  = get.SupportedCommands.Length,
-                        commands      = get.SupportedCommands.Select(c => $"0x{c:X2}"),
-                    }));
-                }
-                else
-                {
-                    context.Out.WriteLine($"Chip ID : 0x{id:X4} ({ChipName(id)})");
-                    context.Out.WriteLine($"Protocol: v{version}");
-                    context.Out.WriteLine($"Commands: {get.SupportedCommands.Length} supported");
-                    context.Out.WriteLine($"          {commands}");
-                }
-
-                return Task.FromResult(0);
+                    chipId        = $"0x{id:X4}",
+                    chipName      = ChipName(id),
+                    protocol      = version,
+                    commandCount  = get.SupportedCommands.Length,
+                    commands      = get.SupportedCommands.Select(c => $"0x{c:X2}"),
+                }));
             }
-            catch (Exception ex)
+            else
             {
-                return Task.FromResult(CliResult.Protocol(context, ex));
+                context.Out.WriteLine($"Chip ID : 0x{id:X4} ({ChipName(id)})");
+                context.Out.WriteLine($"Protocol: v{version}");
+                context.Out.WriteLine($"Commands: {get.SupportedCommands.Length} supported");
+                context.Out.WriteLine($"          {commands}");
             }
-        }
-    }
+
+            return CliResult.Success;
+        });
 
     /// <summary>Maps a few common STM32 device IDs to a human-readable family.</summary>
     private static string ChipName(ushort id) => id switch

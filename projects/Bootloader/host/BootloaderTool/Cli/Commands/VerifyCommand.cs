@@ -19,7 +19,6 @@
 
 using BootloaderTool.Protocol.Crc;
 using BootloaderTool.Protocol.Protocol;
-using BootloaderTool.Protocol.Serial;
 
 namespace BootloaderTool.Cli.Commands;
 
@@ -45,52 +44,40 @@ public sealed class VerifyCommand : ICliCommand
             return Task.FromResult(CliResult.Fail(context, $"cannot load firmware '{options.File}': {ex.Message}"));
         }
 
-        ISerial? serial = context.OpenPort(options, out string? error);
-        if (serial is null)
-            return Task.FromResult(CliResult.UsageOrFail(context, error!, options.Port is null));
-
-        using (serial)
+        return ClientCommand.Run(options, context, client =>
         {
-            var client = new An3155Client(serial);
-            if (!client.SyncWithRetries(attempts: options.Retries))
-                return Task.FromResult(CliResult.NoSync(context));
+            // The STM32F4 ROM bootloader has no Get-Checksum (0xA1) command;
+            // fall back to reading the region back and CRC-comparing it.
+            GetResult get = client.Get();
+            bool hasChecksum = get.SupportedCommands.Contains(An3155Constants.CmdGetChecksum);
 
-            try
+            // Get-Checksum CRCs whole words (incl. erased 0xFF tail bytes on
+            // non-word-aligned images); read-back covers exactly Size bytes.
+            uint deviceCrc = hasChecksum
+                ? client.GetChecksum(image.StartAddress, image.WordCount)
+                : new Crc32().Compute(client.ReadRegion(image.StartAddress, image.Size));
+            uint expectedCrc = hasChecksum ? image.WordAlignedCrc32 : image.Crc32;
+            bool match = deviceCrc == expectedCrc;
+
+            if (options.Json)
             {
-                // The STM32F4 ROM bootloader has no Get-Checksum (0xA1) command;
-                // fall back to reading the region back and CRC-comparing it.
-                GetResult get = client.Get();
-                bool hasChecksum = get.SupportedCommands.Contains(An3155Constants.CmdGetChecksum);
-
-                uint deviceCrc = hasChecksum
-                    ? client.GetChecksum(image.StartAddress, image.WordCount)
-                    : new Crc32().Compute(client.ReadRegion(image.StartAddress, image.Size));
-                bool match = deviceCrc == image.Crc32;
-
-                if (options.Json)
+                context.Out.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
                 {
-                    context.Out.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        match,
-                        expected = $"0x{image.Crc32:X8}",
-                        device   = $"0x{deviceCrc:X8}",
-                    }));
-                }
-                else if (match)
-                {
-                    context.Out.WriteLine($"CRC32 OK (0x{deviceCrc:X8})");
-                }
-                else
-                {
-                    context.Out.WriteLine($"CRC32 mismatch: image 0x{image.Crc32:X8}, device 0x{deviceCrc:X8}");
-                }
-
-                return Task.FromResult(match ? CliResult.Success : CliResult.Failure);
+                    match,
+                    expected = $"0x{expectedCrc:X8}",
+                    device   = $"0x{deviceCrc:X8}",
+                }));
             }
-            catch (Exception ex)
+            else if (match)
             {
-                return Task.FromResult(CliResult.Protocol(context, ex));
+                context.Out.WriteLine($"CRC32 OK (0x{deviceCrc:X8})");
             }
-        }
+            else
+            {
+                context.Out.WriteLine($"CRC32 mismatch: image 0x{expectedCrc:X8}, device 0x{deviceCrc:X8}");
+            }
+
+            return match ? CliResult.Success : CliResult.Failure;
+        });
     }
 }

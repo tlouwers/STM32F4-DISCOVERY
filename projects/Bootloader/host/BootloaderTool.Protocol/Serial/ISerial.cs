@@ -51,6 +51,9 @@ public interface ISerial : IDisposable
     /// <param name="timeoutMs">Timeout in milliseconds.</param>
     void SetTimeout(int timeoutMs);
 
+    /// <summary>Currently configured read/write timeout in milliseconds.</summary>
+    int TimeoutMs { get; }
+
     /// <summary>Discards any data sitting in the input buffer.</summary>
     void FlushInput();
 }

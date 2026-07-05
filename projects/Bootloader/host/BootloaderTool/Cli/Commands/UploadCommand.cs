@@ -24,7 +24,7 @@ public sealed class UploadCommand : ICliCommand
 {
     public string Name    => "upload";
     public string Summary => "Write and verify firmware on a device already in bootloader mode.";
-    public string Usage   => "upload -p <port> -f <image.bin> [--addr <hex>] " +
+    public string Usage   => "upload -p <port> -f <image.bin> [--addr <hex>] [--force] " +
                              "[--baud <n>] [--timeout <ms>] [--json]";
 
     public Task<int> ExecuteAsync(CliOptions options, CliContext context)

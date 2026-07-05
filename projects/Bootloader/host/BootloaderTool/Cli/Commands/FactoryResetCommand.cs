@@ -18,7 +18,6 @@
 // ----------------------------------------------------------------------------
 
 using BootloaderTool.Protocol.Protocol;
-using BootloaderTool.Protocol.Serial;
 
 namespace BootloaderTool.Cli.Commands;
 
@@ -27,7 +26,7 @@ public sealed class FactoryResetCommand : ICliCommand
 {
     public string Name    => "factory-reset";
     public string Summary => "Erase, write, verify a firmware image, then jump to it.";
-    public string Usage   => "factory-reset -p <port> -f <image.bin> [--addr <hex>] [--no-go] " +
+    public string Usage   => "factory-reset -p <port> -f <image.bin> [--addr <hex>] [--no-go] [--force] " +
                              "[--baud <n>] [--timeout <ms>] [--json]";
 
     public Task<int> ExecuteAsync(CliOptions options, CliContext context)

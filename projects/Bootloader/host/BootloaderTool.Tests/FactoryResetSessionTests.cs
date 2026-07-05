@@ -157,6 +157,28 @@ public class FactoryResetSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task RunAsync_UnalignedImageOnChecksumDevice_VerifiesAgainstWordAlignedCrc()
+    {
+        // The device CRCs WordCount whole words, so for a non-word-aligned
+        // image it returns the 0xFF-padded (word-aligned) CRC — the session
+        // must accept that, not demand the byte-exact image CRC.
+        byte[] data = Enumerable.Range(0, 258).Select(i => (byte)i).ToArray();
+        var image = new FirmwareImage(data);
+
+        EnqueueSyncAck();
+        EnqueueIdentify();
+        EnqueueErase();
+        EnqueueWrite(2);
+        EnqueueVerify(image.WordAlignedCrc32);
+        EnqueueGo();
+
+        var session = NewSession();
+        await session.RunAsync(image);
+
+        Assert.Equal(FactoryResetState.Done, session.State);
+    }
+
+    [Fact]
     public async Task RunAsync_HappyPath_VisitsStatesInOrder()
     {
         EnqueueSyncAck();

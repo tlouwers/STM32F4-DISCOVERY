@@ -50,6 +50,15 @@ public sealed class FirmwareImage
     public uint Crc32 { get; }
 
     /// <summary>
+    /// CRC-32/MPEG-2 over the image padded to a whole number of 32-bit words
+    /// with 0xFF (erased flash). This is what the device's Get Checksum (0xA1)
+    /// command produces over <see cref="WordCount"/> words, since flash beyond
+    /// the image stays erased; equal to <see cref="Crc32"/> for word-aligned
+    /// images.
+    /// </summary>
+    public uint WordAlignedCrc32 { get; }
+
+    /// <summary>
     /// Initial stack pointer — word 0 of the Cortex-M vector table (0 when the
     /// image is too small to contain one). Callers use this for a plausibility
     /// check: a genuine application image points it into device RAM.
@@ -96,6 +105,18 @@ public sealed class FirmwareImage
         Data = data;
         StartAddress = startAddress;
         Crc32 = new Crc32().Compute(data);
+
+        if (data.Length % 4 == 0)
+        {
+            WordAlignedCrc32 = Crc32;
+        }
+        else
+        {
+            byte[] padded = new byte[WordCount * 4];
+            data.CopyTo(padded, 0);
+            padded.AsSpan(data.Length).Fill(0xFF); // erased-flash value
+            WordAlignedCrc32 = new Crc32().Compute(padded);
+        }
 
         if (data.Length >= 8)
         {

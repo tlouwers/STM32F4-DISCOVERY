@@ -17,7 +17,6 @@
 // ----------------------------------------------------------------------------
 
 using BootloaderTool.Protocol.Protocol;
-using BootloaderTool.Protocol.Serial;
 
 namespace BootloaderTool.Cli.Commands;
 
@@ -29,31 +28,12 @@ public sealed class GoCommand : ICliCommand
     public string Usage   => "go -p <port> [--addr <hex>] [--baud <n>] [--timeout <ms>]";
 
     public Task<int> ExecuteAsync(CliOptions options, CliContext context)
-    {
-        ISerial? serial = context.OpenPort(options, out string? error);
-        if (serial is null)
-            return Task.FromResult(CliResult.UsageOrFail(context, error!, options.Port is null));
-
-        using (serial)
+        => ClientCommand.Run(options, context, client =>
         {
-            // SyncWithRetries also accepts the NACK an already-armed bootloader
-            // sends to a repeated 0x7F, where a bare Sync() would fail.
-            var client = new An3155Client(serial);
-            if (!client.SyncWithRetries(attempts: options.Retries))
-                return Task.FromResult(CliResult.NoSync(context));
-
             uint address = options.Address ?? FirmwareImage.DefaultStartAddress;
 
-            try
-            {
-                client.Go(address);
-                context.Out.WriteLine($"Jumped to 0x{address:X8}.");
-                return Task.FromResult(CliResult.Success);
-            }
-            catch (Exception ex)
-            {
-                return Task.FromResult(CliResult.Protocol(context, ex));
-            }
-        }
-    }
+            client.Go(address);
+            context.Out.WriteLine($"Jumped to 0x{address:X8}.");
+            return CliResult.Success;
+        });
 }

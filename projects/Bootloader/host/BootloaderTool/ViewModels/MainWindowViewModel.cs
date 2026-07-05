@@ -155,13 +155,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// </summary>
     private const long MaxFirmwareBytes = Stm32F4FlashLayout.FlashSize;
 
-    // STM32F407 memory ranges used for the vector-table plausibility check: a
-    // genuine application image has its initial stack pointer in SRAM (or CCM)
-    // and its reset handler in flash. End addresses are exclusive; the stack
-    // pointer may equal the end (a full-descending stack starts one past the top).
-    private const uint SramBase = 0x20000000, SramEnd = 0x20020000;
-    private const uint CcmBase  = 0x10000000, CcmEnd  = 0x10010000;
-
     [ObservableProperty]
     private SerialPortInfo? _selectedPort;
 
@@ -413,6 +406,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         finally
         {
             IsBusy = false;
+
+            // A downgrade confirmation covers one attempt only — after any
+            // outcome the amber banner's deliberate click must be re-armed.
+            _downgradeConfirmed = false;
+            FlashFirmwareCommand.NotifyCanExecuteChanged();
+
             if (cts == _flashCts)
             {
                 _flashCts = null;
@@ -888,23 +887,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
             var image = new FirmwareImage(path);
 
-            string? notAnImage = CheckVectorTable(image);
-            if (notAnImage is not null)
+            // Sanity gates shared with the CLI: vector-table plausibility, then
+            // header-declared size (a mismatch means a truncated/padded file).
+            string? rejection = ImageCompatibility.CheckVectorTable(image)
+                                ?? ImageCompatibility.CheckDeclaredSize(image);
+            if (rejection is not null)
             {
-                RejectFirmware(notAnImage);
+                RejectFirmware(rejection);
                 return;
             }
 
-            // A stamped header may declare the total size — a mismatch means a
-            // truncated or padded file, not the binary the build produced.
             ImageHeader? header = image.Header;
-            if (header is not null && header.ImageSize != 0 && header.ImageSize != (uint)image.Size)
-            {
-                RejectFirmware($"Image is damaged — its header declares {header.ImageSize:N0} bytes " +
-                               $"but the file is {image.Size:N0} bytes.");
-                return;
-            }
-
             _imageHeader        = header;
             FirmwareVersionText = header is not null
                 ? $"{header.VersionText} · {header.Product}"
@@ -937,46 +930,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ImageHeader? image  = _imageHeader;
         ImageHeader? device = _deviceHeader;
 
-        CompatibilityError =
-            image is not null && device is not null
-            && !string.Equals(image.Product, device.Product, StringComparison.Ordinal)
-                ? $"This image is built for '{image.Product}' — the connected device runs '{device.Product}'."
-                : null;
-
-        DowngradeWarning =
-            CompatibilityError is null
-            && image is not null && device is not null
-            && image.CompareVersionTo(device) < 0
-                ? $"The device runs {device.VersionText}; this image is {image.VersionText} (older)."
-                : null;
-    }
-
-    /// <summary>
-    /// Plausibility check on the Cortex-M vector table at the start of the image:
-    /// the initial stack pointer must land in SRAM/CCM and the reset handler in
-    /// flash with the Thumb bit set. Catches "wrong file" mistakes (an image for
-    /// another MCU, a data blob, an .elf renamed to .bin) before anything is
-    /// erased, without requiring any change to the image format.
-    /// </summary>
-    /// <param name="image">The loaded image to inspect.</param>
-    /// <returns>A rejection reason, or null when the image looks genuine.</returns>
-    private static string? CheckVectorTable(FirmwareImage image)
-    {
-        if (image.Size < 8)
-            return $"Image is too small ({image.Size} bytes) to contain a vector table — not a firmware image.";
-
-        uint sp = image.InitialStackPointer;
-        bool spInSram = sp > SramBase && sp <= SramEnd;
-        bool spInCcm  = sp > CcmBase  && sp <= CcmEnd;
-        if (!spInSram && !spInCcm)
-            return $"Not an STM32F407 application image — its stack pointer (0x{sp:X8}) is not in device RAM.";
-
-        uint reset = image.ResetHandler;
-        uint flashEnd = Stm32F4FlashLayout.FlashBase + Stm32F4FlashLayout.FlashSize;
-        if ((reset & 1) == 0 || reset < Stm32F4FlashLayout.FlashBase || reset >= flashEnd)
-            return $"Not an STM32F407 application image — its reset handler (0x{reset:X8}) is not in device flash.";
-
-        return null;
+        CompatibilityError = ImageCompatibility.CheckProduct(image, device);
+        DowngradeWarning   = CompatibilityError is null
+            ? ImageCompatibility.CheckDowngrade(image, device)
+            : null;
     }
 
     /// <summary>Clears the current image selection and shows why it was rejected.</summary>
@@ -1034,16 +991,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Turns a protocol exception into a plain-language message.</summary>
-    private static string Describe(Exception ex) => ex switch
-    {
-        NackException nack          => $"Device rejected command 0x{nack.Command:X2} (NACK).",
-        BootloaderTimeoutException  => $"Timed out waiting for the device: {ex.Message}",
-        ConnectionLostException     => $"Connection lost during transfer ({ex.Message}). The bootloader " +
-                                       "cannot resume a partial write — re-enter the bootloader (RESET, then " +
-                                       "the blue button) and click Retry.",
-        ChecksumMismatchException c => $"Verification failed after retries: expected 0x{c.Expected:X8}, device 0x{c.Actual:X8}.",
-        _                           => ex.Message,
-    };
+    private static string Describe(Exception ex) => ProtocolErrors.Describe(ex, "click Retry");
 
     /// <summary>Marshals an action onto the UI thread.</summary>
     private static void Post(Action action) => Dispatcher.UIThread.Post(action);
@@ -1056,6 +1004,32 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         Log.Add(new LogEntry(level, message));
         _sessionLog.Write(level, message);
+    }
+
+    /// <summary>
+    /// Graceful shutdown: stops the watcher, asks a running flash to stop and
+    /// WAITS for it to unwind, then closes the port. Used by the window's
+    /// Closing handler so the current write frame completes and the COM port
+    /// is released before the process exits.
+    /// </summary>
+    public async Task ShutdownAsync()
+    {
+        _watcher.PortsChanged -= OnPortsChanged;
+        _watcher.Dispose();
+
+        _flashCts?.Cancel();
+
+        // Await whichever command is mid-flight (FlashAnyway wraps FlashFirmware,
+        // so its ExecutionTask covers the downgrade path). Neither rethrows —
+        // FlashFirmware catches everything itself.
+        if (FlashFirmwareCommand.ExecutionTask is { IsCompleted: false } flash)
+            await flash;
+        if (FlashAnywayCommand.ExecutionTask is { IsCompleted: false } downgrade)
+            await downgrade;
+
+        // The flash finally may have restarted the probe; stop it before closing.
+        CancelProbe();
+        DropConnection();
     }
 
     /// <summary>Stops the watcher, cancels any in-flight probe/flash, and closes the port.</summary>

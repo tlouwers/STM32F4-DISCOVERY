@@ -43,6 +43,7 @@ public sealed class FactoryResetSession
     private readonly bool _alreadyConnected;
 
     private uint _lastDeviceCrc;
+    private uint _lastExpectedCrc;
 
     // Whether the device advertises the Get-Checksum command (0xA1). The STM32F4
     // ROM bootloader does not, so verification falls back to read-back compare.
@@ -158,7 +159,7 @@ public sealed class FactoryResetSession
 
                     writeAttempts++;
                     if (writeAttempts >= _options.MaxWriteAttempts)
-                        throw new ChecksumMismatchException(image.Crc32, _lastDeviceCrc);
+                        throw new ChecksumMismatchException(_lastExpectedCrc, _lastDeviceCrc);
 
                     Log?.Invoke("warn",
                         $"CRC32 mismatch; retrying erase+write ({writeAttempts}/{_options.MaxWriteAttempts}).");
@@ -267,11 +268,15 @@ public sealed class FactoryResetSession
         if (_deviceHasChecksum)
         {
             Progress?.Invoke("Verifying", 0, 1);
-            _lastDeviceCrc = _client.GetChecksum(image.StartAddress, image.WordCount);
-            bool ok = _lastDeviceCrc == image.Crc32;
+            // The device CRCs WordCount whole words — for a non-word-aligned
+            // image that includes up to 3 erased (0xFF) tail bytes, so compare
+            // against the word-aligned CRC, not the byte-exact one.
+            _lastDeviceCrc   = _client.GetChecksum(image.StartAddress, image.WordCount);
+            _lastExpectedCrc = image.WordAlignedCrc32;
+            bool ok = _lastDeviceCrc == _lastExpectedCrc;
             Progress?.Invoke("Verifying", 1, 1);
             Log?.Invoke(ok ? "info" : "warn",
-                $"Device CRC32 0x{_lastDeviceCrc:X8}, expected 0x{image.Crc32:X8}.");
+                $"Device CRC32 0x{_lastDeviceCrc:X8}, expected 0x{_lastExpectedCrc:X8}.");
             return ok;
         }
 
@@ -292,10 +297,11 @@ public sealed class FactoryResetSession
 
         byte[] readBack = _client.ReadRegion(image.StartAddress, image.Size,
             (done, total) => Progress?.Invoke("Verifying", (uint)done, (uint)total));
-        _lastDeviceCrc = new Crc32().Compute(readBack);
-        bool ok = _lastDeviceCrc == image.Crc32;
+        _lastDeviceCrc   = new Crc32().Compute(readBack);
+        _lastExpectedCrc = image.Crc32;
+        bool ok = _lastDeviceCrc == _lastExpectedCrc;
         Log?.Invoke(ok ? "info" : "warn",
-            $"Read-back CRC32 0x{_lastDeviceCrc:X8}, expected 0x{image.Crc32:X8}.");
+            $"Read-back CRC32 0x{_lastDeviceCrc:X8}, expected 0x{_lastExpectedCrc:X8}.");
         return ok;
     }
 

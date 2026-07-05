@@ -31,8 +31,8 @@ Run `BootloaderTool <command> --help` for command-specific options.
 ```
 list   [--baud <n>] [--timeout <ms>]
 info   -p <port> [--baud <n>] [--timeout <ms>] [--json]
-factory-reset -p <port> -f <image.bin> [--addr <hex>] [--no-go] [--baud <n>] [--timeout <ms>] [--json]
-upload -p <port> -f <image.bin> [--addr <hex>] [--baud <n>] [--timeout <ms>] [--json]
+factory-reset -p <port> -f <image.bin> [--addr <hex>] [--no-go] [--force] [--baud <n>] [--timeout <ms>] [--json]
+upload -p <port> -f <image.bin> [--addr <hex>] [--force] [--baud <n>] [--timeout <ms>] [--json]
 verify -p <port> -f <image.bin> [--addr <hex>] [--baud <n>] [--timeout <ms>] [--json]
 read   -p <port> --addr <hex> --len <n> -o <file> [--baud <n>] [--timeout <ms>] [--json]
 go     -p <port> [--addr <hex>] [--baud <n>] [--timeout <ms>]
@@ -49,6 +49,7 @@ stamp  -f <image.bin> [--json]
 | `--addr <hex>` | `0x08000000` | Target/flash address. |
 | `--len <n>` | — | Byte count (`read`). |
 | `--no-go` | off | Skip the final Go; leave the device in bootloader mode. |
+| `--force` | off | Override the pre-flash gates (image sanity, product mismatch, downgrade) with a warning instead of a hard block. |
 | `--baud <n>` | `115200` | UART baud rate (parity stays 8E1). |
 | `--timeout <ms>` | `2000` | Per-command serial read/write timeout. |
 | `--retries <n>` | `5` | Sync (0x7F) attempts before giving up on a silent device. |
@@ -78,13 +79,30 @@ BootloaderTool read -p COM7 --addr 0x08000000 --len 7820 -o dump.bin
 BootloaderTool factory-reset -p COM7 -f fw.bin --json
 ```
 
+## Pre-flash gates (`factory-reset`, `upload`)
+
+Before anything is erased the tool applies the same checks the GUI does:
+
+- **Image sanity** — a plausible Cortex-M vector table (stack pointer in RAM,
+  reset handler in flash) and, for stamped images, a header-declared size that
+  matches the file. Catches wrong-file mistakes (data blob, another MCU's
+  image, renamed `.elf`).
+- **Product mismatch** — a stamped image built for a different product than
+  the device currently runs (per its `TLFWIMG1` header) is blocked.
+- **Downgrade** — a stamped image older than what the device runs is blocked.
+
+Each gate only bites when the needed information exists (an unstamped image or
+an erased/read-protected device means no product/version gate). `--force`
+turns every gate into a warning — e.g. for deliberately writing a data blob to
+a custom `--addr`.
+
 ## Notes & gotchas
 
-- **Run `factory-reset` against a fresh bootloader entry.** The ST ROM
-  bootloader ACKs only the *first* `0x7F` after entry; an `info`/`list` on the
-  same entry consumes it. Re-enter (RESET + blue button) before a transfer.
-  (`info`/`list` themselves tolerate an already-armed device — they accept ACK
-  *or* NACK as "present".) See `plan.md` §10.5.
+- **One `0x7F` sync per bootloader entry.** The ST ROM bootloader ACKs only the
+  *first* `0x7F` after entry and NACKs later ones; all verbs treat ACK *or*
+  NACK as "present" and reuse that single entry for the whole run. A fresh
+  entry (RESET + blue button) before a transfer is still the cleanest starting
+  point. See `plan.md` §10.5.
 - **Verification is read-back on F4.** The STM32F4 bootloader has no
   Get-Checksum (0xA1), so `factory-reset`/`verify` read the region back and
   CRC32-compare it. See `plan.md` §10.4.
