@@ -92,8 +92,7 @@ void Stm32BootloaderHal::SystemReset()
  *          restored it immediately. The ROM bootloader's autobaud has only
  *          ever been validated jumping from this project's 8 MHz HSE-direct
  *          clock — changing the pre-jump SYSCLK frequency is not a safe
- *          cleanup here. See .pipeline/REVIEW.md P2 #1 and LEDGER L60
- *          (closed won't-fix, hardware-proven) for the full account. The
+ *          cleanup here, even though it looks like an obvious fix. The
  *          bootloader's initial stack pointer and reset vector are taken
  *          from the first two words at 0x1FFF0000.
  */
