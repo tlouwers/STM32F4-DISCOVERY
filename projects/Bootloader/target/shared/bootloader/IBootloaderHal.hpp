@@ -39,7 +39,7 @@
 class IBootloaderHal
 {
 public:
-    virtual ~IBootloaderHal() {}
+    virtual ~IBootloaderHal() = default;
 
     /**
      * \brief   Reads the factory-reset magic from the RTC backup register.

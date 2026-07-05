@@ -79,16 +79,29 @@ void Stm32BootloaderHal::SystemReset()
  * \brief   Deinitialises peripherals, remaps system memory to 0x00000000, and
  *          jumps to the ST system memory bootloader. Does not return.
  *
- * \details Interrupts are disabled and the clock tree and HAL are torn down so
- *          the bootloader starts from a known state. The bootloader's initial
- *          stack pointer and reset vector are taken from the first two words at
- *          0x1FFF0000.
+ * \details Interrupts are disabled and peripherals are torn down via
+ *          HAL_DeInit(). HAL_RCC_DeInit() is called too, but it is a
+ *          non-functional `__weak` stub in the vendored v1.28.3 HAL (it
+ *          `return HAL_OK;` without touching a register) — SYSCLK is left
+ *          exactly as Board::InitClock() configured it (8 MHz direct off
+ *          HSE, no PLL). Do NOT "fix" this by resetting the clock to HSI or
+ *          any other frequency: hardware-tested 2026-07-05 (STM32F407G-DISC1,
+ *          COM7) — switching SYSCLK to HSI @ 16 MHz before the jump made the
+ *          ST ROM bootloader stop responding to sync entirely (even the
+ *          tolerant `info` probe got nothing); reverting to this exact no-op
+ *          restored it immediately. The ROM bootloader's autobaud has only
+ *          ever been validated jumping from this project's 8 MHz HSE-direct
+ *          clock — changing the pre-jump SYSCLK frequency is not a safe
+ *          cleanup here. See .pipeline/REVIEW.md P2 #1 and LEDGER L60
+ *          (closed won't-fix, hardware-proven) for the full account. The
+ *          bootloader's initial stack pointer and reset vector are taken
+ *          from the first two words at 0x1FFF0000.
  */
 void Stm32BootloaderHal::JumpToSystemMemory()
 {
     __disable_irq();
 
-    HAL_RCC_DeInit();
+    HAL_RCC_DeInit();   // no-op in this HAL version — see \details above, do not "fix"
     HAL_DeInit();
 
     __HAL_RCC_SYSCFG_CLK_ENABLE();

@@ -7,6 +7,8 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   BootloaderEntry
+ *
  * \brief   Bootloader-entry module for the application firmware.
  *
  * \details Implements the software path into the ST system memory bootloader.
@@ -50,6 +52,12 @@ public:
 
     bool CheckAndEnterBootloader();
     void TriggerFactoryReset();
+
+    // Explicit disabled constructors/operators
+    BootloaderEntry(const BootloaderEntry&) = delete;
+    BootloaderEntry& operator=(const BootloaderEntry&) = delete;
+    BootloaderEntry(BootloaderEntry&&) = delete;
+    BootloaderEntry& operator=(BootloaderEntry&&) = delete;
 
 private:
     IBootloaderHal& mHal;

@@ -1,8 +1,36 @@
-#ifndef BL_LED_HPP_
-#define BL_LED_HPP_
+/**
+ * \file    Led.hpp
+ *
+ * \licence "THE BEER-WARE LICENSE" (Revision 42):
+ *          <terry.louwers@fourtress.nl> wrote this file. As long as you retain
+ *          this notice you can do whatever you want with this stuff. If we
+ *          meet some day, and you think this stuff is worth it, you can buy me
+ *          a beer in return.
+ *                                                                Terry Louwers
+ * \class   Led
+ *
+ * \brief   Orange LED driver (LD3, PD13) for the blink_orange sample application.
+ *
+ * \note    https://github.com/tlouwers/STM32F4-DISCOVERY/tree/develop/projects/Bootloader/target/blink_orange/Src/drivers
+ *
+ * \author  T. Louwers <terry.louwers@fourtress.nl>
+ * \version 1.0
+ * \date    06-2026
+ */
 
+#ifndef LED_HPP_
+#define LED_HPP_
+
+
+/************************************************************************/
+/* Includes                                                             */
+/************************************************************************/
 #include "stm32f4xx_hal.h"
 
+
+/************************************************************************/
+/* Class declaration                                                    */
+/************************************************************************/
 class Led
 {
 public:
@@ -12,4 +40,5 @@ public:
     static void Off();
 };
 
-#endif // BL_LED_HPP_
+
+#endif  // LED_HPP_

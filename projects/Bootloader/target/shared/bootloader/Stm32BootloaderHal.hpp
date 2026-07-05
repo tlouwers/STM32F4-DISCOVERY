@@ -7,6 +7,8 @@
  *          meet some day, and you think this stuff is worth it, you can buy me
  *          a beer in return.
  *                                                                Terry Louwers
+ * \class   Stm32BootloaderHal
+ *
  * \brief   STM32F4 implementation of IBootloaderHal.
  *
  * \details Concrete hardware seam used in the firmware build. Reads/writes the
