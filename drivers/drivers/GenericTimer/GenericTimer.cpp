@@ -301,12 +301,17 @@ void GenericTimer::CheckAndDisablePeripheralClock(const GenericTimerInstance& in
 /**
  * \brief   Return the input clock feeding the given GenericTimer instance.
  * \details TIM2/3/4/5/12/13/14 are clocked from APB1; TIM9/10/11 from APB2.
- *          The timer input clock depends on the APB prescaler AND the
- *          RCC_DCKCFGR.TIMPRE bit (RM0090 §6.2):
- *            - TIMPRE = 0 (reset default): TIMxCLK = PCLKx when the APB
- *              prescaler is 1, otherwise 2 x PCLKx.
- *            - TIMPRE = 1: TIMxCLK = HCLK when the APB prescaler is 1, 2 or 4,
- *              otherwise 4 x PCLKx.
+ *          On STM32F405/407/415/417 the timer input clock depends only on
+ *          the APB prescaler (RM0090 section 6.2): TIMxCLK = PCLKx when the
+ *          prescaler is 1, otherwise 2 x PCLKx.
+ *
+ *          There is deliberately no RCC_DCKCFGR.TIMPRE handling here: that
+ *          register does not exist on this part -- RCC_TypeDef in
+ *          stm32f407xx.h ends at PLLI2SCFGR. TIMPRE arrived with the
+ *          STM32F42x/F43x series. The RCC_DCKCFGR_TIMPRE *mask* is still
+ *          visible because it comes from the family-wide
+ *          stm32f4xx_hal_rcc_ex.h, which is exactly why the previous version
+ *          of this function looked correct until it reached the compiler.
  * \param   instance    The GenericTimer instance to query.
  * \returns Timer input clock in Hz.
  */
@@ -321,16 +326,8 @@ uint32_t GenericTimer::GetTimerInputClockFreq(const GenericTimerInstance& instan
     const uint32_t ppreMsk = isApb2 ? RCC_CFGR_PPRE2      : RCC_CFGR_PPRE1;
     const uint32_t ppreVal =  RCC->CFGR & ppreMsk;
     const uint32_t div2    = isApb2 ? RCC_CFGR_PPRE2_DIV2 : RCC_CFGR_PPRE1_DIV2;
-    const uint32_t div4    = isApb2 ? RCC_CFGR_PPRE2_DIV4 : RCC_CFGR_PPRE1_DIV4;
-
-    if ((RCC->DCKCFGR & RCC_DCKCFGR_TIMPRE) == 0U)
-    {
-        // TIMPRE = 0: x1 when APB prescaler is 1, otherwise x2.
-        return (ppreVal >= div2) ? (pclk * 2U) : pclk;
-    }
-
-    // TIMPRE = 1: HCLK when APB prescaler is 1, 2 or 4, otherwise 4 x PCLK.
-    return (ppreVal <= div4) ? HAL_RCC_GetHCLKFreq() : (pclk * 4U);
+    // TIMxCLK = PCLKx when the APB prescaler is 1, otherwise 2 x PCLKx.
+    return (ppreVal >= div2) ? (pclk * 2U) : pclk;
 }
 
 /**

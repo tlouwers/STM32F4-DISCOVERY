@@ -86,7 +86,6 @@ protected:
     {
         FakeTIM_Reset();
         RCC->CFGR    = 0U;   // default APB prescaler /1 (no timer-clock doubling)
-        RCC->DCKCFGR = 0U;   // TIMPRE = 0 (reset default)
     }
 
     GenericTimer mSubject;
@@ -183,25 +182,6 @@ TEST_F(GenericTimer_Test, Init_FrequencyAboveCeiling_ReturnsFalseAndNotInit)
 {
     EXPECT_FALSE(mSubject.Init(GenericTimer::Config(0, 20000.0f)));
     EXPECT_FALSE(mSubject.IsInit());
-}
-
-// TIMPRE = 1 with APB prescaler 1 selects HCLK as the timer input clock.
-TEST_F(GenericTimer_Test, Init_TimpreSetPrescaler1_UsesHclkReturnsTrue)
-{
-    RCC->DCKCFGR = RCC_DCKCFGR_TIMPRE;   // TIMPRE = 1, APB prescaler /1 -> HCLK branch
-
-    GenericTimer timer(GenericTimerInstance::TIMER_2);
-    EXPECT_TRUE(timer.Init(ValidConfig()));
-}
-
-// TIMPRE = 1 with a large APB prescaler (>/4) selects the 4 x PCLK branch.
-TEST_F(GenericTimer_Test, Init_TimpreSetLargePrescaler_Uses4xPclkReturnsTrue)
-{
-    RCC->DCKCFGR = RCC_DCKCFGR_TIMPRE;   // TIMPRE = 1
-    RCC->CFGR    = RCC_CFGR_PPRE1;       // APB1 prescaler /16 (> /4) -> 4 x PCLK branch
-
-    GenericTimer timer(GenericTimerInstance::TIMER_2);
-    EXPECT_TRUE(timer.Init(ValidConfig()));
 }
 
 
